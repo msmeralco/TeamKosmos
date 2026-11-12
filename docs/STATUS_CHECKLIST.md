@@ -35,10 +35,11 @@
 - [x] 2D panel layout on the roof
 - [x] Blank-canvas sketch with scale correction, floating tools, and an uploaded picture to trace by hand
 - [x] Solar Passport: issue, sign, verify, shareable page, QR code
-- [ ] Install confirmation by an installer (Passport stage: installed)
-- [ ] Solar Rewards: voucher catalog and issue
-- [ ] Voucher redeem (once only)
-- [ ] Rewards UI on the Passport page
+- [~] Install confirmation by an installer: no confirm flow (MVP). Only the seeded solar owner has an installed Passport; the installed fact (a sample installer, `sample: true`) is inside the signed record
+- [x] Solar Rewards: sample voucher catalog (`backend/data/vouchers.json`), shown to the seeded owner; values are samples, nothing agreed with Meralco or any business
+- [x] Voucher redeem (once only; the code appears after redeeming; a repeat returns 409)
+- [x] Passport booklet UI (Passport entry in the sidebar, only for the owner): cover that opens, ID page with QR and verify seal, voucher page
+- [ ] Passport and vouchers for regular accounts (needs the install-confirm step; today only `dela.cruz@sol.test` has them)
 
 ## Tier 2b: Rules search
 
@@ -62,6 +63,8 @@
 ## Other features
 
 - [x] Sign up, login, logout, seeded demo users
+- [x] Seeded solar owner `dela.cruz@sol.test` with a signed, installed Passport and 4 sample vouchers (`scripts/seed_owner.py`, run once per database after `seed_users.py`; migration `003_rewards.sql`). Demo accounts get the password `password` unless `SEED_PASSWORD` is set
+- [x] Installer list rows show one contact (phone, else email, else website) instead of the DOE list badge
 - [x] No goal question: once the budget is set the goal defaults to the biggest 10-year savings and Sol gives a summary with no question (the goal can still be changed)
 - [x] Click a package: "Details & contacts" asks Sol, which shows price, parts, how it fits the budget and size, the installer's published phone, email, website and social links (checked against the installer's page), and questions to ask
 - [x] Packages that fit the budget open in the side panel as soon as the budget and system type are set (before the numbers run), then refresh to the real design after the analysis
