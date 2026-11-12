@@ -207,7 +207,7 @@ def _worker(req: ChatRequest, settings: Settings, out: "queue.Queue", ctx_box: l
                 lead = "I don't see your installation site outline yet." if slot_now == "roof_draw" else ""
                 text = "\n\n".join(p for p in (lead, safe_text(ctx)) if p)
 
-        text = reply_format.tidy(text, reply_format.detect_intent(user_text))  # layout follows the user's question
+        text = reply_format.tidy(text)  # layout repair only; the shape of the answer is the model's call
 
         # The results table is built from tool results only (so it is exempt from the number guard) and goes above
         # the model's explanation. History keeps just the explanation, to keep the next prompt short.

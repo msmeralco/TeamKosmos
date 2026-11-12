@@ -278,7 +278,7 @@ def docs_text(r: dict, intent: str | None = None) -> str:
     if not r.get("passages"):
         return "I don't have a source for that, so I'd rather not guess. Meralco or your installer can confirm it."
     top = r["passages"][0]
-    who = top["publisher"] or top["title"]
+    who = reply_format.short_source(top["publisher"] or top["title"])
     us = " (a US example, not Philippine rules)" if top.get("region") == "US" else ""
     body = reply_format.clean_passage(re.sub(r"^\s*(?:#{1,6}\s+|[-*•]\s+)", "", top["text"], flags=re.M))
     sents = [x for x in re.split(r"(?<=[.!?])\s+(?=[A-Z\"'(])", body) if x.strip()]
