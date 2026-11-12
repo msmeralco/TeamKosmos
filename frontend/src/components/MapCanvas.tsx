@@ -361,13 +361,15 @@ export function MapCanvas({
     if (state?.roof) {
       const ll = state.roof.polygon_lonlat.map(([lon, lat]) => [lat, lon] as Pt);
       map.invalidateSize();
-      map.fitBounds(L.latLngBounds(ll), { maxZoom: 20, padding: [40, 40] });
+      // No zoom animation: the roof outline is redrawn at the same moment, and a vector layer drawn while Leaflet
+      // animates a zoom is scaled with the animation (thick, stretched outline) until it snaps back.
+      map.fitBounds(L.latLngBounds(ll), { maxZoom: 20, padding: [40, 40], animate: false });
     } else if (state?.pin) {
-      // An address was found: fly to it, even if the user also shared their own location.
+      // An address was found: go to it, even if the user also shared their own location.
       map.invalidateSize();
-      map.setView([state.pin.lat, state.pin.lon], Math.max(state.center.zoom, 18));
+      map.setView([state.pin.lat, state.pin.lon], Math.max(state.center.zoom, 18), { animate: false });
     } else if (state && !userLocRef.current) {
-      map.setView([state.center.lat, state.center.lon], state.center.zoom);
+      map.setView([state.center.lat, state.center.lon], state.center.zoom, { animate: false });
     }
   }, [state, conversationId, tab]);
 
