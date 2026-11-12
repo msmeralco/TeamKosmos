@@ -111,8 +111,34 @@ def detect_intent(text: str) -> str | None:
     return None
 
 
+# ---- several requests in one message ---------------------------------------------------------------------
+# Actions the user can ask for besides giving details. They are always carried out in this order, because the later
+# ones need the earlier ones: the numbers must be run before they can be compared, filled or turned into a passport.
+ACTION_ORDER = ("run", "nm_compare", "fill_roof", "passport")
+_ACTION_PATTERNS = {
+    "run": re.compile(r"\brun (?:the |my )?(?:numbers?|analysis|simulation)\b|\brun (?:it|this)\b|\banaly[sz]e (?:it|this|my|the)\b|\bsimulate\b|"
+                      r"\bcompare (?:the |my |all )?(?:packages?|options?)\b|\bshow (?:me )?(?:the |my )?(?:results?|options)\b|\bi-?run\b|\bpatakbuhin\b", re.I),
+    "nm_compare": re.compile(r"net[- ]?metering.*(?:compare|off|without)|(?:compare|without|what if).*net[- ]?metering", re.I),
+    "fill_roof": re.compile(r"\b(?:whole|entire|full) roof\b|\bfill (?:my |the )?roof\b", re.I),
+    "passport": re.compile(r"passport", re.I),
+}
+_HOLD = re.compile(r"\b(?:don'?t|do not|not yet|wait|hold on|hold off|huwag|wag muna)\b", re.I)
+
+
+def requested_actions(text: str) -> list[str]:
+    """Actions asked for in one message, in the order they must be carried out. Empty if the user said to wait."""
+    if _HOLD.search(text):
+        return []
+    return [a for a in ACTION_ORDER if _ACTION_PATTERNS[a].search(text)]
+
+
+def has_run_command(text: str) -> bool:
+    """True when the message itself tells Sol to run the numbers (so it counts as the user's go-ahead)."""
+    return "run" in requested_actions(text)
+
+
 _BUDGET_WORDS = re.compile(r"\b(budget|afford|spend|up to|at most|under|below|hanggang)\b", re.I)
-_BILL_WORDS = re.compile(r"\b(bill|kuryente|electric(?:ity)?|meralco)\b", re.I)
+_BILL_WORDS = re.compile(r"\b(bill|kuryente|electric(?:ity)?|meralco|monthly)\b", re.I)
 _CLAUSES = re.compile(r"[;,]|\band\s+(?=(?:my|i|the)\b)", re.I)
 
 

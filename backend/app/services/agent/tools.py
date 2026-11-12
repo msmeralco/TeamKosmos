@@ -48,6 +48,7 @@ class TurnContext:
         self.emit = emit
         self.settings = settings
         self.flags: dict[str, bool] = {"open_map": False}
+        self.after_notes: list[str] = []  # scripted agent: sentences that go after the tool results (what was paused or queued)
         self.tool_calls: list[dict] = []  # {"name", "args", "result"} for the whole turn
         self.calls_made = 0  # counted against the per-turn cap (reset when falling back to another provider)
         self.cards: list[dict] = []
@@ -215,7 +216,7 @@ def _stated_numbers(ctx: TurnContext) -> list[float]:
 
 def _user_agreed(ctx: TurnContext) -> bool:
     text = ctx.user_text.strip()
-    if nlu.is_affirm(text):
+    if nlu.is_affirm(text) or nlu.has_run_command(text):  # "run the numbers" inside a longer message is also a go-ahead
         return True
     act = intake.match_choice(ctx.session, text)
     return bool(act and act["kind"] == "update" and (act["payload"].get("confirm_load") or act["payload"].get("confirm_summary")))
@@ -348,7 +349,14 @@ def _run_analysis(ctx: TurnContext, _a: NoArgs) -> dict:
     p = s.profile
     s.pending.pop("full_roof", None)
     roof = RoofModel.model_validate(p.roof)
-    ld = load_svc.from_profile(p)
+    try:
+        ld = load_svc.from_profile(p)
+    except ApiError:
+        # The usage cannot be sized (for example it is above the supported range). Retrying would fail the same
+        # way, so open the "what would you like to change?" menu instead of repeating "Run the numbers".
+        p.confirmed = False
+        s.pending["changing"] = True
+        raise
     try:
         res = optimizer.optimize(roof, ld, budget_max_php=p.budget_max_php, budget_min_php=p.budget_min_php, goal=p.goal,
                                  goal_target_pct=p.goal_target_pct, backup_hours=p.backup_hours, system_type=p.system_type)
@@ -567,6 +575,8 @@ def _bill(ctx: TurnContext, a: BillArgs) -> dict:
         errors.append("That kWh figure looks implausible for a household")
     if a.amount_php is not None and not intake.BILL_RANGE[0] <= a.amount_php <= intake.BILL_RANGE[1]:
         errors.append("That amount looks implausible for a household bill")
+    elif a.amount_php is not None and (problem := intake._bill_problem(a.amount_php)):
+        errors.append(problem)
     if a.kwh is None and a.amount_php is None:
         errors.append("Nothing was read from the bill")
     if errors:

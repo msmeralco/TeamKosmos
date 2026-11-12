@@ -78,12 +78,88 @@ class ScriptedProvider:
         else:  # changing / change
             intake.run_action(s, action)
 
+    # ---- several requests in one message -----------------------------------------------------------------------
+    # "the bill is now 34k and run the numbers" is two jobs. They are done in a fixed, safe order: (1) save the
+    # details, (2) run the numbers, (3) the follow-ups that need the numbers. A step only starts when the one before
+    # it worked. When one cannot be done yet, the rest are kept in pending["queued"] and finished automatically.
+    FOLLOW_UP_TOOLS = {"nm_compare": "compare_net_metering", "fill_roof": "toggle_roof_fill", "passport": "issue_passport"}
+    ACTION_LABELS = {"run": "run the numbers", "nm_compare": "compare net metering", "fill_roof": "preview your whole roof",
+                     "passport": "create your Solar Passport"}
+
+    @classmethod
+    def _label_list(cls, actions: list[str]) -> str:
+        names = [cls.ACTION_LABELS[a] for a in actions]
+        return names[0] if len(names) == 1 else ", ".join(names[:-1]) + " and " + names[-1]
+
+    @staticmethod
+    def _failed(result: dict) -> bool:
+        return bool(result.get("error") or result.get("errors") or result.get("rejected"))
+
+    def _handle_compound(self, ctx: TurnContext, actions: list[str], fields: dict, notes: list[str]) -> bool:
+        s = ctx.session
+        after = ctx.after_notes
+        follow_ups = [a for a in actions if a != "run"]
+
+        if fields:  # step 1: details first, so everything after works on the new values
+            if self._failed(ctx.call_tool("update_profile", fields)):
+                s.pending["queued"] = follow_ups
+                after.append(f"I stopped there so nothing runs on a wrong value. Fix that and I'll continue with {self._label_list(actions)}."
+                             if actions else "")
+                return True
+
+        if "run" in actions and "analysis" not in s.results:  # step 2: the numbers
+            s.pending.pop("changing", None)  # "just run it" in the change menu means: leave the menu and go
+            slot = intake.next_slot(s)
+            if slot == "confirm":  # the message itself said to run them, so that is the go-ahead
+                ctx.call_tool("update_profile", {"confirm_summary": True})
+                slot = intake.next_slot(s)
+            if slot != "run":
+                s.pending["queued"] = follow_ups
+                more = f", then {self._label_list(follow_ups)}" if follow_ups else ""
+                after.append(f"I can't run the numbers yet because something is still missing. Once it's filled in I'll show you the summary to confirm{more}.")
+                return True
+            if self._failed(ctx.call_tool("run_analysis", {})):
+                s.pending["queued"] = follow_ups
+                after.append(f"I stopped there, so I haven't done {self._label_list(follow_ups)}." if follow_ups else "")
+                return True
+        elif "run" in actions and not fields:
+            after.append("Your numbers are already up to date. If you change anything, I'll run them again.")
+
+        self._run_follow_ups(ctx, follow_ups)  # step 3: needs the numbers
+        return True
+
+    def _run_follow_ups(self, ctx: TurnContext, actions: list[str]) -> None:
+        s = ctx.session
+        after = ctx.after_notes
+        s.pending.pop("queued", None)
+        for i, action in enumerate(actions):
+            if "analysis" not in s.results:
+                s.pending["queued"] = actions[i:]
+                after.append(f"Once the numbers are ready I'll also {self._label_list(actions[i:])}.")
+                return
+            if self._failed(ctx.call_tool(self.FOLLOW_UP_TOOLS[action], {})):
+                rest = actions[i + 1:]
+                if rest:
+                    s.pending["queued"] = rest
+                    after.append(f"I stopped there. Still to do: {self._label_list(rest)}.")
+                return
+
     def _handle_free_text(self, ctx: TurnContext, text: str, notes: list[str]) -> bool:
         """Returns True if the message was understood."""
         s = ctx.session
         slot = intake.next_slot(s)
         intent = nlu.detect_intent(text)
         analysed = "analysis" in s.results
+
+        if s.pending.get("queued") and re.search(r"\b(cancel|never ?mind|forget (?:it|that)|skip (?:it|that))\b", text.lower()):
+            s.pending.pop("queued", None)  # the user dropped what was waiting
+            notes.append("Okay, I've dropped the things I had lined up.")
+            return True
+        actions = nlu.requested_actions(text)
+        if actions:
+            fields = nlu.extract(text, slot, s.profile.goal)
+            if len(actions) >= 2 or fields or "run" in actions:
+                return self._handle_compound(ctx, actions, fields, notes)
 
         if intent == "passport" and analysed:
             ctx.call_tool("issue_passport", {})
@@ -220,11 +296,17 @@ class ScriptedProvider:
         if intake.next_slot(s) == "run" and not ctx.results_of("run_analysis"):
             ctx.call_tool("run_analysis", {})
 
+        # Things lined up from an earlier message are finished as soon as the numbers exist.
+        queued = list(s.pending.get("queued") or [])
+        if queued and "analysis" in s.results:
+            self._run_follow_ups(ctx, queued)
+
         parts: list[str] = []
         if first:
             parts.append(intake.INTRO[ctx.lang if ctx.lang in intake.INTRO else "english"].format(first=s.persona.first))
         parts.extend(notes)
         parts.extend(tool_sentences(ctx))
+        parts.extend(ctx.after_notes)
         if not understood and not first and not ctx.tool_calls:
             parts.append("Sorry, I didn't catch that." if ctx.lang != "taglish" else "Pasensya, hindi ko nakuha.")
         parts.append(question_text(ctx))

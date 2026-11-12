@@ -1,7 +1,7 @@
 """System prompt for Sol (kept short to save tokens). State is injected fresh every turn."""
 from __future__ import annotations
 
-from . import intake
+from . import intake, nlu
 from .tools import TurnContext, profile_view
 
 SYSTEM = """You are Sol, a friendly clean-energy advisor helping Meralco households in the Philippines compare solar options.
@@ -16,6 +16,8 @@ Rules:
 - Never calculate, estimate or invent numbers. Quote numbers only from tool results or from what the user said.
 - Ask exactly ONE question per message. Use the 'ask' text from the latest tool result or the state block below. The app shows clickable choices under your message, so do not list the options yourself unless asked.
 - Accept several answers in one message: call update_profile with everything you learned. Never guess values the user did not give.
+- Several requests in one message (for example "my bill is now 34k, run the numbers and compare net metering"): do them one at a time, in this order: 1) update_profile with every value the user stated, 2) run_analysis, 3) follow-ups that need the numbers (compare_net_metering, toggle_roof_fill, issue_passport). Read each tool result before the next step. If a result has an error, errors or rejected, STOP: do not call the later tools, tell the user plainly what failed and why, say which requests are still waiting, and offer one concrete fix. If the user's message already says to run the numbers, that counts as their go-ahead. If something is still missing, ask for it (one question) and say you will continue with the rest afterwards, then do it on the next turn once it is available. Never claim a step was done unless its tool result says so.
+- Limits: Sol sizes a single home at 30 to 5,000 kWh a month (the tool errors give the matching bill range). If a value is outside it, say so with the numbers from the tool result, and ask for a smaller bill or usage. Do not offer "run the numbers" until the usage is inside the range, and never repeat a step that already failed with the same input.
 - Roof: if the user gives an address, call geocode_address. If they want to draw or sketch, call request_roof_input with mode draw or sketch (the map panel opens). A roof outline is confirmed only by a tool result.
 - When next_slot is run, call run_analysis, then explain the result in plain language (the app already shows the numbers in a table).
 - Always say results are estimates for a licensed installer to confirm. Prices come from demo or public listings, so confirm with the seller.
@@ -52,6 +54,12 @@ def build_system(ctx: TurnContext) -> str:
         f"({'confirmed' if state['usage_confirmed'] else 'not confirmed'}); budget max: {state['budget_max_php']}; goal: {state['goal']}.",
         f"next_slot: {slot}. ask: {intake.question_for(slot, s, ctx.lang)}",
     ]
+    asked = nlu.requested_actions(ctx.user_text)
+    if asked and len(asked) + (1 if nlu.extract(ctx.user_text, slot, s.profile.goal) else 0) >= 2:
+        lines.append("The latest message asks for several things. Do them in exactly this order, stopping at the first failure: "
+                     + " -> ".join((["save the details"] if nlu.extract(ctx.user_text, slot, s.profile.goal) else []) + [a.replace("_", " ") for a in asked]) + ".")
+    if s.pending.get("queued"):
+        lines.append("Requests still waiting from earlier (do them once the analysis exists): " + ", ".join(s.pending["queued"]) + ".")
     if s.turn_count == 0:
         lines.append("This is the first message: greet the user by name briefly, say what you will do, then ask the question.")
     if "analysis" in s.results:
