@@ -78,7 +78,7 @@ def test_system_instruction_carries_state_language_and_rules(client):
     fake = use([text_resp("Hello! Which roof should we use?")])
     chat(client, "hi", language="taglish")
     system = fake.models.calls[0]["config"].system_instruction
-    assert "Never calculate" in system and "Taglish" in system and "next_slot: roof_method" in system
+    assert "Never calculate" in system and "Reply in Tagalog only" in system and "next_slot: roof_method" in system
     assert "first message" in system
     assert fake.models.calls[0]["config"].automatic_function_calling.disable is True
 

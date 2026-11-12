@@ -515,17 +515,12 @@ _WORD = re.compile(r"[a-zñ']+", re.I)
 
 
 def detect_style(user_text: str) -> str:
-    """'english', 'tagalog' (mostly Tagalog words) or 'taglish' (a real mix), judged from one message."""
+    """'english' or 'tagalog', judged from one message. A mixed message goes to whichever language has more words."""
     words = _WORD.findall((user_text or "").lower())
     if not words:
         return "english"
     tl = sum(1 for w in words if w in _TAGALOG_WORDS)
-    if tl == 0:
-        return "english"
-    ratio = tl / len(words)
-    if ratio < 0.2:
-        return "english"
-    return "tagalog" if ratio >= 0.6 else "taglish"
+    return "tagalog" if tl and tl / len(words) >= 0.4 else "english"
 
 
 def pick_language(session: Session, user_text: str) -> str:
