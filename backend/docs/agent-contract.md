@@ -2,7 +2,7 @@
 
 # Sol agent API: frontend contract
 
-Everything here is implemented in `backend/`. The payloads mirror the types in `frontendv2/src` (`AgentStep`, `Suggestion`, `AgentMsg.reply`), so the existing UI state can be filled directly. Interactive docs: `http://127.0.0.1:8000/docs`.
+Everything here is implemented in `backend/`. The payloads mirror the types in `frontend/src` (`AgentStep`, `Suggestion`, `AgentMsg.reply`), so the existing UI state can be filled directly. Interactive docs: `http://127.0.0.1:8000/docs`.
 
 Run the backend (from `backend/`): `..\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8000`
 CORS allows `http://localhost:5173` and `http://127.0.0.1:5173` (change with `CORS_ORIGINS`).

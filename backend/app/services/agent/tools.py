@@ -313,6 +313,9 @@ def _geocode(ctx: TurnContext, a: GeocodeArgs) -> dict:
     if len(cands) == 1:
         out = _select_candidate(ctx, 0)
         return {"candidates": listing, "auto_selected": True, "degraded": res["degraded"], **out}
+    # Several matches: show the best one on the map right away so the user sees where the search landed.
+    s.pending["anchor"] = {"lat": float(cands[0]["lat"]), "lon": float(cands[0]["lon"])}
+    ctx.flags["open_map"] = True
     return {"candidates": listing, "degraded": res["degraded"], **snapshot(ctx)}
 
 

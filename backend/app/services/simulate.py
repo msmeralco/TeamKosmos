@@ -19,7 +19,11 @@ DISCLAIMER = ("Estimates for planning only, based on modelled weather and a synt
 
 # ---- packages -------------------------------------------------------------------------------------------
 def pick_inverter(catalog: list[dict], kwp: float, hybrid: bool) -> dict | None:
-    """Smallest inverter keeping DC/AC <= max ratio and DC input within the unit's limit."""
+    """Smallest inverter keeping DC/AC <= max ratio and DC input within the unit's limit.
+
+    Choosing the smallest unit already lands inside [dc_ac_ratio_min, dc_ac_ratio_max] whenever the catalog has one.
+    When the catalog has a gap (for example 4.4 kWp, where 3 kW is too small and 5 kW gives 0.88), the next size up
+    is used rather than dropping the candidate."""
     need_ac = kwp / A("dc_ac_ratio_max")
     options = [p for p in catalog if p["category"] == "inverter" and bool(p.get("hybrid")) == hybrid
                and p["inverter_ac_kw"] >= need_ac - 1e-9 and (p.get("max_dc_kw") or 1e9) >= kwp - 1e-9

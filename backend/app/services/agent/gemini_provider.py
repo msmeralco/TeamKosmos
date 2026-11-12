@@ -10,6 +10,7 @@ import typing
 from typing import Any, Literal, get_args, get_origin
 
 from ...config import Settings
+from . import intake
 from .prompt import build_system
 from .providers import ProviderUnavailable
 from .tools import TOOLS, TurnContext
@@ -191,6 +192,12 @@ class GeminiProvider:
 
     def run_turn(self, ctx: TurnContext) -> str:
         from google.genai import types
+
+        # A tapped address suggestion is deterministic: look up that candidate's roof instead of letting the
+        # model search the address again (which would just show the same list).
+        picked = intake.match_choice(ctx.session, ctx.user_text.strip()) if ctx.user_text.strip() else None
+        if picked and picked["kind"] == "pick":
+            ctx.call_tool("get_building_outline", {"candidate_index": picked["payload"]})
 
         contents = self._history(types, ctx)
         contents.append(self._current_user(types, ctx))
