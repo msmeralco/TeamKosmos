@@ -1,0 +1,5 @@
+[
+  {"email": "reyes.family@sol.test", "name": "Reyes Family", "household_name": "Reyes Family", "city": "Quezon City", "lat": 14.6760, "lon": 121.0437, "monthly_kwh": 450, "household_template": "balanced"},
+  {"email": "ate.maria@sol.test", "name": "Maria Santos", "household_name": "Ate Maria", "city": "Pasig City", "lat": 14.5764, "lon": 121.0851, "monthly_kwh": 250, "household_template": "night_heavy"},
+  {"email": "wfh.couple@sol.test", "name": "Alex Cruz", "household_name": "WFH Couple", "city": "Makati City", "lat": 14.5547, "lon": 121.0244, "monthly_kwh": 700, "household_template": "day_heavy"}
+]

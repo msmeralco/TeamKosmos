@@ -1,6 +1,7 @@
 """Run one full conversation against a running server and print what Sol said. Uses whatever LLM/DB the server has.
 
-Usage (from backend/):  python scripts/live_check.py [--base-url http://127.0.0.1:8000] [--persona reyes]
+Usage (from backend/):  python scripts/live_check.py [--base-url http://127.0.0.1:8000] [--email E --password P]
+Without --email it signs up a throwaway 450 kWh account on the server.
 """
 from __future__ import annotations
 
@@ -21,17 +22,25 @@ def main() -> int:
             stream.reconfigure(encoding="utf-8", errors="replace")
     ap = argparse.ArgumentParser()
     ap.add_argument("--base-url", default="http://127.0.0.1:8000")
-    ap.add_argument("--persona", default="reyes")
+    ap.add_argument("--email")
+    ap.add_argument("--password")
     args = ap.parse_args()
     cid = f"live-check-{uuid.uuid4().hex}"
     with httpx.Client(base_url=args.base_url, timeout=150) as c:
         h = c.get("/api/health").json()
         print(f"server: db={h['db']['active']} llm={h['llm']['mode']} model={h['llm']['model']}\n")
+        if args.email:
+            r = c.post("/api/auth/login", json={"email": args.email, "password": args.password or ""})
+        else:
+            r = c.post("/api/auth/signup", json={"name": "Live Check", "email": f"{cid}@live-check.test", "password": uuid.uuid4().hex,
+                                                  "city": "Quezon City", "lat": 14.676, "lon": 121.0437, "monthly_kwh": 450, "household_template": "balanced"})
+        r.raise_for_status()
+        c.headers["Authorization"] = f"Bearer {r.json()['token']}"
         expected = ["roof_method", "load", "budget", "goal", "goal_param", "confirm", "done"]
         ok = True
         for i, text in enumerate(SCRIPT):
             t = time.time()
-            r = c.post("/api/agent/chat?stream=false", data={"conversation_id": cid, "message": text, "persona_id": args.persona})
+            r = c.post("/api/agent/chat?stream=false", data={"conversation_id": cid, "message": text})
             r.raise_for_status()
             m = r.json()
             quick = any(s["label"] == "Switching to quick mode" for s in m["steps"])

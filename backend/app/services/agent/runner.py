@@ -28,9 +28,16 @@ _DONE = object()
 class ChatRequest:
     conversation_id: str
     message: str
-    persona_id: str = "reyes"
+    user: dict = field(default_factory=dict)  # the signed-in account row
     language: str = "auto"
     files: list = field(default_factory=list)  # list[Attachment]
+
+
+def make_title(text: str, n_files: int) -> str:
+    t = " ".join(text.split())
+    if not t:
+        return "Attached files" if n_files != 1 else "Attached file"
+    return t if len(t) <= 40 else t[:39].rstrip() + "…"
 
 
 # ---- per-session lock (one turn at a time) -----------------------------------------------------------------------
@@ -152,7 +159,7 @@ def _worker(req: ChatRequest, settings: Settings, out: "queue.Queue", ctx_box: l
     sid = req.conversation_id
     ctx: TurnContext | None = None
     try:
-        session = load_session(sid, req.persona_id, req.language)
+        session = load_session(sid, req.user, req.language)
         lang = intake.pick_language(session, req.message)
         files_only = req.message.strip().lower() == PLACEHOLDER_TEXT and bool(req.files)
         user_text = "" if files_only else req.message
@@ -195,6 +202,8 @@ def _worker(req: ChatRequest, settings: Settings, out: "queue.Queue", ctx_box: l
         session.add_history("user", user_text or f"[attached {len(req.files)} file(s)]")
         session.add_history("model", text)
         session.turn_count += 1
+        if not session.title:
+            session.title = make_title(user_text, len(req.files))
         session.language = req.language if req.language in ("auto", "english", "taglish") else session.language
         save_session(session)
         out.put({"event": "reply", "data": reply})
@@ -268,13 +277,13 @@ def run_turn_json(req: ChatRequest, settings: Settings | None = None) -> dict:
 
 
 # ---- roof hand-off from the map panel ---------------------------------------------------------------------------------------
-def submit_roof(session_id: str, submission, persona_id: str = "reyes") -> dict:
+def submit_roof(session_id: str, submission, user: dict) -> dict:
     settings = get_settings()
     token = LOCKS.acquire(session_id, settings.turn_timeout_s * 2)
     if token is None:
         raise _busy()
     try:
-        s = load_session(session_id, persona_id, None)
+        s = load_session(session_id, user, None)
         mode = submission.mode
         if mode == "drawn":
             roof = roof_svc.finalize(FinalizeRequest(**submission.model_dump(exclude={"mode"})))
@@ -312,7 +321,8 @@ def session_roof_payload(s: Session) -> dict:
     else:
         center = {"lat": s.persona.lat, "lon": s.persona.lon, "zoom": 17}
     return {
-        "center": center, "persona": {"id": s.persona_id, "city": s.persona.city},
+        "center": center, "pin": anchor and {"lat": anchor["lat"], "lon": anchor["lon"]},
+        "persona": {"id": s.persona_id, "city": s.persona.city},
         "roof": s.profile.roof, "roofMethod": s.profile.roof_method, "nextSlot": intake.next_slot(s),
         "needsRoof": s.profile.roof is None, "layout": layout_for_selected(s) if s.profile.roof else None,
         "roofSummary": roof_summary(s.profile.roof) if s.profile.roof else None,

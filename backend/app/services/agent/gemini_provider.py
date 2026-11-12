@@ -15,7 +15,7 @@ from .providers import ProviderUnavailable
 from .tools import TOOLS, TurnContext
 
 log = logging.getLogger("sol.gemini")
-REQUEST_TIMEOUT_S = 20.0
+REQUEST_TIMEOUT_S = 12.0
 CACHE_TTL_S = 600.0
 CACHE_MAX = 200
 RETRY_DELAY_S = 1.5

@@ -2,6 +2,8 @@ import httpx
 import pytest
 
 from app.config import get_settings
+from helpers import user_row
+
 from app.services import geo
 from app.services.agent import guard, intake
 from app.services.agent.session import load_session
@@ -49,7 +51,7 @@ def test_guard_collects_numbers_from_strings_and_nested_results():
 
 # ---- tools -----------------------------------------------------------------------------------------------------------
 def make_ctx(persona="reyes", text=""):
-    s = load_session("conv-tools-001-0123456789", persona, "english")
+    s = load_session("conv-tools-001-0123456789", user_row(persona), "english")
     events = []
     ctx = TurnContext(s, text, "english", [], events.append, get_settings())
     return ctx, events

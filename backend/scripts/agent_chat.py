@@ -1,11 +1,12 @@
 """Chat with Sol from the terminal (no frontend needed).
 
-Usage (from backend/, with the server running):  python scripts/agent_chat.py [--persona reyes] [--language auto]
+Usage (from backend/, with the server running):  python scripts/agent_chat.py --email you@example.com [--password ...] [--language auto]
 Type a message, or a number to pick one of the suggested choices. /quit to exit.
 """
 from __future__ import annotations
 
 import argparse
+import getpass
 import json
 import sys
 import uuid
@@ -13,9 +14,19 @@ import uuid
 import httpx
 
 
-def stream_turn(client: httpx.Client, cid: str, text: str, persona: str, language: str) -> dict:
+def login(client: httpx.Client, email: str, password: str) -> bool:
+    r = client.post("/api/auth/login", json={"email": email, "password": password})
+    if r.status_code != 200:
+        print(f"Sign-in failed: {r.json().get('detail', {}).get('message', r.text)}")
+        return False
+    client.headers["Authorization"] = f"Bearer {r.json()['token']}"
+    print(f"Signed in as {r.json()['user']['name']}.")
+    return True
+
+
+def stream_turn(client: httpx.Client, cid: str, text: str, language: str) -> dict:
     reply: dict = {}
-    with client.stream("POST", "/api/agent/chat", data={"conversation_id": cid, "message": text, "persona_id": persona, "language": language}) as r:
+    with client.stream("POST", "/api/agent/chat", data={"conversation_id": cid, "message": text, "language": language}) as r:
         if r.status_code != 200:
             r.read()
             print(f"  [error {r.status_code}] {r.json().get('detail', {}).get('message', r.text)}")
@@ -41,12 +52,15 @@ def main() -> int:
             stream.reconfigure(encoding="utf-8", errors="replace")
     ap = argparse.ArgumentParser()
     ap.add_argument("--base-url", default="http://127.0.0.1:8000")
-    ap.add_argument("--persona", default="reyes", choices=["reyes", "maria", "wfh"])
+    ap.add_argument("--email", required=True)
+    ap.add_argument("--password", help="omit to be prompted")
     ap.add_argument("--language", default="auto", choices=["auto", "english", "taglish"])
     args = ap.parse_args()
     cid = f"cli-{uuid.uuid4().hex}"
     choices: list[dict] = []
     with httpx.Client(base_url=args.base_url, timeout=120) as client:
+        if not login(client, args.email, args.password or getpass.getpass("Password: ")):
+            return 1
         print("Sol terminal chat. Type a message, a choice number, or /quit.\n")
         while True:
             try:
@@ -60,7 +74,7 @@ def main() -> int:
                 print(f"     ({text})")
             if not text:
                 continue
-            reply = stream_turn(client, cid, text, args.persona, args.language)
+            reply = stream_turn(client, cid, text, args.language)
             if not reply:
                 continue
             print(f"\nsol> {reply['text']}")

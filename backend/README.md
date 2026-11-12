@@ -28,7 +28,7 @@ Copy-Item .env.example .env        # then fill in the values below
 
 - `python scripts/demo_run.py` runs the three demo households end to end and prints a table. Add `--base-url http://127.0.0.1:8000` to hit a running server.
 - `python scripts/agent_chat.py` chats with Sol in the terminal.
-- `python scripts/prefetch_pvgis.py [--tilt 12]` pre-downloads PVGIS data for offline demos (already bundled for the three personas at 12 and 20 degrees, facing south).
+- `python scripts/prefetch_pvgis.py [--tilt 12]` pre-downloads PVGIS data for offline demos (already bundled for Metro Manila at 12 and 20 degrees, facing south).
 - `python scripts/build_demo_outlines.py --name ... --address ...` builds `data/demo_outlines.geojson` from real OpenStreetMap outlines. The shipped file holds **synthetic** rectangles.
 
 ## Tests
@@ -44,3 +44,9 @@ Tests run offline against a temporary SQLite database. Live checks are marked `l
 - Households, demo roofs and the product catalog (`data/seed_catalog.csv`) are **synthetic**.
 - `ASSUMPTIONS.yaml` lists every number with unit, source and date. Entries with `verified: false` are placeholders or judgement and must be replaced with sourced values before real use. The agent says so when they drive a result.
 - Sunlight data is PVGIS-ERA5 (a modelled dataset). The scraper has no enabled retailer: add hand-checked sources in `app/services/scraper/sources.yaml` after reading each site's robots.txt and terms.
+
+## Accounts
+
+- Sign up and sign in through `/api/auth/signup` and `/api/auth/login` (scrypt password hashes, opaque tokens stored hashed, 30 day expiry).
+- `python scripts/seed_users.py` creates the accounts in `data/seed_users.json` in the configured database. Set `SEED_PASSWORD` for one shared password, otherwise random ones are printed once.
+- The Postgres tables come from `migrations/002_auth.sql`, applied automatically on startup (or `python -m app.db.migrate`).

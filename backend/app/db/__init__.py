@@ -5,7 +5,7 @@ import logging
 import threading
 
 from ..config import get_settings
-from .base import GENESIS_HASH, LedgerError, Repository
+from .base import GENESIS_HASH, LedgerError, Repository, UserExists
 from .sqlite_repo import SQLiteRepository
 
 log = logging.getLogger("sol.db")
@@ -15,7 +15,7 @@ _repo: Repository | None = None
 _status: dict = {"active": None, "requested": None, "fallback_reason": None}
 _cache_repo: SQLiteRepository | None = None
 
-__all__ = ["GENESIS_HASH", "LedgerError", "Repository", "get_repo", "get_cache", "db_status", "reset_repos"]
+__all__ = ["GENESIS_HASH", "LedgerError", "Repository", "UserExists", "get_repo", "get_cache", "db_status", "reset_repos"]
 
 
 def _build_repo() -> tuple[Repository, dict]:

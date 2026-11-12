@@ -41,12 +41,10 @@ function writeConsent(v: "granted" | "declined") {
 
 export function MapCanvas({
   conversationId,
-  personaId,
   refreshKey,
   onSubmitted,
 }: {
   conversationId: string | null;
-  personaId: string;
   refreshKey: number;
   onSubmitted: (what: "drawn" | "sketch") => void;
 }) {
@@ -147,7 +145,7 @@ export function MapCanvas({
   // ---- create the Leaflet map once ---------------------------------------------------------------------------
   useEffect(() => {
     if (tab !== "map" || !hostRef.current || mapRef.current) return;
-    const map = L.map(hostRef.current, { zoomControl: true, maxZoom: 21, attributionControl: true }).setView(
+    const map = L.map(hostRef.current, { zoomControl: true, maxZoom: 19, attributionControl: true }).setView(
       [MANILA.lat, MANILA.lon],
       MANILA.zoom,
     );
@@ -176,8 +174,8 @@ export function MapCanvas({
     if (!map || tab !== "map") return;
     baseRef.current?.remove();
     const layer = street
-      ? L.tileLayer(OSM_URL, { maxZoom: 21, maxNativeZoom: 19, attribution: OSM_ATTR })
-      : L.tileLayer(SAT_URL, { maxZoom: 21, maxNativeZoom: 19, attribution: SAT_ATTR });
+      ? L.tileLayer(OSM_URL, { maxZoom: 19, maxNativeZoom: 19, attribution: OSM_ATTR })
+      : L.tileLayer(SAT_URL, { maxZoom: 19, maxNativeZoom: 18, attribution: SAT_ATTR }); // Esri has no tiles past ~z18 in many PH areas; Leaflet upscales instead
     layer.addTo(map).bringToBack();
     baseRef.current = layer;
   }, [street, tab]);
@@ -216,6 +214,19 @@ export function MapCanvas({
       const ring = roof.polygon_lonlat.map(([lon, lat]) => [lat, lon] as Pt);
       L.polygon(ring, { color: "#ea580c", weight: 3, fillColor: "#ea580c", fillOpacity: 0.12 }).addTo(layer);
     }
+    if (state?.pin) {
+      // The address the user typed, pinned on the map.
+      L.marker([state.pin.lat, state.pin.lon], {
+        icon: L.divIcon({
+          className: "",
+          html: '<div style="width:22px;height:22px;border-radius:50% 50% 50% 0;background:#ea580c;border:2px solid #fff;box-shadow:0 1px 6px rgba(0,0,0,.45);transform:rotate(-45deg)"></div>',
+          iconSize: [22, 22],
+          iconAnchor: [11, 26],
+        }),
+        interactive: false,
+        keyboard: false,
+      }).addTo(layer);
+    }
     for (const p of state?.layout?.panels_lonlat ?? []) {
       L.polygon(p.map(([lon, lat]) => [lat, lon] as Pt), {
         color: "#0b3d91", weight: 1, fillColor: "#1d4ed8", fillOpacity: 0.65,
@@ -240,12 +251,12 @@ export function MapCanvas({
   const submit = useCallback(
     async (body: RoofSubmission) => {
       if (!conversationId) throw new Error("Send Sol a message first, then draw your roof.");
-      await submitRoof(conversationId, personaId, body);
+      await submitRoof(conversationId, body);
       setPoints([]);
       setDrawing(false);
       onSubmitted(body.mode === "sketch" ? "sketch" : "drawn");
     },
-    [conversationId, personaId, onSubmitted],
+    [conversationId, onSubmitted],
   );
 
   const sendDrawn = async () => {

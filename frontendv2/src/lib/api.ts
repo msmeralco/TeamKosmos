@@ -26,20 +26,123 @@ export class ApiError extends Error {
 }
 
 async function toError(res: Response): Promise<ApiError> {
+  if (res.status === 401) signOutListeners.forEach((fn) => fn());
   try {
     const body = await res.json();
     const d = body?.detail;
     return new ApiError(d?.code ?? "http_error", d?.message ?? `Request failed (${res.status})`, res.status);
   } catch {
+    // The dev proxy answers with an empty 5xx body when the backend is not running.
+    if (res.status >= 502 && res.status <= 504) {
+      return new ApiError("server_unreachable", "I couldn't reach the Sol server. Make sure the backend is running on port 8000, then try again.", res.status);
+    }
     return new ApiError("http_error", `Request failed (${res.status})`, res.status);
   }
+}
+
+/* ---- auth token ---------------------------------------------------- */
+const TOKEN_KEY = "sol.token";
+const signOutListeners = new Set<() => void>();
+
+export const getToken = (): string | null => {
+  try {
+    return localStorage.getItem(TOKEN_KEY);
+  } catch {
+    return null;
+  }
+};
+const setToken = (t: string | null) => {
+  try {
+    if (t) localStorage.setItem(TOKEN_KEY, t);
+    else localStorage.removeItem(TOKEN_KEY);
+  } catch {
+    /* storage unavailable: the user just has to sign in again next visit */
+  }
+};
+
+/** Called whenever the server rejects the saved token (expired or revoked). */
+export function onUnauthorized(fn: () => void): () => void {
+  signOutListeners.add(fn);
+  return () => signOutListeners.delete(fn);
+}
+
+function authHeaders(extra: Record<string, string> = {}): Record<string, string> {
+  const t = getToken();
+  return t ? { ...extra, Authorization: `Bearer ${t}` } : extra;
+}
+
+export type Household = {
+  name: string;
+  city: string | null;
+  lat: number | null;
+  lon: number | null;
+  monthlyKwh: number | null;
+  template: "night_heavy" | "balanced" | "day_heavy" | null;
+};
+export type User = { id: string; email: string; name: string; initials: string; household: Household };
+
+async function authRequest(path: string, body: unknown): Promise<User> {
+  let res: Response;
+  try {
+    res = await fetch(`${BASE}/api/auth/${path}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  } catch {
+    throw new ApiError("server_unreachable", "I couldn't reach the Sol server. Make sure the backend is running on port 8000, then try again.", 0);
+  }
+  if (!res.ok) throw await toError(res);
+  const data = (await res.json()) as { token: string; user: User };
+  setToken(data.token);
+  return data.user;
+}
+
+export const login = (email: string, password: string) => authRequest("login", { email, password });
+export const signup = (name: string, email: string, password: string) => authRequest("signup", { name, email, password });
+
+/** The signed-in user, or null when there is no valid saved session. */
+export async function fetchMe(): Promise<User | null> {
+  if (!getToken()) return null;
+  try {
+    const res = await fetch(`${BASE}/api/auth/me`, { headers: authHeaders() });
+    if (res.status === 401) {
+      setToken(null);
+      return null;
+    }
+    if (!res.ok) throw await toError(res);
+    return ((await res.json()) as { user: User }).user;
+  } catch (e) {
+    if (e instanceof ApiError) throw e;
+    throw new ApiError("server_unreachable", "I couldn't reach the Sol server. Make sure the backend is running on port 8000, then try again.", 0);
+  }
+}
+
+export async function logout(): Promise<void> {
+  const headers = authHeaders();
+  setToken(null);
+  try {
+    await fetch(`${BASE}/api/auth/logout`, { method: "POST", headers });
+  } catch {
+    /* the token is already forgotten locally */
+  }
+}
+
+/* ---- chat sessions -------------------------------------------------- */
+export type SessionInfo = { id: string; title: string; turnCount: number; updatedAt: number };
+
+export async function listSessions(): Promise<SessionInfo[]> {
+  const res = await fetch(`${BASE}/api/agent/sessions`, { headers: authHeaders() });
+  if (!res.ok) throw await toError(res);
+  return ((await res.json()) as { sessions: SessionInfo[] }).sessions;
+}
+
+export async function getSessionHistory(conversationId: string): Promise<{ role: "user" | "model"; text: string }[]> {
+  const res = await fetch(`${BASE}/api/agent/sessions/${conversationId}`, { headers: authHeaders() });
+  if (!res.ok) throw await toError(res);
+  return ((await res.json()) as { history: { role: "user" | "model"; text: string }[] }).history;
 }
 
 /** Send one chat turn and stream its events. Always resolves with the final reply (or throws before streaming). */
 export async function streamChat(opts: {
   conversationId: string;
   message: string;
-  personaId: string;
   language: Language;
   files?: File[];
   signal?: AbortSignal;
@@ -48,11 +151,10 @@ export async function streamChat(opts: {
   const form = new FormData();
   form.set("conversation_id", opts.conversationId);
   form.set("message", opts.message);
-  form.set("persona_id", opts.personaId);
   form.set("language", opts.language);
   for (const f of opts.files ?? []) form.append("files", f, f.name);
 
-  const res = await fetch(`${BASE}/api/agent/chat`, { method: "POST", body: form, signal: opts.signal });
+  const res = await fetch(`${BASE}/api/agent/chat`, { method: "POST", body: form, signal: opts.signal, headers: authHeaders() });
   if (!res.ok || !res.body) throw await toError(res);
 
   const reader = res.body.getReader();
@@ -102,12 +204,13 @@ export type RoofState = {
   roofMethod: "address" | "draw" | "sketch" | null;
   nextSlot: string;
   needsRoof: boolean;
+  pin?: { lat: number; lon: number } | null;
   layout: { count: number; panels_lonlat: [number, number][][] } | null;
 };
 
 /** Returns null when the conversation does not exist yet (nothing sent so far). */
 export async function getRoofState(conversationId: string, signal?: AbortSignal): Promise<RoofState | null> {
-  const res = await fetch(`${BASE}/api/agent/sessions/${conversationId}/roof`, { signal });
+  const res = await fetch(`${BASE}/api/agent/sessions/${conversationId}/roof`, { signal, headers: authHeaders() });
   if (res.status === 404) return null;
   if (!res.ok) throw await toError(res);
   return (await res.json()) as RoofState;
@@ -125,10 +228,10 @@ export type RoofSubmission =
       roof_type: "flat" | "single_slope" | "gable";
     };
 
-export async function submitRoof(conversationId: string, personaId: string, body: RoofSubmission): Promise<void> {
-  const res = await fetch(`${BASE}/api/agent/sessions/${conversationId}/roof?persona_id=${personaId}`, {
+export async function submitRoof(conversationId: string, body: RoofSubmission): Promise<void> {
+  const res = await fetch(`${BASE}/api/agent/sessions/${conversationId}/roof`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: authHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify(body),
   });
   if (!res.ok) throw await toError(res);
@@ -136,7 +239,7 @@ export async function submitRoof(conversationId: string, personaId: string, body
 
 export async function deleteSession(conversationId: string): Promise<void> {
   try {
-    await fetch(`${BASE}/api/agent/sessions/${conversationId}`, { method: "DELETE" });
+    await fetch(`${BASE}/api/agent/sessions/${conversationId}`, { method: "DELETE", headers: authHeaders() });
   } catch {
     /* the chat is removed from the sidebar either way */
   }

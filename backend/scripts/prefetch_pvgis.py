@@ -1,4 +1,4 @@
-"""Pre-download PVGIS-ERA5 hourly data for the demo personas (flat roof, 12 deg tilt, facing south).
+"""Pre-download PVGIS-ERA5 hourly data for the accounts in the database (flat roof, 12 deg tilt, facing south).
 
 Usage (from backend/):  python scripts/prefetch_pvgis.py [--tilt 12] [--azimuth 180] [--lat LAT --lon LON]
 Writes data/pvgis_bundled/*.npz so the demo works offline. Each fetch takes about a minute.
@@ -12,7 +12,15 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.services import irradiance  # noqa: E402
-from app.services.agent.personas import PERSONAS  # noqa: E402
+from app.db import get_repo  # noqa: E402
+from app.services.agent.personas import DEFAULT_LAT, DEFAULT_LON  # noqa: E402
+
+
+def _account_points() -> list[tuple[float, float]]:
+    """Locations of the accounts in the database (falls back to the default map centre)."""
+    repo = get_repo()
+    pts = [(u["lat"], u["lon"]) for u in repo.list_users() if u.get("lat") is not None and u.get("lon") is not None]
+    return pts or [(DEFAULT_LAT, DEFAULT_LON)]
 
 
 def main() -> int:
@@ -22,7 +30,7 @@ def main() -> int:
     ap.add_argument("--lat", type=float)
     ap.add_argument("--lon", type=float)
     args = ap.parse_args()
-    points = [(args.lat, args.lon)] if args.lat is not None and args.lon is not None else [(p.lat, p.lon) for p in PERSONAS.values()]
+    points = [(args.lat, args.lon)] if args.lat is not None and args.lon is not None else _account_points()
     seen, failed = set(), 0
     for lat, lon in points:
         key = irradiance.cache_key(lat, lon, args.tilt, args.azimuth)

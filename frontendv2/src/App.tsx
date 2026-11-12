@@ -17,7 +17,19 @@ import { LoginView } from "./components/LoginView";
 import { MapCanvas } from "./components/MapCanvas";
 import { SolLogo } from "./components/SolLogo";
 import { AnimatedSol } from "./components/SolMascotLazy";
-import { ApiError, deleteSession, streamChat, type Language, type StepEvent } from "./lib/api";
+import {
+  ApiError,
+  deleteSession,
+  fetchMe,
+  getSessionHistory,
+  listSessions,
+  logout,
+  onUnauthorized,
+  streamChat,
+  type Language,
+  type StepEvent,
+  type User,
+} from "./lib/api";
 import {
   ConfirmDialog,
   MenuItem,
@@ -33,44 +45,30 @@ import {
 /* ------------------------------------------------------------------ */
 
 type View = "chat" | "overview" | "saved";
-type PersonaId = "reyes" | "maria" | "wfh";
-
+/** What the UI shows about the signed-in household. Built from the account, never hardcoded. */
 type Persona = {
-  id: PersonaId;
   initials: string;
   name: string;
-  subtitle: string;
-  location: string;
   first: string;
+  subtitle: string;
+  location: string | null;
 };
 
-const PERSONAS: Record<PersonaId, Persona> = {
-  reyes: {
-    id: "reyes",
-    initials: "RF",
-    name: "Reyes Family",
-    subtitle: "450 kWh/mo · Balanced",
-    location: "Quezon City, Metro Manila",
-    first: "Reyes Family",
-  },
-  maria: {
-    id: "maria",
-    initials: "AM",
-    name: "Ate Maria",
-    subtitle: "250 kWh/mo · Night-heavy",
-    location: "Pasig City, Metro Manila",
-    first: "Maria",
-  },
-  wfh: {
-    id: "wfh",
-    initials: "WC",
-    name: "WFH Couple",
-    subtitle: "700 kWh/mo · Day-heavy",
-    location: "Makati City, Metro Manila",
-    first: "Alex & Sam",
-  },
-};
+const TEMPLATE_LABEL = { night_heavy: "Night-heavy", balanced: "Balanced", day_heavy: "Day-heavy" } as const;
 
+function toPersona(u: User): Persona {
+  const h = u.household;
+  const usage = [h.monthlyKwh ? `${h.monthlyKwh} kWh/mo` : null, h.template ? TEMPLATE_LABEL[h.template] : null]
+    .filter(Boolean)
+    .join(" · ");
+  return {
+    initials: u.initials,
+    name: h.name,
+    first: u.name.split(/\s+/)[0],
+    subtitle: usage || "Tell Sol about your home to get started",
+    location: h.city,
+  };
+}
 type UserMsg = {
   id: number;
   from: "user";
@@ -97,6 +95,8 @@ type Conversation = {
   id: string;
   title: string;
   messages: ChatMsg[];
+  /** false until the saved messages of a chat from the server have been fetched */
+  loaded: boolean;
 };
 
 type Notice = {
@@ -187,8 +187,8 @@ function TypedText({ id, text, animate }: { id: number; text: string; animate: b
 /* ------------------------------------------------------------------ */
 
 export default function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [personaId, setPersonaId] = useState<PersonaId>("reyes");
+  const [user, setUser] = useState<User | null>(null);
+  const [booting, setBooting] = useState(true);
   const [view, setView] = useState<View>("chat");
   const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -208,21 +208,68 @@ export default function App() {
   const [pendingDelete, setPendingDelete] = useState<{ id: string; title: string } | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
-  const [notices, setNotices] = useState<Notice[]>([
-    {
-      id: "n1",
-      message: "Sol UI shell ready. Select a starter prompt or explore the roof map.",
-      when: "Just now",
-      read: false,
-    },
-  ]);
+  const [notices, setNotices] = useState<Notice[]>([]);
 
   const [lang, setLang] = useState<LangLabel>("Auto");
   const nextMsg = useRef(1);
   const busyRef = useRef(false);
   const abortRef = useRef<(() => void) | null>(null);
   const reduced = useReducedMotion();
-  const persona = PERSONAS[personaId];
+  const persona = useMemo(() => (user ? toPersona(user) : null), [user]);
+
+  /* Restore the saved sign-in, if any. */
+  useEffect(() => {
+    let live = true;
+    fetchMe()
+      .then((u) => live && setUser(u))
+      .catch(() => {})
+      .finally(() => live && setBooting(false));
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  /* Clear everything that belongs to the previous account. */
+  const resetWorkspace = useCallback(() => {
+    if (abortRef.current) abortRef.current();
+    abortRef.current = null;
+    busyRef.current = false;
+    setBusy(false);
+    setConvos([]);
+    setCurrentId(null);
+    setCanvasOpen(false);
+    setDrawerOpen(false);
+    setView("chat");
+  }, []);
+
+  /* The server rejected our token: go back to the login screen. */
+  useEffect(
+    () =>
+      onUnauthorized(() => {
+        resetWorkspace();
+        setUser(null);
+      }),
+    [resetWorkspace],
+  );
+
+  /* Load this account's chats whenever someone signs in. */
+  useEffect(() => {
+    if (!user) return;
+    let live = true;
+    listSessions()
+      .then((rows) => {
+        if (!live) return;
+        setConvos((cs) => {
+          const known = new Set(cs.map((c) => c.id));
+          const fromServer = rows.filter((r) => !known.has(r.id)).map((r) => ({ id: r.id, title: r.title, messages: [], loaded: false }));
+          return [...cs, ...fromServer];
+        });
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [user]);
 
   const stopTurn = useCallback(() => {
     if (abortRef.current) {
@@ -311,7 +358,6 @@ export default function App() {
       streamChat({
         conversationId: cid,
         message: text || "Attached files",
-        personaId,
         language: LANGS[lang],
         files: rawFiles,
         signal: controller.signal,
@@ -344,7 +390,7 @@ export default function App() {
           setBusy(false);
         });
     },
-    [appendMsg, personaId, lang],
+    [appendMsg, lang],
   );
 
   const ask = useCallback(
@@ -356,7 +402,7 @@ export default function App() {
       if (cid === null) {
         const id = newUuid();
         cid = id;
-        setConvos((cs) => [{ id, title: titleFor(t, files), messages: [] }, ...cs]);
+        setConvos((cs) => [{ id, title: titleFor(t, files), messages: [], loaded: true }, ...cs]);
         setCurrentId(id);
       }
       appendMsg(cid, {
@@ -394,6 +440,28 @@ export default function App() {
     setDrawerOpen(false);
   };
 
+  /* Open a chat; saved ones fetch their messages the first time. */
+  const openChat = (id: string) => {
+    stopTurn();
+    setCurrentId(id);
+    go("chat");
+    const convo = convos.find((c) => c.id === id);
+    if (!convo || convo.loaded) return;
+    getSessionHistory(id)
+      .then((history) => {
+        const messages: ChatMsg[] = history.map((h) => {
+          const mid = nextMsg.current++;
+          if (h.role === "user") return { id: mid, from: "user", text: h.text };
+          typed.add(mid); // restored replies appear at once instead of being typed out again
+          return { id: mid, from: "agent", phase: "done", steps: [], reply: { text: h.text } };
+        });
+        setConvos((cs) => cs.map((c) => (c.id === id ? { ...c, messages, loaded: true } : c)));
+      })
+      .catch((err: unknown) => {
+        if (err instanceof ApiError && err.status === 404) setConvos((cs) => cs.filter((c) => c.id !== id));
+      });
+  };
+
   const deleteChat = (id: string) => {
     setDeleteOpen(false);
     void deleteSession(id);
@@ -418,7 +486,21 @@ export default function App() {
     setNotices((list) => list.map((n) => ({ ...n, read: true })));
   };
 
-  if (!isAuthenticated) {
+  const signOut = () => {
+    void logout();
+    resetWorkspace();
+    setUser(null);
+  };
+
+  if (booting) {
+    return (
+      <div className="flex h-dvh w-screen items-center justify-center bg-white" aria-busy="true">
+        <span className="h-6 w-6 animate-spin rounded-full border-2 border-[#e5e5e4] border-t-[#ea580c]" />
+      </div>
+    );
+  }
+
+  if (!user || !persona) {
     return (
       <LazyMotion features={domAnimation} strict>
         <m.div
@@ -429,7 +511,7 @@ export default function App() {
           transition={{ duration: 0.28, ease: [0.32, 0.72, 0, 1] }}
           className="h-dvh w-screen overflow-hidden"
         >
-          <LoginView onLogin={() => setIsAuthenticated(true)} />
+          <LoginView onLogin={setUser} />
         </m.div>
       </LazyMotion>
     );
@@ -548,7 +630,7 @@ export default function App() {
                   onClick={toggle}
                   aria-expanded={open}
                   className="flex h-10 w-full items-center rounded-[10px] text-left transition-colors hover:bg-[#fafaf9]"
-                  title={`${persona.name} (${persona.location})`}
+                  title={persona.location ? `${persona.name} (${persona.location})` : persona.name}
                 >
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center">
                     <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#111111] text-[10px] font-semibold text-white">
@@ -557,44 +639,31 @@ export default function App() {
                   </span>
                   <span className="min-w-0 flex-1 truncate pl-1.5 opacity-0 group-hover/rail:opacity-100 transition-opacity duration-200">
                     <span className="block text-[12px] font-semibold text-[#111111] truncate">{persona.name}</span>
-                    <span className="block text-[10px] text-[#787774] truncate">{persona.location}</span>
+                    <span className="block text-[10px] text-[#787774] truncate">{persona.location ?? user.email}</span>
                   </span>
                 </button>
               )}
             >
               {(close) => (
-                <div role="menu" aria-label="Switch household profile">
-                  <p className="px-2.5 pt-1.5 pb-1 text-[11px] font-medium text-[#787774]">Household profile</p>
-                  {(Object.keys(PERSONAS) as PersonaId[]).map((pid) => {
-                    const p = PERSONAS[pid];
-                    return (
-                      <MenuItem
-                        key={pid}
-                        checked={personaId === pid}
-                        onSelect={() => {
-                          setPersonaId(pid);
-                          close();
-                        }}
-                      >
-                        <span className="block font-medium text-[#111111]">{p.name}</span>
-                        <span className="block text-[11px] text-[#787774]">
-                          {p.subtitle} · {p.location}
-                        </span>
-                      </MenuItem>
-                    );
-                  })}
+                <div role="menu" aria-label="Account">
+                  <div className="px-2.5 pt-1.5 pb-2">
+                    <p className="truncate text-[13px] font-semibold text-[#111111]">{user.name}</p>
+                    <p className="truncate text-[11px] text-[#787774]">{user.email}</p>
+                    <p className="mt-1 truncate text-[11px] text-[#787774]">
+                      {[persona.subtitle, persona.location].filter(Boolean).join(" · ")}
+                    </p>
+                  </div>
                   <div className="my-1 h-px bg-[#f0f0ee]" />
                   <MenuItem
                     onSelect={() => {
                       close();
-                      setIsAuthenticated(false);
+                      signOut();
                     }}
                   >
                     <span className="block font-medium text-[#dc2626]">Sign Out</span>
                     <span className="block text-[11px] text-[#787774]">Return to login screen</span>
                   </MenuItem>
-                </div>
-              )}
+                </div>              )}
             </Popover>
           </div>
         </aside>
@@ -647,10 +716,7 @@ export default function App() {
                             >
                               <button
                                 type="button"
-                                onClick={() => {
-                                  setCurrentId(c.id);
-                                  go("chat");
-                                }}
+                                onClick={() => openChat(c.id)}
                                 className="truncate text-left flex-1"
                               >
                                 {c.title}
@@ -830,7 +896,7 @@ export default function App() {
                 className="relative flex h-full shrink-0 overflow-hidden bg-[#fafaf9] border-l border-[#f0f0ee] will-change-transform"
               >
                 <div className="relative flex h-full w-full min-w-0 flex-col overflow-hidden">
-                  <MapCanvas conversationId={currentId} personaId={personaId} refreshKey={roofTick} onSubmitted={onRoofSubmitted} />
+                  <MapCanvas conversationId={currentId} refreshKey={roofTick} onSubmitted={onRoofSubmitted} />
                 </div>
               </m.div>
             )}
@@ -1060,7 +1126,7 @@ function ChatView({
                 {hello}, {persona.first}
               </h1>
               <p className="mt-1 text-[13px] text-[#787774]">
-                {persona.subtitle} · {persona.location}
+                {[persona.subtitle, persona.location].filter(Boolean).join(" · ")}
               </p>
             </div>
 
@@ -1108,6 +1174,18 @@ function ChatView({
                 <div key={m.id} className="flex flex-col gap-2.5 text-left">
                   {/* Agent Thinking Steps */}
                   {m.steps.length > 0 && <ThinkingSteps steps={m.steps} done={m.phase === "done"} />}
+
+                  {/* Shown right away, before the first step arrives from the server */}
+                  {m.steps.length === 0 && !m.reply && m.phase !== "done" && (
+                    <div className="flex items-center gap-2 py-1 text-[12px] text-[#787774]" role="status" aria-live="polite">
+                      <span className="inline-flex gap-1" aria-hidden="true">
+                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#ea580c]" />
+                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#ea580c] [animation-delay:150ms]" />
+                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#ea580c] [animation-delay:300ms]" />
+                      </span>
+                      Working on it…
+                    </div>
+                  )}
 
                   {/* Agent Message Content */}
                   {m.reply && (

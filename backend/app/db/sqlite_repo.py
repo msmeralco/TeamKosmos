@@ -9,13 +9,31 @@ from contextlib import closing
 from pathlib import Path
 from typing import Any, Callable
 
-from .base import GENESIS_HASH, LedgerError, Repository
+from .base import GENESIS_HASH, USER_FIELDS, LedgerError, Repository, UserExists
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS sessions (
     id TEXT PRIMARY KEY,
     state TEXT NOT NULL,
     updated_at REAL NOT NULL
+);
+CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    email TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    name TEXT NOT NULL,
+    household_name TEXT,
+    city TEXT,
+    lat REAL,
+    lon REAL,
+    monthly_kwh REAL,
+    household_template TEXT,
+    created_at REAL NOT NULL
+);
+CREATE TABLE IF NOT EXISTS auth_tokens (
+    token_hash TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    expires_at REAL NOT NULL
 );
 CREATE TABLE IF NOT EXISTS products (
     id TEXT PRIMARY KEY,
@@ -65,6 +83,11 @@ class SQLiteRepository(Repository):
     def init_schema(self) -> None:
         with self._lock, closing(self._connect()) as conn:
             conn.executescript(SCHEMA)
+            cols = {r["name"] for r in conn.execute("PRAGMA table_info(sessions)")}
+            for col in ("user_id", "title"):  # databases created before auth existed
+                if col not in cols:
+                    conn.execute(f"ALTER TABLE sessions ADD COLUMN {col} TEXT")
+            conn.execute("CREATE INDEX IF NOT EXISTS sessions_user_idx ON sessions (user_id, updated_at)")
             conn.commit()
 
     def ping(self) -> bool:
@@ -81,13 +104,81 @@ class SQLiteRepository(Repository):
             row = conn.execute("SELECT state FROM sessions WHERE id = ?", (session_id,)).fetchone()
         return json.loads(row["state"]) if row else None
 
-    def save_session(self, session_id: str, state: dict) -> None:
+    def save_session(self, session_id: str, state: dict, user_id: str | None = None, title: str | None = None) -> None:
         with self._lock, closing(self._connect()) as conn:
             conn.execute(
-                "INSERT INTO sessions (id, state, updated_at) VALUES (?, ?, ?) "
-                "ON CONFLICT(id) DO UPDATE SET state = excluded.state, updated_at = excluded.updated_at",
-                (session_id, _dumps(state), time.time()),
+                "INSERT INTO sessions (id, state, updated_at, user_id, title) VALUES (?, ?, ?, ?, ?) "
+                "ON CONFLICT(id) DO UPDATE SET state = excluded.state, updated_at = excluded.updated_at, "
+                "user_id = COALESCE(sessions.user_id, excluded.user_id), title = COALESCE(sessions.title, excluded.title)",
+                (session_id, _dumps(state), time.time(), user_id, title),
             )
+            conn.commit()
+
+    def get_session_owner(self, session_id: str) -> str | None:
+        with closing(self._connect()) as conn:
+            row = conn.execute("SELECT user_id FROM sessions WHERE id = ?", (session_id,)).fetchone()
+        return row["user_id"] if row else None
+
+    def list_sessions(self, user_id: str, limit: int = 100) -> list[dict]:
+        with closing(self._connect()) as conn:
+            rows = conn.execute(
+                "SELECT id, title, updated_at, json_extract(state, '$.turn_count') AS turn_count "
+                "FROM sessions WHERE user_id = ? ORDER BY updated_at DESC LIMIT ?", (user_id, limit)).fetchall()
+        return [{"id": r["id"], "title": r["title"] or "New chat", "turn_count": r["turn_count"] or 0, "updated_at": r["updated_at"]} for r in rows]
+
+    # --- users and tokens --------------------------------------------
+    def create_user(self, user: dict) -> None:
+        try:
+            with self._lock, closing(self._connect()) as conn:
+                conn.execute(
+                    "INSERT INTO users (id, email, password_hash, name, household_name, city, lat, lon, monthly_kwh, "
+                    "household_template, created_at) VALUES (:id, :email, :password_hash, :name, :household_name, :city, "
+                    ":lat, :lon, :monthly_kwh, :household_template, :created_at)", user)
+                conn.commit()
+        except sqlite3.IntegrityError as exc:
+            raise UserExists(user["email"]) from exc
+
+    def get_user(self, user_id: str) -> dict | None:
+        with closing(self._connect()) as conn:
+            row = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+        return dict(row) if row else None
+
+    def get_user_by_email(self, email: str) -> dict | None:
+        with closing(self._connect()) as conn:
+            row = conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
+        return dict(row) if row else None
+
+    def list_users(self) -> list[dict]:
+        with closing(self._connect()) as conn:
+            return [dict(r) for r in conn.execute("SELECT * FROM users ORDER BY created_at")]
+
+    def update_user(self, user_id: str, fields: dict) -> None:
+        cols = [k for k in fields if k in USER_FIELDS]
+        if not cols:
+            return
+        sets = ", ".join(f"{c} = ?" for c in cols)
+        with self._lock, closing(self._connect()) as conn:
+            conn.execute(f"UPDATE users SET {sets} WHERE id = ?", [fields[c] for c in cols] + [user_id])
+            conn.commit()
+
+    def create_token(self, token_hash: str, user_id: str, expires_at: float) -> None:
+        with self._lock, closing(self._connect()) as conn:
+            conn.execute("INSERT INTO auth_tokens (token_hash, user_id, expires_at) VALUES (?, ?, ?)", (token_hash, user_id, expires_at))
+            conn.commit()
+
+    def get_token(self, token_hash: str) -> dict | None:
+        with closing(self._connect()) as conn:
+            row = conn.execute("SELECT user_id, expires_at FROM auth_tokens WHERE token_hash = ?", (token_hash,)).fetchone()
+        return dict(row) if row else None
+
+    def delete_token(self, token_hash: str) -> None:
+        with self._lock, closing(self._connect()) as conn:
+            conn.execute("DELETE FROM auth_tokens WHERE token_hash = ?", (token_hash,))
+            conn.commit()
+
+    def purge_expired_tokens(self) -> None:
+        with self._lock, closing(self._connect()) as conn:
+            conn.execute("DELETE FROM auth_tokens WHERE expires_at < ?", (time.time(),))
             conn.commit()
 
     def delete_session(self, session_id: str) -> bool:

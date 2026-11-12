@@ -1,11 +1,11 @@
 import { useState, type FormEvent } from "react";
 import { AnimatePresence, LazyMotion, domAnimation, m, type Variants } from "framer-motion";
-import { Icon } from "./icons";
 import { SolLogo } from "./SolLogo";
+import { ApiError, login, signup, type User } from "../lib/api";
 import { Login3DPlaceholder } from "./Login3DPlaceholder";
 
 interface LoginViewProps {
-  onLogin: (credentials?: { email?: string; name?: string }) => void;
+  onLogin: (user: User) => void;
 }
 
 type AuthMode = "signin" | "signup";
@@ -73,6 +73,16 @@ export function LoginView({ onLogin }: LoginViewProps) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val.trim());
   };
 
+  const submit = async (action: () => Promise<User>) => {
+    setIsSubmitting(true);
+    try {
+      onLogin(await action());
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
+      setIsSubmitting(false);
+    }
+  };
+
   const handleSignInSubmit = (e: FormEvent) => {
     e.preventDefault();
     resetErrors();
@@ -90,15 +100,8 @@ export function LoginView({ onLogin }: LoginViewProps) {
       setError("Please enter your password.");
       return;
     }
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters.");
-      return;
-    }
 
-    setIsSubmitting(true);
-    setTimeout(() => {
-      onLogin({ email: trimmedEmail });
-    }, 300);
+    void submit(() => login(trimmedEmail, password));
   };
 
   const handleSignUpSubmit = (e: FormEvent) => {
@@ -124,8 +127,8 @@ export function LoginView({ onLogin }: LoginViewProps) {
       setError("Please create a password.");
       return;
     }
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters.");
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters.");
       return;
     }
     if (password !== confirmPassword) {
@@ -133,31 +136,7 @@ export function LoginView({ onLogin }: LoginViewProps) {
       return;
     }
 
-    setIsSubmitting(true);
-    setTimeout(() => {
-      onLogin({ email: trimmedEmail, name: trimmedName });
-    }, 300);
-  };
-
-  const handleGoogleLogin = () => {
-    resetErrors();
-    setIsSubmitting(true);
-    setTimeout(() => {
-      onLogin({ email: "sol.explorer@gmail.com", name: "Sol Member" });
-    }, 280);
-  };
-
-  const handleForgotPassword = () => {
-    resetErrors();
-    if (!email.trim()) {
-      setError("Enter your email above to receive password reset instructions.");
-      return;
-    }
-    if (!validateEmail(email)) {
-      setError("Please provide a valid email address to receive reset instructions.");
-      return;
-    }
-    setInfoNotice(`Reset instructions sent to ${email.trim()}.`);
+    void submit(() => signup(trimmedName, trimmedEmail, password));
   };
 
   return (
@@ -239,7 +218,7 @@ export function LoginView({ onLogin }: LoginViewProps) {
                           setEmail(e.target.value);
                           resetErrors();
                         }}
-                        placeholder="musman.thirtynorth@gmail.com"
+                        placeholder="you@example.com"
                         className="w-full h-10 rounded-[8px] bg-white px-3.5 py-2 text-[13px] text-[#111111] placeholder-[#A3A3A3] border border-[#EAEAEA] outline-none shadow-[0_1px_2px_rgba(0,0,0,0.02)] transition-colors focus:border-[#111111] focus:ring-1 focus:ring-[#111111]"
                       />
                     </div>
@@ -252,13 +231,6 @@ export function LoginView({ onLogin }: LoginViewProps) {
                         >
                           Password
                         </label>
-                        <button
-                          type="button"
-                          onClick={handleForgotPassword}
-                          className="text-[11px] font-medium text-[#0284c7] hover:underline cursor-pointer"
-                        >
-                          Forgot Password?
-                        </button>
                       </div>
                       <input
                         id="signin-password"
@@ -299,7 +271,7 @@ export function LoginView({ onLogin }: LoginViewProps) {
                       Create an Account
                     </h1>
                     <p className="mt-1 text-[13px] text-[#787774]">
-                      Join Sol to estimate solar capacity and claim rewards.
+                      Join Sol to plan solar for your home.
                     </p>
                   </div>
 
@@ -340,7 +312,7 @@ export function LoginView({ onLogin }: LoginViewProps) {
                           setName(e.target.value);
                           resetErrors();
                         }}
-                        placeholder="Alex Morgan"
+                        placeholder="Your name"
                         className="w-full h-9 rounded-[8px] bg-white px-3 py-1.5 text-[13px] text-[#111111] placeholder-[#A3A3A3] border border-[#EAEAEA] outline-none shadow-[0_1px_2px_rgba(0,0,0,0.02)] transition-colors focus:border-[#111111] focus:ring-1 focus:ring-[#111111]"
                       />
                     </div>
@@ -361,7 +333,7 @@ export function LoginView({ onLogin }: LoginViewProps) {
                           setEmail(e.target.value);
                           resetErrors();
                         }}
-                        placeholder="alex.morgan@gmail.com"
+                        placeholder="you@example.com"
                         className="w-full h-9 rounded-[8px] bg-white px-3 py-1.5 text-[13px] text-[#111111] placeholder-[#A3A3A3] border border-[#EAEAEA] outline-none shadow-[0_1px_2px_rgba(0,0,0,0.02)] transition-colors focus:border-[#111111] focus:ring-1 focus:ring-[#111111]"
                       />
                     </div>
@@ -382,7 +354,7 @@ export function LoginView({ onLogin }: LoginViewProps) {
                           setPassword(e.target.value);
                           resetErrors();
                         }}
-                        placeholder="At least 6 characters"
+                        placeholder="At least 8 characters"
                         className="w-full h-9 rounded-[8px] bg-white px-3 py-1.5 text-[13px] text-[#111111] placeholder-[#A3A3A3] border border-[#EAEAEA] outline-none shadow-[0_1px_2px_rgba(0,0,0,0.02)] transition-colors focus:border-[#111111] focus:ring-1 focus:ring-[#111111]"
                       />
                     </div>
@@ -421,25 +393,6 @@ export function LoginView({ onLogin }: LoginViewProps) {
                 </m.div>
               )}
             </AnimatePresence>
-
-            {/* Hairline Divider */}
-            <div className="my-3.5 flex items-center gap-3">
-              <div className="h-px flex-1 bg-[#EAEAEA]" />
-              <span className="text-[12px] font-mono text-[#8A8A85] select-none">or</span>
-              <div className="h-px flex-1 bg-[#EAEAEA]" />
-            </div>
-
-            {/* Single Social Action: Google Only */}
-            <m.button
-              type="button"
-              whileTap={{ scale: 0.98 }}
-              onClick={handleGoogleLogin}
-              disabled={isSubmitting}
-              className="flex h-10 w-full items-center justify-center gap-3 rounded-[8px] bg-white px-4 text-[13px] font-medium text-[#111111] border border-[#EAEAEA] shadow-[0_1px_2px_rgba(0,0,0,0.02)] hover:bg-[#FAFAF9] transition-colors cursor-pointer"
-            >
-              {Icon.google}
-              <span>Continue with Google</span>
-            </m.button>
 
             {/* Bottom Switcher Helper */}
             <div className="mt-3.5 text-center text-[12px] text-[#787774]">

@@ -106,6 +106,34 @@ def _demo_matches(query: str) -> list[dict]:
 
 
 # ---- geocoding ----------------------------------------------------------------------------------
+PHOTON_URL = "https://photon.komoot.io/api/"
+PH_BBOX = "116.9,4.5,127.0,21.2"  # lon_min,lat_min,lon_max,lat_max
+
+
+def _photon(q: str) -> list[dict]:
+    """Fallback geocoder (OpenStreetMap data, no key) used when Nominatim refuses or is down."""
+    _throttle()
+    with _client() as c:
+        resp = c.get(PHOTON_URL, params={"q": q, "limit": 8, "bbox": PH_BBOX})
+    resp.raise_for_status()
+    out: list[dict] = []
+    for f in resp.json().get("features", []):
+        try:
+            p = f.get("properties") or {}
+            if str(p.get("countrycode", "PH")).upper() != "PH":
+                continue
+            lon, lat = f["geometry"]["coordinates"][:2]
+            parts = [p.get("name"), " ".join(x for x in (p.get("housenumber"), p.get("street")) if x) or None,
+                     p.get("district") or p.get("locality"), p.get("city") or p.get("county"), p.get("state"), "Philippines"]
+            label = ", ".join(dict.fromkeys(str(x) for x in parts if x))
+            out.append({"label": label, "lat": float(lat), "lon": float(lon), "source": "photon"})
+        except (KeyError, TypeError, ValueError):
+            continue
+        if len(out) >= 5:
+            break
+    return out
+
+
 def geocode(q: str) -> dict:
     q = (q or "").strip()
     if len(q) < 3 or len(q) > 200:
@@ -140,7 +168,11 @@ def geocode(q: str) -> dict:
                         "and keep to 1 request per second.", status)
         else:
             log.warning("Nominatim failed: %s", exc)
-        return {"candidates": demo, "degraded": True, "cached": False}
+        try:
+            cands = _photon(q)  # second real geocoder, so a blocked Nominatim does not break address search
+        except (httpx.HTTPError, ValueError) as exc2:
+            log.warning("Photon failed: %s", exc2)
+            return {"candidates": demo, "degraded": True, "cached": False}
     cache.cache_set(key, cands, ttl_s=GEOCODE_TTL_S)
     return {"candidates": demo + cands, "degraded": False, "cached": False}
 

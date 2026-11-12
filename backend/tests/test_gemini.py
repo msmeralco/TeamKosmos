@@ -54,7 +54,7 @@ def use(script):
 
 
 def chat(client, text, cid=CID, **kw):
-    r = client.post("/api/agent/chat?stream=false", data={"conversation_id": cid, "message": text, "persona_id": "reyes",
+    r = client.post("/api/agent/chat?stream=false", data={"conversation_id": cid, "message": text,
                                                         "language": kw.pop("language", "auto")}, **kw)
     assert r.status_code == 200, r.text
     return r.json()
@@ -109,20 +109,20 @@ def test_overload_503_is_not_retried_and_trips_the_breaker(client):
 
 
 def test_overloaded_main_model_falls_back_to_the_second_gemini_model(client, monkeypatch):
-    monkeypatch.setenv("GEMINI_FALLBACK_MODEL", "gemini-3.5-flash-lite")
+    monkeypatch.setenv("GEMINI_FALLBACK_MODEL", "gemini-3.8-flash")
     get_settings.cache_clear()
     fake = use([FakeAPIError(503), text_resp("Hi from the backup model. Which roof should we use?")])
     msg = chat(client, "hi", cid="conv-fb-0000-0123456789")
-    assert [c["model"] for c in fake.models.calls] == ["gemini-3.8-flash", "gemini-3.5-flash-lite"]
+    assert [c["model"] for c in fake.models.calls] == ["gemini-3.5-flash-lite", "gemini-3.8-flash"]
     assert msg["reply"]["text"].startswith("Hi from the backup model")
     assert not any(s["label"] == "Switching to quick mode" for s in msg["steps"])  # still a Gemini answer
     chat(client, "hello again", cid="conv-fb-0000-0123456789")
-    assert fake.models.calls[-1]["model"] == "gemini-3.5-flash-lite"  # main model is skipped while its breaker is open
-    assert [c["model"] for c in fake.models.calls].count("gemini-3.8-flash") == 1
+    assert fake.models.calls[-1]["model"] == "gemini-3.8-flash"  # main model is skipped while its breaker is open
+    assert [c["model"] for c in fake.models.calls].count("gemini-3.5-flash-lite") == 1
 
 
 def test_both_models_down_drops_to_quick_mode(client, monkeypatch):
-    monkeypatch.setenv("GEMINI_FALLBACK_MODEL", "gemini-3.5-flash-lite")
+    monkeypatch.setenv("GEMINI_FALLBACK_MODEL", "gemini-3.8-flash")
     get_settings.cache_clear()
     fake = use([FakeAPIError(503), FakeAPIError(503)])
     msg = chat(client, "I want to install solar", cid="conv-fb-0001-0123456789")

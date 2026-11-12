@@ -59,11 +59,33 @@ def isolated_env(tmp_path, monkeypatch, request):
     get_settings.cache_clear()
 
 
-@pytest.fixture()
-def client():
+TEST_USER = {"name": "Test Family", "email": "family@sol-tests.dev", "password": "correct-horse-9",
+             "household_name": "Test Family", "city": "Quezon City", "lat": 14.676, "lon": 121.0437,
+             "monthly_kwh": 450, "household_template": "balanced"}
+
+
+def _new_client():
     from fastapi.testclient import TestClient
 
     from app.main import create_app
+    from app.services import auth
 
-    with TestClient(create_app()) as c:
+    auth.THROTTLE.clear()
+    return TestClient(create_app())
+
+
+@pytest.fixture()
+def anon_client():
+    """A client with no credentials."""
+    with _new_client() as c:
+        yield c
+
+
+@pytest.fixture()
+def client():
+    """A separate client signed in as TEST_USER (a 450 kWh balanced household in Quezon City)."""
+    with _new_client() as c:
+        r = c.post("/api/auth/signup", json=TEST_USER)
+        assert r.status_code == 201, r.text
+        c.headers["Authorization"] = f"Bearer {r.json()['token']}"
         yield c

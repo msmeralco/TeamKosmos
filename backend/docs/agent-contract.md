@@ -1,3 +1,5 @@
+> **Auth:** every `/api/agent/*` call needs `Authorization: Bearer <token>` from `POST /api/auth/login` or `/api/auth/signup`. The household (name, city, usage) comes from the account, so `persona_id` no longer exists. `GET /api/agent/sessions` lists the signed-in user's chats; other users' conversation ids return 404.
+
 # Sol agent API: frontend contract
 
 Everything here is implemented in `backend/`. The payloads mirror the types in `frontendv2/src` (`AgentStep`, `Suggestion`, `AgentMsg.reply`), so the existing UI state can be filled directly. Interactive docs: `http://127.0.0.1:8000/docs`.
@@ -13,7 +15,6 @@ CORS allows `http://localhost:5173` and `http://127.0.0.1:5173` (change with `CO
 |---|---|---|
 | `conversation_id` | yes | A random UUID created by the client for each new chat. 16 to 64 characters of letters, digits, `-`, `_`. **It is the access key to that conversation, so do not use short or guessable ids.** |
 | `message` | yes unless files | Up to 4000 characters. A files-only message may send `""` or the literal `Attached files`. |
-| `persona_id` | no (`reyes`) | `reyes`, `maria`, `wfh`. Send it on **every** turn, because the user can switch mid-chat. |
 | `language` | no (`auto`) | `auto`, `english`, `taglish`. |
 | `files` | no | Up to 6 of JPEG, PNG, WebP, PDF, 5 MB each. Type is checked from the file bytes. Files are read in memory and never stored. |
 
@@ -71,7 +72,7 @@ The roof is chosen in chat (type an address, draw, or sketch). The agent sets `h
   - `layout.panels_lonlat` (after an analysis) is a list of 4-corner rings for the recommended option, ready to overlay.
 - When the user **draws on the map** or **sketches on the canvas**, send the result here, then send a normal chat message (for example `"I've finished my roof"`); the agent acknowledges it on that turn:
 
-`POST /api/agent/sessions/{id}/roof?persona_id=reyes`, JSON, one of:
+`POST /api/agent/sessions/{id}/roof`, JSON, one of:
 
 ```jsonc
 { "mode": "drawn",  "polygon_lonlat": [[121.04,14.67], ...], "roof_type": "flat|single_slope|gable",
@@ -106,7 +107,7 @@ HTTP errors are always `{"detail": {"code", "message", "hint"}}`:
 | Status | code | When |
 |---|---|---|
 | 409 | `turn_in_progress` | A turn is already running for that `conversation_id` |
-| 422 | `invalid_conversation_id`, `invalid_persona`, `invalid_language`, `empty_message`, `message_too_long`, `too_many_files`, `invalid_request`, `invalid_polygon`, ... | Bad input |
+| 422 | `invalid_conversation_id`, `unauthorized`, `invalid_language`, `empty_message`, `message_too_long`, `too_many_files`, `invalid_request`, `invalid_polygon`, ... | Bad input |
 | 413 / 415 | `file_too_large` / `unsupported_file_type` | Attachment rejected |
 | 429 | `rate_limited` | More than 20 messages a minute for one conversation |
 | 404 | `not_found` | Unknown conversation or Passport |

@@ -1,5 +1,7 @@
 import pytest
 
+from helpers import user_row
+
 from app.services.agent import intake
 from app.services.agent.session import Session, load_session, save_session
 
@@ -7,7 +9,7 @@ ROOF = {"id": "r1", "source": "osm", "area_m2": 80.0}
 
 
 def new_session(persona="reyes") -> Session:
-    return load_session("s1", persona, "english")
+    return load_session("s1", user_row(persona), "english")
 
 
 def test_new_session_is_seeded_from_persona():
@@ -97,16 +99,21 @@ def test_changing_inputs_invalidates_results_and_confirmation():
     assert intake.next_slot(s) == "confirm"
 
 
-def test_persona_switch_reseeds_load_unless_user_typed():
+def test_account_usage_change_reseeds_load_unless_user_typed():
     s = new_session("reyes")
     save_session(s)
-    s2 = load_session("s1", "wfh", "english")
-    assert s2.profile.monthly_kwh == 700 and s2.persona_id == "wfh"
+    s2 = load_session("s1", user_row("wfh"), "english")  # same account id, household edited to 700 kWh
+    assert s2.profile.monthly_kwh == 700 and s2.persona_id == "user-test-0001"
     intake.apply_updates(s2, monthly_kwh=333)
     save_session(s2)
-    s3 = load_session("s1", "maria", "english")
+    s3 = load_session("s1", user_row("maria"), "english")
     assert s3.profile.monthly_kwh == 333  # user-typed value is kept
 
+
+def test_account_without_usage_asks_for_it():
+    row = {**user_row("reyes"), "monthly_kwh": None, "household_name": None, "name": "New Person"}
+    s = load_session("s2", row, "english")
+    assert s.profile.monthly_kwh is None and s.persona.first == "New" and s.persona.monthly_kwh is None
 
 def test_every_choice_text_round_trips_through_match_choice():
     s = new_session()

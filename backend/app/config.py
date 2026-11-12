@@ -84,8 +84,8 @@ def get_settings() -> Settings:
     return Settings(
         gemini_api_key=_env("GEMINI_API_KEY"),
         # [VERIFY] the exact model name on your key with scripts/verify_gemini.py
-        gemini_model=_env("GEMINI_MODEL", "gemini-3.8-flash"),
-        gemini_fallback_model=_env("GEMINI_FALLBACK_MODEL", "gemini-3.5-flash-lite"),
+        gemini_model=_env("GEMINI_MODEL", "gemini-3.5-flash-lite"),
+        gemini_fallback_model=_env("GEMINI_FALLBACK_MODEL", "gemini-3.8-flash"),
         agent_mode=_env("AGENT_MODE", "auto").lower(),
         database_url=_env("DATABASE_URL"),
         db_backend=_env("DB_BACKEND", "auto").lower(),

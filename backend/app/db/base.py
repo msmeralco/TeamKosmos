@@ -11,6 +11,15 @@ class LedgerError(Exception):
     pass
 
 
+class UserExists(Exception):
+    pass
+
+
+# Columns update_user may change (an allow list, because the names are interpolated into SQL).
+# Household fields feed the chat agent.
+USER_FIELDS = ("password_hash", "name", "household_name", "city", "lat", "lon", "monthly_kwh", "household_template")
+
+
 class Repository(ABC):
     kind: str = "abstract"
 
@@ -26,10 +35,49 @@ class Repository(ABC):
     def get_session(self, session_id: str) -> dict | None: ...
 
     @abstractmethod
-    def save_session(self, session_id: str, state: dict) -> None: ...
+    def save_session(self, session_id: str, state: dict, user_id: str | None = None, title: str | None = None) -> None:
+        """Upsert. user_id and title are set on insert and kept when later saves omit them."""
 
     @abstractmethod
     def delete_session(self, session_id: str) -> bool: ...
+
+    @abstractmethod
+    def get_session_owner(self, session_id: str) -> str | None:
+        """The user id that owns the session, or None when it has no owner or does not exist."""
+
+    @abstractmethod
+    def list_sessions(self, user_id: str, limit: int = 100) -> list[dict]:
+        """[{id, title, turn_count, updated_at (epoch seconds)}] newest first."""
+
+    # --- users and auth tokens -------------------------------------
+    @abstractmethod
+    def create_user(self, user: dict) -> None:
+        """Insert a user row. Raises UserExists when the email is taken."""
+
+    @abstractmethod
+    def get_user(self, user_id: str) -> dict | None: ...
+
+    @abstractmethod
+    def get_user_by_email(self, email: str) -> dict | None: ...
+
+    @abstractmethod
+    def list_users(self) -> list[dict]: ...
+
+    @abstractmethod
+    def update_user(self, user_id: str, fields: dict) -> None: ...
+
+    @abstractmethod
+    def create_token(self, token_hash: str, user_id: str, expires_at: float) -> None: ...
+
+    @abstractmethod
+    def get_token(self, token_hash: str) -> dict | None:
+        """{user_id, expires_at} or None."""
+
+    @abstractmethod
+    def delete_token(self, token_hash: str) -> None: ...
+
+    @abstractmethod
+    def purge_expired_tokens(self) -> None: ...
 
     # --- products --------------------------------------------------
     @abstractmethod

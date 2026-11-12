@@ -11,7 +11,7 @@ CID = "conv-test-0001-0123456789"
 
 
 def say(client, text="", cid=CID, **extra):
-    data = {"conversation_id": cid, "message": text, "persona_id": extra.pop("persona", "reyes"), "language": extra.pop("language", "auto")}
+    data = {"conversation_id": cid, "message": text, "language": extra.pop("language", "auto")}
     r = client.post("/api/agent/chat?stream=false", data=data, **extra)
     return r
 
@@ -184,7 +184,7 @@ def parse_sse(text):
 
 
 def test_sse_event_order_and_stable_step_ids(client):
-    r = client.post("/api/agent/chat", data={"conversation_id": CID, "message": "reyes demo", "persona_id": "reyes", "language": "auto"})
+    r = client.post("/api/agent/chat", data={"conversation_id": CID, "message": "reyes demo", "language": "auto"})
     assert r.headers["content-type"].startswith("text/event-stream")
     evs = parse_sse(r.text)
     names = [e[0] for e in evs]
@@ -208,7 +208,6 @@ def test_stream_false_matches_streamed_final_payload(client):
 # ---- request validation --------------------------------------------------------------------------------------------------
 @pytest.mark.parametrize("data,code", [
     ({"conversation_id": "x", "message": "hi"}, "invalid_conversation_id"),
-    ({"conversation_id": CID, "message": "hi", "persona_id": "nobody"}, "invalid_persona"),
     ({"conversation_id": CID, "message": "hi", "language": "klingon"}, "invalid_language"),
     ({"conversation_id": CID, "message": "   "}, "empty_message"),
     ({"conversation_id": CID, "message": "x" * 4001}, "message_too_long"),
@@ -387,12 +386,12 @@ def test_delete_is_refused_while_a_turn_is_running(client):
     assert client.delete(f"/api/agent/sessions/{CID}").json() == {"deleted": True}
 
 
-def test_persona_switch_mid_conversation_updates_usage(client):
-    reply(client, "hello", persona="reyes")
-    m = reply(client, "reyes demo", persona="wfh")
+def test_editing_the_account_household_updates_usage_in_an_open_chat(client):
+    reply(client, "hello")
+    assert client.patch("/api/auth/me", json={"monthly_kwh": 700, "household_template": "day_heavy"}).status_code == 200
+    reply(client, "reyes demo")
     state = client.get(f"/api/agent/sessions/{CID}").json()
-    assert state["personaId"] == "wfh" and state["profile"]["monthly_kwh"] == 700
-
+    assert state["profile"]["monthly_kwh"] == 700 and state["profile"]["household_template"] == "day_heavy"
 
 def test_two_conversations_do_not_leak_state(client):
     reply(client, "reyes demo", cid="conv-aaaa-1111-0123456789")

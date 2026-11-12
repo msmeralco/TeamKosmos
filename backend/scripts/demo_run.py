@@ -15,6 +15,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+HOUSEHOLDS = {  # signed up as fresh accounts for every run
+    "reyes": {"household_name": "Reyes Family", "city": "Quezon City", "lat": 14.676, "lon": 121.0437, "monthly_kwh": 450, "household_template": "balanced"},
+    "maria": {"household_name": "Ate Maria", "city": "Pasig City", "lat": 14.5764, "lon": 121.0851, "monthly_kwh": 250, "household_template": "night_heavy"},
+    "wfh": {"household_name": "WFH Couple", "city": "Makati City", "lat": 14.5547, "lon": 121.0244, "monthly_kwh": 700, "household_template": "day_heavy"},
+}
 SCENARIOS = [
     ("reyes", "Reyes Family", ["I want to install solar", "I'll type my address", "reyes demo", "Yes, use 450 kWh per month",
                                 "My budget is ₱300,000 to ₱500,000", "I want to cut my electricity bill", "Cut my bill by 50%", "Yes, run the numbers"]),
@@ -62,10 +67,13 @@ def main() -> int:
     rows = []
     for persona, name, script in SCENARIOS:
         cid = f"demo-{persona}-{uuid.uuid4().hex[:12]}"
+        su = client.post("/api/auth/signup", json={"name": name, "email": f"{cid}@demo-run.test", "password": uuid.uuid4().hex, **HOUSEHOLDS[persona]})
+        su.raise_for_status()
+        headers = {"Authorization": f"Bearer {su.json()['token']}"}
         last = None
         try:
             for text in script:
-                r = client.post("/api/agent/chat?stream=false", data={"conversation_id": cid, "message": text, "persona_id": persona})
+                r = client.post("/api/agent/chat?stream=false", data={"conversation_id": cid, "message": text}, headers=headers)
                 r.raise_for_status()
                 last = r.json()
             card = next((c for c in last["reply"]["cards"] if c["type"] == "analysis"), None)

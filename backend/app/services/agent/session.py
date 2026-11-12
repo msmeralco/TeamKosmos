@@ -7,7 +7,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 from ...db import get_repo
-from .personas import Persona, get_persona
+from .personas import Persona, household_from_user, persona_from_household
 
 GOALS = ("cut_bill", "max_savings_10y", "fastest_payback", "backup")
 TEMPLATES = ("night_heavy", "balanced", "day_heavy")
@@ -33,7 +33,9 @@ class Profile(BaseModel):
 
 class Session(BaseModel):
     id: str
-    persona_id: str
+    persona_id: str  # the owning user's id
+    household: dict = Field(default_factory=dict)  # snapshot of the user's household, refreshed every turn
+    title: str = ""  # shown in the user's chat list
     language: str = "auto"
     profile: Profile = Field(default_factory=Profile)
     history: list[dict] = Field(default_factory=list)  # {"role": "user"|"model", "text": str}
@@ -45,7 +47,7 @@ class Session(BaseModel):
 
     @property
     def persona(self) -> Persona:
-        return get_persona(self.persona_id)
+        return persona_from_household(self.persona_id, self.household)
 
     def add_history(self, role: str, text: str) -> None:
         if text:
@@ -57,39 +59,43 @@ class Session(BaseModel):
         self.profile.confirmed = False
 
 
-def apply_persona(session: Session, persona_id: str) -> None:
-    """Seed (or re-seed) the household load from the persona unless the user typed their own."""
-    persona = get_persona(persona_id)
-    changed = persona.id != session.persona_id
-    session.persona_id = persona.id
+def sync_household(session: Session, user: dict) -> None:
+    """Refresh the household snapshot from the user's account and re-seed the load if the account's usage changed.
+
+    A load the user typed in chat (load_source != "persona") is never overwritten.
+    """
+    new = household_from_user(user)
+    changed = new != session.household
+    session.household = new
+    session.persona_id = user["id"]
     p = session.profile
-    if p.load_source == "persona" and (changed or p.monthly_kwh is None):
-        if p.monthly_kwh != persona.monthly_kwh or p.household_template != persona.template:
+    if p.load_source != "persona":
+        return
+    if changed or (p.monthly_kwh is None and new["monthly_kwh"] is not None):
+        if p.monthly_kwh != new["monthly_kwh"] or p.household_template != new["template"]:
             if p.load_confirmed or session.results:
                 session.invalidate_results()
-        p.monthly_kwh = persona.monthly_kwh
-        p.monthly_bill_php = None
-        p.household_template = persona.template
-        p.load_confirmed = False
-        if changed:
+            p.monthly_kwh = new["monthly_kwh"]
+            p.monthly_bill_php = None
+            p.household_template = new["template"]
+            p.load_confirmed = False
             session.pending.pop("changing", None)
 
 
-def load_session(session_id: str, persona_id: str | None, language: str | None) -> Session:
+def load_session(session_id: str, user: dict, language: str | None) -> Session:
+    """Load the user's session, or start a fresh one seeded from their household. Callers check ownership first."""
     state = get_repo().get_session(session_id)
     if state:
         session = Session.model_validate(state)
     else:
-        persona = get_persona(persona_id)
-        session = Session(id=session_id, persona_id=persona.id)
-        session.profile.monthly_kwh = persona.monthly_kwh
-        session.profile.household_template = persona.template
-    if persona_id and persona_id != session.persona_id:
-        apply_persona(session, persona_id)
+        session = Session(id=session_id, persona_id=user["id"])
+        session.profile.monthly_kwh = user.get("monthly_kwh")
+        session.profile.household_template = user.get("household_template") or "balanced"
+    sync_household(session, user)
     if language in ("auto", "english", "taglish"):
         session.language = language
     return session
 
 
 def save_session(session: Session) -> None:
-    get_repo().save_session(session.id, session.model_dump(mode="json"))
+    get_repo().save_session(session.id, session.model_dump(mode="json"), user_id=session.persona_id, title=session.title or None)
