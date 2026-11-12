@@ -7,3 +7,4 @@ node_modules/
 backend/data/pvgis_cache/
 *.db
 .DS_Store
+frontend/
