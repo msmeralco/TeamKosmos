@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { getRoofState, submitRoof, type RoofState, type RoofSubmission } from "../lib/api";
+import { Icon } from "./icons";
 import { SketchPad } from "./SketchPad";
 import { btn, Spinner } from "./ui";
 
@@ -16,6 +17,27 @@ const OSM_ATTR = "&copy; OpenStreetMap contributors";
 
 type Tab = "map" | "sketch";
 type Pt = [number, number]; // [lat, lng]
+type UserLoc = { lat: number; lon: number; acc: number };
+/** ask = consent card is showing; idle = nothing to show; locating / error = waiting for or failed browser lookup. */
+type Consent = "ask" | "locating" | "error" | "idle";
+
+/* The user's answer is remembered for this browser tab only, so reopening the map doesn't nag. */
+const CONSENT_KEY = "sol.location.consent";
+function readConsent(): "granted" | "declined" | null {
+  try {
+    const v = sessionStorage.getItem(CONSENT_KEY);
+    return v === "granted" || v === "declined" ? v : null;
+  } catch {
+    return null;
+  }
+}
+function writeConsent(v: "granted" | "declined") {
+  try {
+    sessionStorage.setItem(CONSENT_KEY, v);
+  } catch {
+    /* storage unavailable: the prompt will simply show again next time */
+  }
+}
 
 export function MapCanvas({
   conversationId,
@@ -46,7 +68,53 @@ export function MapCanvas({
   const lastFitRef = useRef<string>("");
   const [zoom, setZoom] = useState(MANILA.zoom);
 
+  /* Location sharing: ask when the map opens (unless the user already answered in this session). */
+  const [consent, setConsent] = useState<Consent>(() => (readConsent() === null ? "ask" : "idle"));
+  const [userLoc, setUserLoc] = useState<UserLoc | null>(null);
+  const [locError, setLocError] = useState<string | null>(null);
+  const userLocRef = useRef<UserLoc | null>(null);
+  const stateRef = useRef<RoofState | null>(null);
+
   drawingRef.current = drawing;
+  userLocRef.current = userLoc;
+  stateRef.current = state;
+
+  /** silent = the user already agreed earlier: look it up in the background, never show the card. */
+  const locate = useCallback((silent = false) => {
+    if (!("geolocation" in navigator)) {
+      setLocError("This browser can't share its location.");
+      setConsent(silent ? "idle" : "error");
+      return;
+    }
+    if (!silent) setConsent("locating");
+    setLocError(null);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        writeConsent("granted");
+        setUserLoc({ lat: pos.coords.latitude, lon: pos.coords.longitude, acc: pos.coords.accuracy });
+        setConsent("idle");
+      },
+      (err) => {
+        setLocError(
+          err.code === err.PERMISSION_DENIED
+            ? "Location access is blocked. You can allow it in your browser's site settings, or keep going without it."
+            : "Couldn't get your location. Check your connection and try again.",
+        );
+        setConsent(silent ? "idle" : "error");
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
+    );
+  }, []);
+
+  const declineLocation = useCallback(() => {
+    writeConsent("declined");
+    setConsent("idle");
+  }, []);
+
+  // Already agreed earlier this session: look the position up again without asking twice.
+  useEffect(() => {
+    if (readConsent() === "granted") locate(true);
+  }, [locate]);
 
   const autoTab: Tab = state?.roofMethod === "sketch" && state.needsRoof ? "sketch" : "map";
   const tab: Tab = tabChoice ?? autoTab;
@@ -125,10 +193,18 @@ export function MapCanvas({
       const ll = state.roof.polygon_lonlat.map(([lon, lat]) => [lat, lon] as Pt);
       map.invalidateSize();
       map.fitBounds(L.latLngBounds(ll), { maxZoom: 20, padding: [40, 40] });
-    } else if (state) {
+    } else if (state && !userLocRef.current) {
       map.setView([state.center.lat, state.center.lon], state.center.zoom);
     }
   }, [state, conversationId, tab]);
+
+  // Center on the user once they share their location (a saved roof outline takes priority).
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || tab !== "map" || !userLoc || stateRef.current?.roof) return;
+    map.invalidateSize();
+    map.setView([userLoc.lat, userLoc.lon], 18);
+  }, [userLoc, tab]);
 
   // ---- draw roof, panels and the in-progress outline --------------------------------------------------------------
   useEffect(() => {
@@ -145,6 +221,13 @@ export function MapCanvas({
         color: "#0b3d91", weight: 1, fillColor: "#1d4ed8", fillOpacity: 0.65,
       }).addTo(layer);
     }
+    if (userLoc) {
+      const here: Pt = [userLoc.lat, userLoc.lon];
+      if (userLoc.acc > 0 && userLoc.acc < 500) {
+        L.circle(here, { radius: userLoc.acc, color: "#2563eb", weight: 1, fillColor: "#2563eb", fillOpacity: 0.1, interactive: false }).addTo(layer);
+      }
+      L.circleMarker(here, { radius: 7, color: "#ffffff", weight: 2, fillColor: "#2563eb", fillOpacity: 1, interactive: false }).addTo(layer);
+    }
     if (points.length) {
       if (points.length >= 3) L.polygon(points, { color: "#f59e0b", weight: 3, fillOpacity: 0.15, dashArray: "6 4" }).addTo(layer);
       else L.polyline(points, { color: "#f59e0b", weight: 3 }).addTo(layer);
@@ -152,7 +235,7 @@ export function MapCanvas({
         L.circleMarker(pt, { radius: i === 0 ? 7 : 5, color: "#f59e0b", fillColor: "#fff", fillOpacity: 1, weight: 2 }).addTo(layer),
       );
     }
-  }, [state, points, tab]);
+  }, [state, points, tab, userLoc]);
 
   const submit = useCallback(
     async (body: RoofSubmission) => {
@@ -197,6 +280,17 @@ export function MapCanvas({
         {tabBtn("map", "Satellite map")}
         {tabBtn("sketch", "Sketch canvas")}
         <span className="flex-1" />
+        {tab === "map" && consent === "idle" && (
+          <button
+            type="button"
+            className={`${btn.secondary} btn-sm mr-1.5 inline-flex items-center gap-1.5`}
+            onClick={() => (userLoc ? setUserLoc({ ...userLoc }) : setConsent("ask"))}
+            title={userLoc ? "Re-center on my location" : "Share my location"}
+          >
+            {Icon.pin}
+            <span>My location</span>
+          </button>
+        )}
         {tab === "map" && (
           <button type="button" className={`${btn.secondary} btn-sm`} onClick={() => setStreet((s) => !s)}>
             {street ? "Satellite" : "Street map"}
@@ -219,9 +313,45 @@ export function MapCanvas({
                     : "Add more corners or press “Use this outline”"}
               </div>
             )}
-            {!conversationId && (
+            {!conversationId && consent === "idle" && (
               <div className="absolute inset-x-3 bottom-3 z-[1000] rounded-[10px] bg-white/95 px-3 py-2 text-[12px] shadow-[0_1px_6px_rgba(0,0,0,0.18)]">
                 Send Sol a message first, then trace your roof here.
+              </div>
+            )}
+            {consent !== "idle" && (
+              <div className="absolute inset-0 z-[1100] flex items-center justify-center bg-black/25 p-4 backdrop-blur-[1px]">
+                <div
+                  role="dialog"
+                  aria-modal="true"
+                  aria-labelledby="loc-title"
+                  className="w-full max-w-[340px] rounded-[16px] bg-white p-5 text-center shadow-[0_12px_40px_rgba(0,0,0,0.22)]"
+                >
+                  <span className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-[#fff7ed] text-[#ea580c] [&_svg]:size-5">
+                    {Icon.pin}
+                  </span>
+                  <h3 id="loc-title" className="mt-3 text-[15px] font-semibold text-[#111111]">
+                    Share your location?
+                  </h3>
+                  <p className="mt-1.5 text-[12.5px] leading-relaxed text-[#787774]">
+                    Sol can center the map on where you are so it's easier to find your roof. Your location stays in
+                    your browser and isn't saved or sent to our server.
+                  </p>
+                  {consent === "error" && locError && <p className="mt-2 text-[12px] text-red-600">{locError}</p>}
+                  <div className="mt-4 flex gap-2">
+                    <button type="button" className={`${btn.secondary} btn-sm flex-1`} onClick={declineLocation} disabled={consent === "locating"}>
+                      Not now
+                    </button>
+                    <button
+                      type="button"
+                      className={`${btn.primary} btn-sm flex-1`}
+                      onClick={() => locate()}
+                      disabled={consent === "locating"}
+                      autoFocus
+                    >
+                      {consent === "locating" ? <Spinner /> : consent === "error" ? "Try again" : "Share my location"}
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
           </div>
