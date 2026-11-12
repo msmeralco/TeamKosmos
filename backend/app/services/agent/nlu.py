@@ -92,7 +92,7 @@ _DOCS = re.compile(r"permit|\bfees?\b|zero[- ]?export|micro[- ]?solar|\bmss\b|sg
 _QUESTION = re.compile(r"\?|^\s*(?:what|how|why|when|who|where|do|does|can|could|is|are|will|should|paano|ano)\b", re.I)
 
 
-_BRIEF = re.compile(r"\bbrief(?:ing)?\b.*\bsolar|\bsolar\b.*\bbrief|solar 101|solar basics|overview of solar|how does solar (?:work|energy work)", re.I)
+_BRIEF = re.compile(r"\bano (?:ang|yung|ba ang) solar\b|\bwhat is solar\b|\bbrief(?:ing)?\b.*\bsolar|\bsolar\b.*\bbrief|solar 101|solar basics|overview of solar|how does solar (?:work|energy work)", re.I)
 
 # Real, ready-made packages that installers publish (as opposed to "run the numbers" or "compare my options").
 _PACKAGES = re.compile(r"\bpackages?\b", re.I)

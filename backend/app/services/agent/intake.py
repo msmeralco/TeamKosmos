@@ -501,11 +501,35 @@ INTRO = {
                 "tapos magpapakita ako ng mga option na may 10-year payback range. Tantiya lang ang lahat ng resulta, kaya kailangan pa ring i-confirm ng licensed installer."),
 }
 
-_TAGLISH_HINTS = re.compile(
-    r"\b(gusto|ko|ako|po|magkano|paano|bubong|kuryente|brownout|bahay|namin|natin|mo|ba|ang|sa|na|kasi|pwede|puwede|oo|hindi|sige|tama|salamat)\b", re.I)
+# Tagalog function and question words. Words that are also common English words (at, may, man, no, to) are left out.
+_TAGALOG_WORDS = frozenset("""
+ano anong ang ng mga sa na ay ako ko mo ka ikaw siya kami tayo natin namin nila ninyo niyo kayo ito iyan iyon yan yun yung ayan ayun
+dito diyan doon dun saan sino bakit kailan paano gaano ilan magkano alin nasaan
+gusto ayaw kailangan pwede puwede dapat gagawin gumagana tulong sabihin paki pakisabi
+hindi di wala meron mayroon oo opo po sige tama mali salamat
+para kung kapag pag habang dahil kasi kaya pero tapos saka lang lamang naman din rin pa pala nga daw raw sana muna talaga siguro
+ba bang
+bahay bubong kuryente bayad buwan taon araw oras presyo mura mahal tipid matitipid ibawas
+""".split())
+_WORD = re.compile(r"[a-zñ']+", re.I)
+
+
+def detect_style(user_text: str) -> str:
+    """'english', 'tagalog' (mostly Tagalog words) or 'taglish' (a real mix), judged from one message."""
+    words = _WORD.findall((user_text or "").lower())
+    if not words:
+        return "english"
+    tl = sum(1 for w in words if w in _TAGALOG_WORDS)
+    if tl == 0:
+        return "english"
+    ratio = tl / len(words)
+    if ratio < 0.2:
+        return "english"
+    return "tagalog" if ratio >= 0.6 else "taglish"
 
 
 def pick_language(session: Session, user_text: str) -> str:
+    """Template language: 'english' or 'taglish' (the Tagalog templates, which keep the usual English solar terms)."""
     if session.language in ("english", "taglish"):
         return session.language
-    return "taglish" if len(_TAGLISH_HINTS.findall(user_text or "")) >= 2 else "english"
+    return "english" if detect_style(user_text) == "english" else "taglish"
