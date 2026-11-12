@@ -7,5 +7,6 @@ node_modules/
 backend/data/pvgis_cache/
 *.db
 .DS_Store
-frontend/
 reference(not_pushed)/*
+dev.ps1
+dist/

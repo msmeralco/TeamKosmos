@@ -1,0 +1,563 @@
+@import "tailwindcss";
+
+/* ------------------------------------------------------------------
+   Palette: white surfaces, near-black text, neutral warm grays.
+   Sun/Sunset = brand (warm orange-amber actions, spinners, active states).
+   Solar Yellow = sparing accent (highlights, badges, unread dots).
+   Motion: named curves + Framer Motion LazyMotion.
+------------------------------------------------------------------- */
+:root {
+  --bg: #ffffff;
+  --fg: #111111;
+  --sidebar: #f8f8f7;
+  --label-2: #6b6b6b;
+  --label-3: #a3a3a3;
+  --fill: #f4f4f2;
+  --fill-2: #ebebea;
+  --hairline: rgba(0, 0, 0, 0.08);
+
+  --brand: #ea580c;
+  --brand-hover: #c2410c;
+  --brand-soft: #ffedd5;
+  --accent: #f59e0b;
+  --accent-soft: #fef3c7;
+  --accent-ink: #92400e;
+
+  --ease-enter: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-move: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-press: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+@theme inline {
+  --color-background: var(--bg);
+  --color-foreground: var(--fg);
+  --font-sans: "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+  --font-mono: "SF Mono", ui-monospace, "Cascadia Mono", Menlo, Consolas, monospace;
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+  }
+}
+
+/* Composer: hairline at rest, slightly firmer while typing. No hard outline. */
+.composer {
+  box-shadow:
+    0 0 0 1px var(--hairline),
+    0 6px 24px rgba(0, 0, 0, 0.04);
+  transition: box-shadow 200ms ease;
+}
+.composer:focus-within {
+  box-shadow:
+    0 0 0 1px rgba(234, 88, 12, 0.28),
+    0 8px 28px rgba(0, 0, 0, 0.06);
+}
+
+/* ------------------------------------------------------------------
+   Shared components (layered so Tailwind utilities can still override)
+------------------------------------------------------------------- */
+@layer components {
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 36px;
+    padding: 0 16px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .btn-sm {
+    height: 32px;
+    padding: 0 12px;
+    font-size: 13px;
+    border-radius: 9px;
+  }
+  .btn-primary {
+    background: var(--brand);
+    color: #fff;
+  }
+  .btn-secondary {
+    background: #fff;
+    color: var(--fg);
+    box-shadow:
+      0 0 0 1px var(--hairline),
+      0 1px 2px rgba(0, 0, 0, 0.03);
+  }
+  .btn-ghost {
+    background: transparent;
+    color: var(--label-2);
+  }
+  .btn:disabled {
+    cursor: default;
+  }
+  .card {
+    background: #fff;
+    border-radius: 14px;
+    box-shadow:
+      0 0 0 1px var(--hairline),
+      0 1px 2px rgba(0, 0, 0, 0.03),
+      0 6px 16px rgba(0, 0, 0, 0.03);
+  }
+  .btn-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    color: var(--label-2);
+  }
+  .chip-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    border-radius: 999px;
+    background: #fff;
+    padding: 3px 10px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--fg);
+    box-shadow: 0 0 0 1px var(--hairline);
+  }
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    border-radius: 999px;
+    padding: 1px 8px;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 18px;
+  }
+  .tag-accent {
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+  }
+  .tag-brand {
+    background: var(--brand-soft);
+    color: var(--brand);
+  }
+  .field {
+    border-radius: 8px;
+    background: #fff;
+    font-size: 14px;
+    outline: none;
+    box-shadow: 0 0 0 1px var(--hairline);
+    transition: box-shadow 150ms ease;
+  }
+  .field::placeholder {
+    color: var(--label-3);
+  }
+  .field:focus-visible {
+    box-shadow: 0 0 0 2px var(--brand);
+  }
+}
+
+/* ---------- Hover only on real pointers ---------- */
+@media (hover: hover) and (pointer: fine) {
+  .btn-primary:hover:not(:disabled) {
+    background: var(--brand-hover);
+  }
+  .btn-secondary:hover:not(:disabled),
+  .chip-btn:hover,
+  .pill:hover {
+    background: var(--fill);
+  }
+  .btn-ghost:hover:not(:disabled),
+  .btn-icon:hover,
+  .row-btn:hover:not(:disabled) {
+    background: var(--fill-2);
+  }
+}
+
+/* ---------- App shell: sidebar column tweens on collapse ---------- */
+.shell {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  transition: grid-template-columns 300ms var(--ease-move);
+}
+.shell[data-collapsed="true"] {
+  grid-template-columns: 0px minmax(0, 1fr);
+}
+.sidebar {
+  overflow: hidden;
+  min-width: 0;
+  box-shadow: inset -1px 0 0 var(--hairline);
+}
+.sidebar-inner {
+  width: 260px;
+  transition: opacity 200ms ease;
+}
+.shell[data-collapsed="true"] .sidebar-inner {
+  opacity: 0;
+  transition-duration: 120ms;
+}
+.mobile-backdrop {
+  display: none;
+}
+
+/* Mobile: sidebar becomes a drawer from the left */
+@media (max-width: 767px) {
+  .shell,
+  .shell[data-collapsed="true"] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 60;
+    width: 280px;
+    transform: translateX(-100%);
+    transition: transform 400ms var(--ease-drawer);
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.12);
+  }
+  .sidebar[data-mobile-open="true"] {
+    transform: translateX(0);
+  }
+  .sidebar-inner,
+  .shell[data-collapsed="true"] .sidebar-inner {
+    width: 280px;
+    opacity: 1;
+  }
+  .mobile-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 55;
+    background: rgba(0, 0, 0, 0.25);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 400ms var(--ease-drawer);
+  }
+  .mobile-backdrop[data-open="true"] {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+/* ---------- Press feedback: instant down, eased release ---------- */
+.press {
+  touch-action: manipulation;
+  transition:
+    transform 160ms var(--ease-enter),
+    background-color 200ms ease,
+    color 200ms ease,
+    opacity 200ms ease;
+}
+.press:active:not(:disabled) {
+  transform: scale(0.97);
+  transition-duration: 0ms;
+}
+
+/* ---------- Entrances ---------- */
+.enter {
+  transition:
+    opacity 280ms var(--ease-enter),
+    transform 280ms var(--ease-enter);
+}
+.enter-card {
+  transform-origin: top left;
+  transition:
+    opacity 320ms var(--ease-enter),
+    transform 320ms var(--ease-enter);
+}
+@starting-style {
+  .enter {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  .enter-card {
+    opacity: 0;
+    transform: translateY(10px) scale(0.99);
+  }
+}
+
+/* ---------- Try pills ---------- */
+.pill {
+  transition:
+    opacity 150ms ease,
+    transform 150ms var(--ease-enter),
+    background-color 200ms ease;
+}
+
+/* ---------- Popover / menu ---------- */
+.popover {
+  opacity: 0;
+  transform: scale(0.96);
+  visibility: hidden;
+  transition:
+    opacity 120ms ease,
+    transform 120ms var(--ease-enter),
+    visibility 0s linear 120ms;
+}
+.popover[data-open="true"] {
+  opacity: 1;
+  transform: none;
+  visibility: visible;
+  transition:
+    opacity 160ms var(--ease-enter),
+    transform 200ms var(--ease-enter),
+    visibility 0s;
+}
+.popover[data-placement="bottom-end"] {
+  transform-origin: top right;
+}
+.popover[data-placement="bottom-start"] {
+  transform-origin: top left;
+}
+.popover[data-placement="top-start"] {
+  transform-origin: bottom left;
+}
+.popover[data-placement="top-end"] {
+  transform-origin: bottom right;
+}
+
+/* ---------- Confirmation dialog ---------- */
+.dialog-root {
+  visibility: hidden;
+  transition: visibility 0s linear 200ms;
+}
+.dialog-root[data-open="true"] {
+  visibility: visible;
+  transition: visibility 0s;
+}
+.dialog-backdrop {
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+.dialog-panel {
+  opacity: 0;
+  transform: scale(0.96);
+  transition:
+    opacity 150ms ease,
+    transform 150ms var(--ease-enter);
+}
+.dialog-root[data-open="true"] .dialog-backdrop {
+  opacity: 1;
+  transition-duration: 220ms;
+}
+.dialog-root[data-open="true"] .dialog-panel {
+  opacity: 1;
+  transform: none;
+  transition-duration: 220ms;
+}
+
+/* ---------- Segmented control ---------- */
+.seg-pill {
+  transition: transform 300ms var(--ease-move);
+}
+.seg-option {
+  transition: color 200ms ease;
+}
+
+/* ---------- Text / icon swap with blur crossfade ---------- */
+.swap {
+  display: inline-grid;
+}
+.swap > * {
+  grid-area: 1 / 1;
+  transition:
+    opacity 200ms var(--ease-enter),
+    transform 200ms var(--ease-enter),
+    filter 200ms var(--ease-enter);
+}
+.swap > [data-active="false"] {
+  opacity: 0;
+  transform: scale(0.96);
+  filter: blur(2px);
+}
+.swap > [data-active="false"] .spinner-inline {
+  animation-play-state: paused;
+}
+
+/* ---------- Height reveal ---------- */
+.disclosure {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 280ms var(--ease-move);
+}
+.disclosure > div {
+  min-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 180ms ease;
+}
+.disclosure[data-open="true"] {
+  grid-template-rows: 1fr;
+}
+.disclosure[data-open="true"] > div {
+  opacity: 1;
+  transition-delay: 60ms;
+}
+
+.chev {
+  display: inline-flex;
+  transition: transform 200ms var(--ease-enter);
+}
+.chev[data-open="true"] {
+  transform: rotate(90deg);
+}
+
+/* ---------- Spinners (Sunset orange -> Solar yellow comet) ---------- */
+@keyframes sol-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spinner-main {
+  --w: 4px;
+  position: relative;
+  display: inline-block;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    color-mix(in srgb, var(--brand) 0%, transparent) 0deg,
+    var(--brand) 120deg,
+    var(--accent) 345deg,
+    var(--accent) 360deg
+  );
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - var(--w)), #000 calc(100% - var(--w) + 0.5px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - var(--w)), #000 calc(100% - var(--w) + 0.5px));
+  animation: sol-spin 0.9s linear infinite;
+}
+.spinner-main::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: var(--w);
+  height: var(--w);
+  margin-left: calc(var(--w) / -2);
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.spinner-inline {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, currentColor 22%, transparent);
+  border-top-color: currentColor;
+  animation: sol-spin 0.7s linear infinite;
+}
+
+/* ---------- Loading text shimmer ---------- */
+@keyframes sol-shimmer {
+  from {
+    background-position: 0% 50%;
+  }
+  to {
+    background-position: 100% 50%;
+  }
+}
+.shimmer {
+  background-image: linear-gradient(90deg, var(--fg) 0%, var(--brand) 50%, var(--fg) 100%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation: sol-shimmer 1.4s ease-in-out infinite alternate;
+}
+
+/* ---------- Notification badge ---------- */
+.badge {
+  transition:
+    transform 220ms var(--ease-enter),
+    opacity 160ms ease;
+}
+.badge[data-show="false"] {
+  transform: scale(0.4);
+  opacity: 0;
+}
+.pop {
+  transition:
+    transform 220ms var(--ease-enter),
+    opacity 220ms var(--ease-enter);
+}
+@starting-style {
+  .pop {
+    transform: translateY(4px);
+    opacity: 0;
+  }
+}
+
+/* Hidden scrollbars */
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+*::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* ---------- Reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .enter,
+  .enter-card,
+  .pop,
+  .pill {
+    transition: opacity 150ms ease;
+  }
+  @starting-style {
+    .enter,
+    .enter-card,
+    .pop {
+      transform: none;
+    }
+  }
+  .shell,
+  .seg-pill,
+  .disclosure,
+  .chev {
+    transition: none;
+  }
+  .swap > * {
+    transition: opacity 150ms ease;
+  }
+  .swap > [data-active="false"] {
+    transform: none;
+    filter: none;
+  }
+  .popover,
+  .popover[data-open="true"],
+  .dialog-panel {
+    transform: none;
+  }
+  .sidebar {
+    transition: none;
+  }
+  .spinner-main,
+  .spinner-inline {
+    animation-duration: 2.4s;
+  }
+  .shimmer {
+    animation: none;
+    background-image: none;
+    color: var(--brand);
+    -webkit-text-fill-color: currentColor;
+  }
+}
