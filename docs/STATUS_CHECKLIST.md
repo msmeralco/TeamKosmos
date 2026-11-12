@@ -1,0 +1,61 @@
+# Sol: Status Checklist
+
+## Tier 1: Core
+
+- [x] Address search and building outline (Nominatim, OpenStreetMap)
+- [x] Draw the roof on a satellite map (drag corners, add corners, undo, no self-crossing)
+- [x] Roof type, tilt and direction, usable area
+- [x] Household load estimate from kWh or bill (3 templates)
+- [x] Hourly solar simulation (PVGIS-ERA5, bundled Metro Manila data)
+- [x] Net-metering billing, on/off toggle
+- [x] ROI table: grid only, solar, solar with battery, with bad-year, expected and best-case ranges
+- [x] 25-year cash flow, payback, NPV, IRR
+- [x] Chat agent with tool calls (Gemini, rule-based fallback)
+- [x] Number guard (the AI never states numbers the tools did not produce)
+- [x] "Before you invest" checks on every option, from Meralco's four points:
+  - [x] Right size: share of solar used at home, transformer hosting limit
+  - [x] Right location: roof direction, outline confidence, sketch scale; structure and shading flagged for the installer
+  - [x] Right provider: exact parts to quote, what to ask the installer
+  - [x] Know the requirements: Net Metering steps and fees, or Micro Solar and Zero-Export when not exporting
+  - [x] Shown on the Overview page and stated by the agent
+  - [ ] Optimizer ranking uses the checks (today they only warn)
+  - [ ] Real installer list (the provider check has no vetted names)
+
+## Tier 2: Full product
+
+- [x] Goal- and budget-driven optimizer
+- [~] Live product price fetch with cache: scraper code exists, no retailer source is enabled, prices come from the seed catalog
+- [x] 2D panel layout on the roof
+- [x] Blank-canvas sketch with scale correction
+- [x] Solar Passport: issue, sign, verify, shareable page, QR code
+- [ ] Install confirmation by an installer (Passport stage: installed)
+- [ ] Solar Rewards: voucher catalog and issue
+- [ ] Voucher redeem (once only)
+- [ ] Rewards UI on the Passport page
+
+## Tier 2b: Rules search
+
+- [x] Document library (`backend/data/docs_corpus/`): 4 Meralco solar pages, DOE own-use rules summary, 5 general solar pages, PVGIS manual, 2 manufacturer pages, installer guidance, data notes
+- [x] `search_docs` agent tool with source links (keyword search, works offline)
+- [x] "Ask the rules" in chat, in both Gemini and rule-based modes
+- [x] `scripts/build_corpus.py` downloads the listed pages, respecting robots.txt
+- [ ] Vetted installer list (only MSpectrum is listed, as Meralco's own solar unit)
+- [ ] Real product specs and prices (the catalog is synthetic)
+- [ ] Meralco forms and checklists (PDFs, not downloaded)
+- [ ] Embedding search (keyword search only)
+
+## Tier 3: Stretch
+
+- [ ] Photo or blueprint auto-outline
+- [ ] Battery polish
+- [ ] 3D view
+
+## Other features
+
+- [x] Sign up, login, logout, seeded demo users
+- [x] Saved chats: recents list, new chat, delete
+- [x] Bill photo reading in chat
+- [x] Overview page: package comparison and math drawer
+- [x] Saved Records page: Passport view and paste-to-verify
+- [x] Assumptions register shown in the app (`ASSUMPTIONS.yaml`)
+- [x] Mac and Windows dev scripts (`scripts/dev.sh`, `scripts/dev.ps1`)

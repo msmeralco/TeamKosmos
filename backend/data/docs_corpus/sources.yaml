@@ -1,0 +1,19 @@
+# Pages that scripts/build_corpus.py downloads into data/docs_corpus/<id>.md.
+# Each page is checked against robots.txt first and fetched at most once a second.
+# kind: meralco (utility rules) | general (how solar works, not Philippine rules) | product (manufacturer page)
+# Files in this folder that are not listed here are hand-written notes. Each must carry its own source_url.
+sources:
+  - {id: meralco-solar-hub, kind: meralco, publisher: Meralco, title: "Solar and Renewable Energy (program overview)", url: "https://www.meralco.com.ph/residential/energy-solutions/solar-and-renewables"}
+  - {id: meralco-net-metering, kind: meralco, publisher: Meralco, title: "Solar and Net Metering (guide and FAQ)", url: "https://www.meralco.com.ph/residential/energy-solutions/solar-and-renewables/solar-net-metering"}
+  - {id: meralco-der, kind: meralco, publisher: Meralco, title: "Distributed Energy Resources, SGF Zero-Export and Micro Solar System FAQs", url: "https://www.meralco.com.ph/residential/energy-solutions/solar-and-renewables/distributed-energy-resources"}
+  - {id: meralco-nm-application, kind: meralco, publisher: Meralco, title: "Apply for Net Metering (process, fees, hosting capacity)", url: "https://www.meralco.com.ph/residential/energy-solutions/solar-and-renewables/re-net-metering-application"}
+
+  - {id: doe-us-pv-basics, kind: general, region: US, publisher: "US Department of Energy", title: "Solar Photovoltaic Technology Basics", url: "https://www.energy.gov/eere/solar/solar-photovoltaic-technology-basics"}
+  - {id: doe-us-how-solar-works, kind: general, region: US, publisher: "US Department of Energy", title: "How Does Solar Energy Work?", url: "https://www.energy.gov/eere/solar/how-does-solar-work"}
+  - {id: doe-us-performance, kind: general, region: US, publisher: "US Department of Energy", title: "Solar Photovoltaic Performance and Efficiency Basics", url: "https://www.energy.gov/eere/solar/solar-performance-and-efficiency"}
+  - {id: doe-us-storage-basics, kind: general, region: US, publisher: "US Department of Energy", title: "Solar Energy and Storage Basics", url: "https://www.energy.gov/eere/solar/solar-integration-solar-energy-and-storage-basics"}
+  - {id: doe-us-homeowners-guide, kind: general, region: US, publisher: "US Department of Energy", title: "Homeowner's Guide to Solar", url: "https://www.energy.gov/eere/solar/homeowners-guide-going-solar"}
+  - {id: pvgis-manual, kind: general, publisher: "EU Joint Research Centre", title: "PVGIS 5 user manual (the sunlight data Sol uses)", url: "https://joint-research-centre.ec.europa.eu/pvgis-photovoltaic-geographical-information-system/getting-started-pvgis/pvgis-user-manual_en"}
+
+  - {id: huawei-hybrid-inverter, kind: product, publisher: Huawei, title: "Huawei hybrid solar inverter (Philippines blog)", url: "https://solar.huawei.com/ph/blog/2025/hybrid-solar-inverter/"}
+  - {id: jinko-tiger-neo, kind: product, publisher: JinkoSolar, title: "JinkoSolar Tiger Neo panel (manufacturer page)", url: "https://www.jinkosolar.com/en/site/tigerneo"}

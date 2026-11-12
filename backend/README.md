@@ -31,6 +31,14 @@ Copy-Item .env.example .env        # then fill in the values below
 - `python scripts/prefetch_pvgis.py [--tilt 12]` pre-downloads PVGIS data for offline demos (already bundled for Metro Manila at 12 and 20 degrees, facing south).
 - `python scripts/build_demo_outlines.py --name ... --address ...` builds `data/demo_outlines.geojson` from real OpenStreetMap outlines. The shipped file holds **synthetic** rectangles.
 
+## Document library (RAG)
+
+`data/docs_corpus/*.md` is what Sol searches when asked about rules, fees, permits, installers or how solar works (`search_docs` tool, BM25 keyword search in `app/services/rag.py`). Each file has front-matter with `source_url` and `kind` (`meralco`, `policy`, `installer`, `general`, `product`, `sol`).
+
+- Add a web page: list it in `data/docs_corpus/sources.yaml`, then run `python scripts/build_corpus.py` (robots.txt is checked; use `--only id` for one page).
+- Add a hand-written note: create a `.md` file with the same front-matter. Write it in your own words and cite the source.
+- Installers and products: add only entries you can verify from a source. Sol has no vetted installer list and no real prices.
+
 ## Tests
 
 ```powershell

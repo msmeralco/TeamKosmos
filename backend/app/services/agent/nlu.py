@@ -87,16 +87,27 @@ def is_negate(text: str) -> bool:
     return bool(NEGATE.match(text.strip()))
 
 
+# Rules, fees, process and how-solar-works questions go to the document library.
+_DOCS = re.compile(r"permit|\bfees?\b|zero[- ]?export|micro[- ]?solar|\bmss\b|sgf|inspect|cfei|apply|application|requirement|installer|provider|"
+                   r"transformer|hosting|blackout|brownout|outage|warranty|degrad|net[- ]?metering|\bmeter\b|inverter|battery|batteries|"
+                   r"\bdoe\b|\berc\b|pvgis|how long do", re.I)
+_QUESTION = re.compile(r"\?|^\s*(?:what|how|why|when|who|where|do|does|can|could|is|are|will|should|paano|ano)\b", re.I)
+
+
 def detect_intent(text: str) -> str | None:
     t = text.lower()
     if re.search(r"passport|verify|verification|sign(?:ed)? record", t):
         return "passport"
     if re.search(r"net[- ]?metering.*(off|without|disable|no\b)|without net[- ]?metering|what if.*net[- ]?metering|compare.*net[- ]?metering", t):
         return "nm_compare"
-    if re.search(r"assumption|explain|what is|what's|what are|how does|how do|paano|bakit|ano ang|ano po|source|where do .* come from|\?$", t):
+    if re.search(r"assumption|where do .* come from|\bsources?\b", t):
         return "explain"
-    if re.search(r"price|prices|equipment|product|panel brand|how much (?:is|are) the", t):
+    if re.search(r"\bprices?\b|how much (?:is|are|for|does|do) .*(?:panel|inverter|batter|brand)|panel brand|equipment|product", t):
         return "products"
+    if _DOCS.search(t) and _QUESTION.search(t):
+        return "docs"
+    if re.search(r"explain|what is|what's|what are|how does|how do|paano|bakit|ano ang|ano po|\?$", t):
+        return "ask"
     return None
 
 

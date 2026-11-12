@@ -10,6 +10,7 @@ import {
   type AnalysisSummary,
   type AssumptionRecord,
   type PassportRef,
+  type ReadinessCheck,
   type Range3,
   type VerifyResult,
 } from "../lib/api";
@@ -119,6 +120,37 @@ function MathDrawer({ open, onClose, summary }: { open: boolean; onClose: () => 
   );
 }
 
+/* Meralco's "four things to know before investing", checked for one option. */
+const READY_STYLE = {
+  ok: { label: "Looks fine", cls: "text-[#1b7f3b]" },
+  watch: { label: "Watch", cls: "text-[#b45309]" },
+  confirm: { label: "Confirm", cls: "text-[#787774]" },
+} as const;
+
+function Readiness({ checks }: { checks: ReadinessCheck[] }) {
+  return (
+    <div className="mt-3 border-t border-[#f0f0ee] pt-2.5">
+      <div className="text-[11px] font-medium uppercase tracking-wide text-[#787774]">Before you invest</div>
+      {checks.map((c) => (
+        <details key={c.id} open={c.status === "watch"} className="mt-1.5 text-[12px]">
+          <summary className="cursor-pointer select-none">
+            <span className={`font-medium ${READY_STYLE[c.status].cls}`}>{READY_STYLE[c.status].label}</span> · {c.title}
+          </summary>
+          <p className="mt-1 text-[11px] leading-relaxed text-[#787774]">
+            {c.text}
+            {c.source && (
+              <>
+                {" "}
+                <a href={c.source} target="_blank" rel="noreferrer" className="underline">Meralco</a>
+              </>
+            )}
+          </p>
+        </details>
+      ))}
+    </div>
+  );
+}
+
 /* ---- Overview ---- */
 export function OverviewView({ conversationId, onNewChat }: { conversationId: string | null; onNewChat: () => void }) {
   const [summary, setSummary] = useState<AnalysisSummary | null>(null);
@@ -167,6 +199,7 @@ export function OverviewView({ conversationId, onNewChat }: { conversationId: st
             <div className="mt-2 text-[11px] text-[#787774]">
               Year 1: {Math.round(p.year1_generation_kwh).toLocaleString()} kWh · LCOE {p.lcoe_php_per_kwh ?? "n/a"} ₱/kWh · CO₂ avoided {p.co2_avoided_t_25y} t over 25 years
             </div>
+            {p.readiness && <Readiness checks={p.readiness} />}
           </article>
         ))}
       </div>

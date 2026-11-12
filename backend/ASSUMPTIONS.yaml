@@ -70,7 +70,13 @@ grid_emission_factor_kg_per_kwh:
   as_of: "unverified placeholder"
   verified: false
   note: PLACEHOLDER. Replace with the latest DOE National Grid Emission Factor.
-net_metering_cap_kw: {value: 100, unit: kW, source_url: "https://www.meralco.com.ph/residential/energy-solutions/solar-and-renewables/solar-net-metering", as_of: "2026-11", verified: false, note: "Residential cap per the plan; verify on the Meralco page."}
+net_metering_cap_kw: {value: 100, unit: kW, source_url: "https://www.meralco.com.ph/residential/energy-solutions/solar-and-renewables/solar-net-metering", as_of: "2026-11", verified: true, note: "Meralco page: not more than 100 kW per qualified entity; final approval depends on the local network."}
 analysis_years: {value: 25, unit: years, source_url: "", as_of: "2026-11", verified: true, note: "Projection horizon."}
 backup_essential_load_kw: {value: 0.6, unit: kW, source_url: "", as_of: "2026-11", verified: false, note: "Default essential load for the backup goal, editable."}
 backup_hours_default: {value: 4, unit: hours, source_url: "", as_of: "2026-11", verified: false, note: "Default backup duration, editable."}
+hosting_capacity_smallest_kw: {value: 7, unit: kW, source_url: "https://www.meralco.com.ph/residential/energy-solutions/solar-and-renewables/re-net-metering-application", as_of: "2026-11", verified: true, note: "Indicative aggregate maximum for 10 and 15 kVA single-phase transformers; Meralco's study can approve less."}
+erc_coc_fee_php: {value: 1500, unit: PHP, source_url: "https://www.meralco.com.ph/residential/energy-solutions/solar-and-renewables/re-net-metering-application", as_of: "2026-11", verified: true, note: "ERC Certificate of Compliance application fee."}
+meter_cost_diff_cap_php: {value: 3000, unit: PHP, source_url: "https://www.meralco.com.ph/residential/energy-solutions/solar-and-renewables/re-net-metering-application", as_of: "2026-11", verified: true, note: "Residential difference in meter cost must not exceed this, per the referenced ERC advisory."}
+micro_solar_max_kwp: {value: 1, unit: kWp, source_url: "https://www.meralco.com.ph/residential/energy-solutions/solar-and-renewables/distributed-energy-resources", as_of: "2026-11", verified: true, note: "Micro Solar System limit: up to 1 kW DC with a micro-inverter of at most 800 W (DOE DC 2026-08-0017)."}
+self_consumption_watch_pct: {value: 60, unit: "%", source_url: "", as_of: "2026-11", verified: false, note: "Judgement: below this share of solar used at home, Sol flags the size."}
+azimuth_watch_deg: {value: 60, unit: deg, source_url: "", as_of: "2026-11", verified: false, note: "Judgement: a roof facing more than this far from south is flagged."}

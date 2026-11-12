@@ -6,7 +6,7 @@ import re
 import time
 from typing import Protocol
 
-from .. import geo
+from .. import geo, rag
 from . import intake, nlu
 from .summary import render_tool_result
 from .tools import TurnContext
@@ -89,6 +89,11 @@ class ScriptedProvider:
         if intent == "nm_compare" and analysed:
             ctx.call_tool("compare_net_metering", {})
             return True
+        if intent in ("docs", "ask") and slot not in ("roof_address", "roof_pick"):
+            if intent == "docs" or rag.search(text[:300], k=1):
+                ctx.call_tool("search_docs", {"query": text[:300]})
+                return True
+            intent = "explain"  # a general question the library cannot answer: fall back to the assumptions list
         if intent == "explain" and slot not in ("roof_address", "roof_pick"):
             ctx.call_tool("explain_assumptions", {"topic": text[:80]})
             return True

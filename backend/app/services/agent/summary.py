@@ -4,6 +4,7 @@ Every number in these sentences comes straight from tool results (the LLM never 
 """
 from __future__ import annotations
 
+from ..readiness import readiness
 from .intake import goal_label, php
 
 CAVEAT = "These are estimates for a licensed installer to confirm, and prices are suggestions from demo or public listings, so confirm with the seller."
@@ -23,7 +24,7 @@ def _scn(variant: dict) -> dict:
     return {s["name"]: s for s in variant["scenarios"]}
 
 
-def summarize_analysis(optimize_res: dict, net_metering: bool = True) -> dict:
+def summarize_analysis(optimize_res: dict, net_metering: bool = True, roof=None) -> dict:
     pkgs = []
     for item in optimize_res["packages"]:
         p, roi = item["package"], item["roi"]
@@ -48,6 +49,8 @@ def summarize_analysis(optimize_res: dict, net_metering: bool = True) -> dict:
             "year1_generation_kwh": sc["expected"]["year1_generation_kwh"],
             "co2_avoided_t_25y": sc["expected"]["co2_avoided_t_25y"],
         })
+        if roof is not None:
+            pkgs[-1]["readiness"] = readiness(roof, p, pkgs[-1], sc["expected"], net_metering)
     approx = optimize_res.get("weather_source") == "approximate"
     used = {a["key"]: a for a in optimize_res["packages"][0]["roi"].get("assumptions_used", [])}
     unverified = [k for k in ("export_credit_php_per_kwh", "install_cost_php_per_kw", "tariff_fixed_php_month")
@@ -76,6 +79,10 @@ def analysis_text(s: dict) -> str:
         parts.append("No option within your budget reaches your bill-cut target, so this is the closest one.")
     if len(s["packages"]) > 1:
         parts.append("I also have " + ", ".join(p["label"] for p in s["packages"][1:]) + " to compare.")
+    top_checks = top.get("readiness", [])
+    parts += [c["text"] for c in top_checks if c["status"] == "watch"]
+    if top_checks:
+        parts.append("Before you commit, also check the provider and the Meralco requirements; the Overview page lists all four checks.")
     if s.get("weather_is_approximate"):
         parts.append("Sunlight data is an approximate typical year because PVGIS could not be reached.")
     drivers = []
@@ -116,6 +123,18 @@ def roof_text(roof: dict) -> str:
             f"with {roof['usable_area_m2']:g} m² usable after the edge setback.{extra}")
 
 
+def docs_text(r: dict) -> str:
+    """Scripted-mode answer: the best passage, trimmed to whole sentences, with its source."""
+    if not r.get("passages"):
+        return "I don't have a source for that, so I'd rather not guess. Meralco or your installer can confirm it."
+    top = r["passages"][0]
+    sents = [x for x in top["text"].replace("\n", " ").split(". ") if x.strip()]
+    body = ". ".join(sents[:3]).strip()
+    body += "" if body.endswith(".") else "."
+    us = " (a US example, not Philippine rules)" if top.get("region") == "US" else ""
+    return f"From {top['publisher'] or top['title']}{us}: {body} Source: {top['source_url']}" if top["source_url"] else f"{body}"
+
+
 def render_tool_result(name: str, result: dict) -> str:
     """Plain sentence for a tool result (used by the scripted agent and the number-guard fallback)."""
     if not isinstance(result, dict) or result.get("error"):
@@ -126,6 +145,8 @@ def render_tool_result(name: str, result: dict) -> str:
         return analysis_text(result["summary"])
     if name == "compare_net_metering":
         return compare_nm_text(result)
+    if name == "search_docs":
+        return docs_text(result)
     if name == "explain_assumptions":
         return assumptions_text(result)
     if name == "issue_passport":

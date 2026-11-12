@@ -247,6 +247,13 @@ export async function deleteSession(conversationId: string): Promise<void> {
 
 /* ---- results, assumptions and Solar Passport --------------------------- */
 export type Range3 = { bad_year: number | null; expected: number | null; best_case: number | null };
+export type ReadinessCheck = {
+  id: "size" | "location" | "provider" | "requirements";
+  title: string;
+  status: "ok" | "watch" | "confirm";
+  text: string;
+  source: string | null;
+};
 export type PackageSummary = {
   label: string;
   package_id: string;
@@ -266,6 +273,7 @@ export type PackageSummary = {
   lcoe_php_per_kwh: number | null;
   year1_generation_kwh: number;
   co2_avoided_t_25y: number;
+  readiness?: ReadinessCheck[];
 };
 export type AnalysisSummary = {
   goal: string;

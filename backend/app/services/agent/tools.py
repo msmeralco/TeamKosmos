@@ -15,7 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from ...config import Settings
 from ...errors import ApiError
 from ...models import PanelSpec, RoofModel
-from .. import geo, layout, load as load_svc, optimizer, passport, products, simulate
+from .. import geo, layout, load as load_svc, optimizer, passport, products, rag, simulate
 from ..assumptions import all_assumptions
 from ..scraper import search as product_search
 from . import intake, nlu, summary
@@ -355,7 +355,7 @@ def _run_analysis(ctx: TurnContext, _a: NoArgs) -> dict:
         raise
     res = jsonable(res)
     s.results["analysis"] = {"optimize": res, "load": ld.to_dict(include_hourly=False), "selected_index": 0}
-    summ = summary.summarize_analysis(res, p.net_metering)
+    summ = summary.summarize_analysis(res, p.net_metering, roof)
     s.results["summary"] = summ
     ctx.cards.append({"type": "analysis", "data": summ})
     return {"summary": summ, **snapshot(ctx)}
@@ -448,6 +448,23 @@ def _explain(ctx: TurnContext, a: ExplainArgs) -> dict:
         facts = FACTS["net"] + FACTS["weather"] + facts
     items = [x for x in all_assumptions() if (not keys or any(k in x["key"] for k in keys))]
     return {"assumptions": items[:40], "facts": facts, "count": len(items)}
+
+
+class DocsArgs(BaseModel):
+    query: str = Field(..., min_length=2, max_length=300, description="The question, in plain words.")
+    kind: Literal["meralco", "policy", "installer", "general", "product"] | None = Field(
+        None, description="Optional: limit to Meralco pages, DOE policy, installer guidance, general solar background or manufacturer pages.")
+
+
+@tool("search_docs", "Search the local library of Meralco solar pages, DOE rules, installer guidance, general solar background and "
+      "manufacturer pages. Returns passages with source links. Use it for rules, fees, permits, process, equipment and how-solar-works "
+      "questions, and quote only what it returns. Facts and citations only: never calculate from it.", DocsArgs, "Checking the sources")
+def _search_docs(ctx: TurnContext, a: DocsArgs) -> dict:
+    hits = rag.search(a.query, k=4, kinds=[a.kind] if a.kind else None)
+    if not hits:
+        return {"passages": [], "message": "No source in the library covers this. Say you do not have a source and suggest asking Meralco or an installer. Do not guess."}
+    return {"passages": hits, "message": "Quote or paraphrase only these passages and name the source. Passages marked region US are general background, not Philippine rules: "
+                                         "prefer Meralco and policy sources, and say when something is a US example."}
 
 
 class PassportArgs(BaseModel):
