@@ -1,11 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { getRoofState, submitRoof, type RoofState, type RoofSubmission } from "../lib/api";
 import { crossesItself, selfIntersects } from "../lib/geometry";
 import { Icon } from "./icons";
 import { SketchPad } from "./SketchPad";
-import { btn, Spinner } from "./ui";
+import { btn, MenuItem, Popover, Spinner } from "./ui";
 
 /* The right-hand "Roof Map" panel: satellite map with the roof outline and panel layout from the backend,
    a polygon drawing tool, and a blank-canvas sketch tool. Both send the roof to the backend session. */
@@ -64,14 +65,187 @@ function lengthLabel(a: Pt, b: Pt): L.Marker {
   });
 }
 
+/* ---- Roof result tiles (pure formatting, no map logic) ---- */
+
+type RoofData = NonNullable<RoofState["roof"]>;
+
+const COMPASS = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
+const compassLetters = (deg: number) => COMPASS[Math.round(deg / 45) % 8];
+
+/** Display values for the four result tiles. azimuth_deg: 0 = north, clockwise. */
+function roofStats(roof: RoofData, layout: RoofState["layout"]) {
+  const degrees = ((Math.round(roof.azimuth_deg) % 360) + 360) % 360;
+  return {
+    area: `${Math.round(roof.area_m2)} m²`,
+    usable: `${Math.round(roof.usable_area_m2)} m²`,
+    letters: compassLetters(degrees),
+    degrees,
+    panels: layout ? String(layout.count) : "—",
+  };
+}
+
+const CONFIDENCE_STYLE: Record<RoofData["confidence"], string> = {
+  high: "bg-[#ecfdf5] text-[#047857]",
+  medium: "bg-[#fffbeb] text-[#b45309]",
+  low: "bg-[#fef2f2] text-[#b91c1c]",
+};
+
+/** Approximate ground area (m²) of an outline given as [lat, lng] corners: flat projection around its middle
+    + shoelace formula. Plenty accurate for a roof-sized shape; the backend computes the official figure. */
+function outlineAreaM2(points: Pt[]): number {
+  if (points.length < 3) return 0;
+  const lat0 = points.reduce((s, p) => s + p[0], 0) / points.length;
+  const lng0 = points.reduce((s, p) => s + p[1], 0) / points.length;
+  const mPerLat = 110574;
+  const mPerLng = 111320 * Math.cos((lat0 * Math.PI) / 180);
+  const xy = points.map((p) => [(p[1] - lng0) * mPerLng, (p[0] - lat0) * mPerLat] as const);
+  let sum = 0;
+  for (let i = 0; i < xy.length; i++) {
+    const [x1, y1] = xy[i];
+    const [x2, y2] = xy[(i + 1) % xy.length];
+    sum += x1 * y2 - x2 * y1;
+  }
+  return Math.abs(sum) / 2;
+}
+
+/* ---- Undo / Check bar pinned to the map, just outside the outline ---- */
+
+const ACTION_HALF_W = 44; // half the size of the little bar, in px
+const ACTION_HALF_H = 22;
+
+/** Pixel offset from the last corner that puts the bar just outside the outline: pushed away from the middle of
+    the shape. If that would leave the visible map, try the opposite side, then the two sides. */
+function actionOffset(map: L.Map, points: Pt[]): { x: number; y: number } {
+  const last = map.latLngToContainerPoint(points[points.length - 1]);
+  const size = map.getSize();
+  const screen = points.map((p) => map.latLngToContainerPoint(p));
+  const mx = screen.reduce((s, p) => s + p.x, 0) / screen.length;
+  const my = screen.reduce((s, p) => s + p.y, 0) / screen.length;
+  let ux = last.x - mx;
+  let uy = last.y - my;
+  let len = Math.hypot(ux, uy);
+  if (points.length < 2 || len < 4) {
+    ux = 1; // first corner (or a tiny shape): up and to the right
+    uy = -1;
+    len = Math.SQRT2;
+  }
+  ux /= len;
+  uy /= len;
+  // distance along (dx, dy) that clears the bar's box, plus a gap for the corner handle
+  const reach = (dx: number, dy: number) =>
+    Math.min(ACTION_HALF_W / Math.max(Math.abs(dx), 1e-3), ACTION_HALF_H / Math.max(Math.abs(dy), 1e-3)) + 18;
+  const fits = (x: number, y: number) =>
+    last.x + x - ACTION_HALF_W >= 8 &&
+    last.x + x + ACTION_HALF_W <= size.x - 8 &&
+    last.y + y - ACTION_HALF_H >= 8 &&
+    last.y + y + ACTION_HALF_H <= size.y - 8;
+  for (const [dx, dy] of [[ux, uy], [-ux, -uy], [uy, -ux], [-uy, ux]]) {
+    const r = reach(dx, dy);
+    if (fits(dx * r, dy * r)) return { x: dx * r, y: dy * r };
+  }
+  const r = reach(ux, uy);
+  return { x: ux * r, y: uy * r };
+}
+
+/* ---- Roof type: a custom menu instead of the browser's <select> ---- */
+
+const ROOF_TYPES = [
+  { id: "flat", label: "Flat roof", hint: "Level surface" },
+  { id: "single_slope", label: "Single slope", hint: "One tilted side" },
+  { id: "gable", label: "Gable", hint: "Two sloping sides" },
+] as const;
+type RoofType = (typeof ROOF_TYPES)[number]["id"];
+
+/** Tiny side-view drawing of each roof shape. */
+function RoofGlyph({ type }: { type: RoofType }) {
+  const roof = type === "flat" ? "M3 9h18" : type === "single_slope" ? "M3 12l18-5" : "M3 11l9-6 9 6";
+  const walls = type === "flat" ? "M5.5 9v9M18.5 9v9" : type === "single_slope" ? "M5.5 11.3V18M18.5 7.7V18" : "M5.5 10v8M18.5 10v8";
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="shrink-0">
+      <path d={roof} />
+      <path d={walls} opacity="0.5" />
+    </svg>
+  );
+}
+
+function RoofTypePicker({ value, onChange }: { value: RoofType; onChange: (v: RoofType) => void }) {
+  const current = ROOF_TYPES.find((t) => t.id === value) ?? ROOF_TYPES[0];
+  return (
+    <div className="min-w-0 flex-[1.4]">
+      <Popover
+        label="Roof type"
+        placement="top-start"
+        className="w-[230px] max-w-[calc(100vw-40px)]"
+        trigger={({ open, toggle }) => (
+          <button
+            type="button"
+            onClick={toggle}
+            aria-haspopup="menu"
+            aria-expanded={open}
+            aria-label={`Roof type: ${current.label}`}
+            className={`flex h-10 w-full items-center justify-between gap-2 rounded-[10px] bg-white px-3 text-left text-[13px] text-[#111111] transition-colors hover:bg-[#fafaf9] ${
+              open ? "shadow-[0_0_0_2px_#ea580c]" : "shadow-[0_0_0_1px_#d4d4d2]"
+            }`}
+          >
+            <span className="flex min-w-0 items-center gap-2">
+              <span className="text-[#ea580c]">
+                <RoofGlyph type={current.id} />
+              </span>
+              <span className="truncate font-medium">{current.label}</span>
+            </span>
+            <span className={`shrink-0 text-[#787774] transition-transform ${open ? "rotate-180" : ""}`}>{Icon.chevronDown}</span>
+          </button>
+        )}
+      >
+        {(close) => (
+          <div role="menu" aria-label="Roof type">
+            {ROOF_TYPES.map((t) => (
+              <MenuItem
+                key={t.id}
+                checked={t.id === value}
+                onSelect={() => {
+                  onChange(t.id);
+                  close();
+                }}
+              >
+                <span className="flex items-center gap-2.5">
+                  <span className="text-[#787774]">
+                    <RoofGlyph type={t.id} />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-[13px] font-medium text-[#111111]">{t.label}</span>
+                    <span className="block text-[11px] text-[#787774]">{t.hint}</span>
+                  </span>
+                </span>
+              </MenuItem>
+            ))}
+          </div>
+        )}
+      </Popover>
+    </div>
+  );
+}
+
+function StatTile({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="min-w-0 rounded-[10px] border border-[#f0f0ee] bg-white px-3 py-2">
+      <div className="text-[10px] font-medium uppercase tracking-wide text-[#a3a3a3]">{label}</div>
+      <div className="mt-0.5 flex items-center gap-1.5 truncate text-[15px] font-semibold text-[#111111]">{children}</div>
+    </div>
+  );
+}
+
 export function MapCanvas({
   conversationId,
   refreshKey,
   onSubmitted,
+  onClose,
 }: {
   conversationId: string | null;
   refreshKey: number;
   onSubmitted: (what: "drawn" | "sketch") => void;
+  /** Optional: closes this panel (used by the "Back to chat" button when there is no conversation yet). */
+  onClose?: () => void;
 }) {
   const [state, setState] = useState<RoofState | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -175,10 +349,11 @@ export function MapCanvas({
   // ---- create the Leaflet map once ---------------------------------------------------------------------------
   useEffect(() => {
     if (tab !== "map" || !hostRef.current || mapRef.current) return;
-    const map = L.map(hostRef.current, { zoomControl: true, maxZoom: 19, attributionControl: true }).setView(
+    const map = L.map(hostRef.current, { zoomControl: false, maxZoom: 19, attributionControl: true }).setView(
       [MANILA.lat, MANILA.lon],
       MANILA.zoom,
     );
+    L.control.zoom({ position: "bottomright" }).addTo(map); // floats on the map, away from the top-right buttons
     mapRef.current = map;
     overlayRef.current = L.layerGroup().addTo(map);
     shapeRef.current = L.layerGroup().addTo(map);
@@ -257,7 +432,9 @@ export function MapCanvas({
     const roof = state?.roof;
     if (roof) {
       const ring = roof.polygon_lonlat.map(([lon, lat]) => [lat, lon] as Pt);
-      L.polygon(ring, { color: "#ea580c", weight: 3, fillColor: "#ea580c", fillOpacity: 0.12, interactive: false }).addTo(layer);
+      // White underlay first, so the orange outline stays readable on dark roofs and on busy satellite imagery.
+      L.polygon(ring, { color: "#ffffff", weight: 7, opacity: 0.9, fill: false, interactive: false }).addTo(layer);
+      L.polygon(ring, { color: "#ea580c", weight: 3.5, fillColor: "#ea580c", fillOpacity: 0.14, interactive: false }).addTo(layer);
     }
     if (state?.pin) {
       // The address the user typed, pinned on the map.
@@ -273,8 +450,9 @@ export function MapCanvas({
       }).addTo(layer);
     }
     for (const p of state?.layout?.panels_lonlat ?? []) {
+      // Thin white edge + a slightly stronger fill: panels stay distinct from each other and from dark roofs.
       L.polygon(p.map(([lon, lat]) => [lat, lon] as Pt), {
-        color: "#0b3d91", weight: 1, fillColor: "#1d4ed8", fillOpacity: 0.65, interactive: false,
+        color: "#ffffff", weight: 1.25, opacity: 0.95, fillColor: "#1d4ed8", fillOpacity: 0.78, interactive: false,
       }).addTo(layer);
     }
     if (userLoc) {
@@ -304,17 +482,18 @@ export function MapCanvas({
     if (!handles) return;
     handles.clearLayers();
     drawShape(points);
-    const dot = (size: number, first: boolean, plus: boolean) =>
+    const dot = (size: number, first: boolean, plus: boolean, label = "") =>
       L.divIcon({
         className: "",
         iconSize: [size, size],
         iconAnchor: [size / 2, size / 2],
         html: plus
-          ? `<div style="width:${size}px;height:${size}px;border-radius:50%;background:#f59e0b;color:#fff;font:700 12px/${size}px system-ui;text-align:center;opacity:.85;cursor:copy">+</div>`
-          : `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${first ? "#f59e0b" : "#fff"};border:2px solid #f59e0b;box-shadow:0 1px 4px rgba(0,0,0,.5);cursor:grab"></div>`,
+          ? `<div style="box-sizing:border-box;width:${size}px;height:${size}px;border-radius:50%;background:#f59e0b;color:#fff;font:700 12px/${size}px system-ui;text-align:center;opacity:.85;cursor:copy">+</div>`
+          : `<div style="box-sizing:border-box;width:${size}px;height:${size}px;border-radius:50%;background:${first ? "#f59e0b" : "#fff"};color:${first ? "#fff" : "#92400e"};border:2px solid #f59e0b;box-shadow:0 1px 4px rgba(0,0,0,.5);cursor:grab;font:700 10px/${size - 4}px system-ui;text-align:center">${label}</div>`,
       });
     points.forEach((pt, i) => {
-      const m = L.marker(pt, { icon: dot(i === 0 ? 18 : 14, i === 0, false), draggable: true, zIndexOffset: 2000, keyboard: false });
+      // Numbered corners; the first one is larger (it is where the outline starts).
+      const m = L.marker(pt, { icon: dot(i === 0 ? 22 : 18, i === 0, false, String(i + 1)), draggable: true, zIndexOffset: 2000, keyboard: false });
       const moved = () => {
         const ll = m.getLatLng();
         return pointsRef.current.map((p, k) => (k === i ? ([ll.lat, ll.lng] as Pt) : p));
@@ -347,6 +526,33 @@ export function MapCanvas({
     }
   }, [points, tab, drawShape]);
 
+  // ---- outline actions: Undo / Check pinned to the map next to the last corner, just outside the shape -----------
+  const [actionsEl, setActionsEl] = useState<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || tab !== "map" || !drawing || points.length === 0) {
+      setActionsEl(null);
+      return;
+    }
+    const el = document.createElement("div");
+    const { x, y } = actionOffset(map, points);
+    el.style.position = "absolute";
+    el.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`;
+    // The bar sits on the map: stop clicks / drags on it from adding corners or panning the map.
+    L.DomEvent.disableClickPropagation(el);
+    el.addEventListener("pointerdown", (e) => e.stopPropagation());
+    const marker = L.marker(points[points.length - 1], {
+      icon: L.divIcon({ className: "", html: el, iconSize: [0, 0] }),
+      keyboard: false,
+      zIndexOffset: 3000,
+    }).addTo(map);
+    setActionsEl(el);
+    return () => {
+      marker.remove();
+      setActionsEl(null);
+    };
+  }, [points, drawing, tab]);
+
   const submit = useCallback(
     async (body: RoofSubmission) => {
       if (!conversationId) throw new Error("Send Sol a message first, then draw your roof.");
@@ -371,120 +577,319 @@ export function MapCanvas({
     }
   };
 
+  // ---- keyboard while outlining: Enter confirms (3+ corners), Escape cancels ------------------------------------
+  const sendRef = useRef(sendDrawn);
+  sendRef.current = sendDrawn;
+  const sendingRef = useRef(false);
+  sendingRef.current = sending;
+  useEffect(() => {
+    if (!drawing || tab !== "map") return;
+    let menuWasOpen = false;
+    // Capture phase = runs before every other key handler, so we can see whether a menu was open at that moment.
+    const onKeyCapture = (e: KeyboardEvent) => {
+      if (e.key === "Escape") menuWasOpen = !!document.querySelector('.popover[data-open="true"]');
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.defaultPrevented) return;
+      const el = e.target as HTMLElement | null;
+      if (el && (el.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName))) return; // typing
+      if (e.key === "Escape") {
+        // The chat uses Escape to stop a running reply, and dialogs / menus use it to close. Wait until they have
+        // handled the key (they mark it with preventDefault, or a menu was open), then cancel only if nobody did.
+        window.setTimeout(() => {
+          if (e.defaultPrevented || menuWasOpen) return;
+          setDrawing(false);
+          setPoints([]);
+        }, 0);
+      } else if (e.key === "Enter" && !e.repeat) {
+        if (el && (el.tagName === "BUTTON" || el.tagName === "A")) return; // Enter on a focused button just presses it
+        if (pointsRef.current.length >= 3 && !sendingRef.current) {
+          e.preventDefault();
+          void sendRef.current();
+        }
+      }
+    };
+    window.addEventListener("keydown", onKeyCapture, true);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKeyCapture, true);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [drawing, tab]);
+
   const roof = state?.roof;
-  const compass = (deg: number) => ["N", "NE", "E", "SE", "S", "SW", "W", "NW"][Math.round(deg / 45) % 8];
-  const tabBtn = (t: Tab, label: string) => (
+  const stats = roof ? roofStats(roof, state?.layout ?? null) : null;
+  const step = points.length >= 3 ? 3 : zoom < 18 ? 1 : 2; // which part of the outlining the user is at
+  const drawnArea = outlineAreaM2(points);
+
+  // What the map legend shows: only things that are actually on the map right now.
+  const legend: { key: string; label: string; swatch: ReactNode }[] = [];
+  if (roof) legend.push({ key: "roof", label: "Roof", swatch: <span className="h-2.5 w-4 rounded-[3px] border-2 border-[#ea580c] bg-[#ea580c]/15" /> });
+  if (state?.layout && state.layout.count > 0)
+    legend.push({
+      key: "panels",
+      label: `Panels · ${state.layout.count}`,
+      swatch: <span className="h-2.5 w-4 rounded-[2px] border border-white bg-[#1d4ed8] shadow-[0_0_0_1px_#0b3d91]" />,
+    });
+  if (userLoc)
+    legend.push({
+      key: "you",
+      label: "You",
+      swatch: <span className="h-2.5 w-2.5 rounded-full border-2 border-white bg-[#2563eb] shadow-[0_0_0_1px_#2563eb]" />,
+    });
+  if (drawing && points.length > 0)
+    legend.push({ key: "draft", label: "Your outline", swatch: <span className="h-2.5 w-4 rounded-[3px] border-2 border-dashed border-[#f59e0b]" /> });
+  const roofNotes = roof ? [...roof.warnings, ...roof.notes.filter((n) => /confirm|assumed/i.test(n))] : [];
+
+  /* Same look as the sidebar and chat: flat, hairline borders, orange only for the active state. */
+  const tabBtn = (t: Tab, long: string, short: string) => (
     <button
       type="button"
       onClick={() => setTabChoice(t)}
       aria-pressed={tab === t}
-      className={`row-btn press h-7 rounded-[8px] px-3 text-[13px] font-medium ${tab === t ? "bg-[var(--brand-soft)] text-[var(--brand)]" : "text-[var(--label-2)]"}`}
+      aria-label={long}
+      className={`h-8 rounded-[8px] px-3 text-[12px] font-medium transition-colors ${
+        tab === t ? "bg-[#fafaf9] text-[#ea580c]" : "text-[#787774] hover:bg-[#fafaf9] hover:text-[#111111]"
+      }`}
     >
-      {label}
+      {/* short names when the panel is narrow (container query on the header) */}
+      <span className="@sm:hidden">{short}</span>
+      <span className="hidden @sm:inline">{long}</span>
     </button>
   );
+  const floatBtn =
+    "flex h-8 w-8 items-center justify-center rounded-[8px] bg-white text-[#111111] shadow-[0_0_0_1px_#e5e5e4,0_1px_3px_rgba(0,0,0,0.08)] transition-colors hover:bg-[#fafaf9] hover:text-[#ea580c]";
+  /* The outlining buttons in the footer are the main action of this panel, so they are bigger (40px) than
+     the rest of the controls, the main one is solid orange, and the disabled state is clearly grey. */
+  const iconBig =
+    "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-white text-[#111111] shadow-[0_0_0_1px_#d4d4d2] transition-colors hover:bg-[#fafaf9] disabled:opacity-40";
+  const secondaryBig =
+    "inline-flex h-10 min-w-0 flex-1 items-center justify-center rounded-[10px] bg-white px-3 text-[13px] font-medium text-[#111111] shadow-[0_0_0_1px_#d4d4d2] transition-colors hover:bg-[#fafaf9] disabled:opacity-40";
+  const primaryBig =
+    "inline-flex h-11 w-full items-center justify-center gap-2 rounded-[10px] bg-[#ea580c] px-4 text-[14px] font-semibold text-white shadow-[0_1px_3px_rgba(234,88,12,0.4)] transition-colors hover:bg-[#c2410c] disabled:bg-[#ececea] disabled:text-[#a3a3a3] disabled:shadow-none";
+  const cornersLeft = Math.max(0, 3 - points.length);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3 p-4">
-      <div className="flex items-center gap-1">
-        {tabBtn("map", "Satellite map")}
-        {tabBtn("sketch", "Sketch canvas")}
-        <span className="flex-1" />
-        {tab === "map" && consent === "idle" && (
-          <button
-            type="button"
-            className={`${btn.secondary} btn-sm mr-1.5 inline-flex items-center gap-1.5`}
-            onClick={() => (userLoc ? setUserLoc({ ...userLoc }) : setConsent("ask"))}
-            title={userLoc ? "Re-center on my location" : "Share my location"}
-          >
-            {Icon.pin}
-            <span>My location</span>
-          </button>
-        )}
-        {tab === "map" && (
-          <button type="button" className={`${btn.secondary} btn-sm`} onClick={() => setStreet((s) => !s)}>
-            {street ? "Satellite" : "Street map"}
-          </button>
-        )}
+    <div className="roofmap flex min-h-0 flex-1 flex-col bg-white">
+      {/* Header: same height and hairline as the chat header, so the two panes line up */}
+      <div className="@container flex h-12 shrink-0 items-center gap-1 border-b border-[#f0f0ee] px-3">
+        {tabBtn("map", "Satellite map", "Map")}
+        {tabBtn("sketch", "Sketch canvas", "Sketch")}
       </div>
 
       {tab === "sketch" ? (
-        <SketchPad disabled={!conversationId} onSubmit={submit} />
+        <div className="flex min-h-0 flex-1 flex-col p-4">
+          <SketchPad disabled={!conversationId} onSubmit={submit} />
+        </div>
       ) : (
         <>
-          <div className="relative min-h-[260px] flex-1 overflow-hidden rounded-[14px] shadow-[0_0_0_1px_var(--hairline)]">
-            <div ref={hostRef} className="absolute inset-0 bg-[var(--fill)]" />
-            {drawing && (
-              <div className="pointer-events-none absolute top-3 left-1/2 z-[1000] -translate-x-1/2 rounded-full bg-white/95 px-3 py-1.5 text-[12px] font-medium shadow-[0_1px_6px_rgba(0,0,0,0.18)]">
-                {zoom < 18
-                  ? "Zoom in on your house first, then click its corners"
-                  : points.length < 3
-                    ? "Click the corners of your roof"
-                    : "Add more corners or press “Use this outline”"}
-              </div>
-            )}
-            {!conversationId && consent === "idle" && (
-              <div className="absolute inset-x-3 bottom-3 z-[1000] rounded-[10px] bg-white/95 px-3 py-2 text-[12px] shadow-[0_1px_6px_rgba(0,0,0,0.18)]">
-                Send Sol a message first, then trace your roof here.
-              </div>
-            )}
-            {consent !== "idle" && (
-              <div className="absolute inset-0 z-[1100] flex items-center justify-center bg-black/25 p-4 backdrop-blur-[1px]">
-                <div
-                  role="dialog"
-                  aria-modal="true"
-                  aria-labelledby="loc-title"
-                  className="w-full max-w-[340px] rounded-[16px] bg-white p-5 text-center shadow-[0_12px_40px_rgba(0,0,0,0.22)]"
+          {/* The map fills the panel edge to edge; its controls float on top of it */}
+          <div className="relative isolate min-h-[260px] flex-1 overflow-hidden">
+            <div ref={hostRef} className="absolute inset-0 bg-[#f4f4f2]" />
+
+            <div className="absolute top-3 right-3 z-[1000] flex flex-col gap-2">
+              {consent === "idle" && (
+                <button
+                  type="button"
+                  className={floatBtn}
+                  onClick={() => (userLoc ? setUserLoc({ ...userLoc }) : setConsent("ask"))}
+                  title={userLoc ? "Re-center on my location" : "Share my location"}
+                  aria-label={userLoc ? "Re-center on my location" : "Share my location"}
                 >
-                  <span className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-[#fff7ed] text-[#ea580c] [&_svg]:size-5">
-                    {Icon.pin}
+                  {Icon.pin}
+                </button>
+              )}
+            </div>
+
+            {/* Step indicator while outlining: 1 zoom in, 2 click corners, 3 adjust and confirm */}
+            {drawing && (
+              <div
+                className="pointer-events-none absolute top-3 left-1/2 z-[1000] flex max-w-[calc(100%-112px)] -translate-x-1/2 items-center gap-2 rounded-full border border-[#e5e5e4] bg-white px-3.5 py-1.5 text-[12px] font-medium text-[#111111] shadow-[0_2px_8px_rgba(0,0,0,0.08)]"
+                role="status"
+                aria-live="polite"
+              >
+                <span className="flex shrink-0 items-center gap-1" aria-hidden="true">
+                  {[1, 2, 3].map((n) => (
+                    <span key={n} className={`h-1.5 rounded-full transition-all ${n === step ? "w-4 bg-[#ea580c]" : n < step ? "w-1.5 bg-[#ea580c]" : "w-1.5 bg-[#d4d4d2]"}`} />
+                  ))}
+                </span>
+                <span className="truncate">
+                  {step === 1
+                    ? "Zoom in on your house first"
+                    : step === 2
+                      ? "Click the corners of your roof"
+                      : "Drag corners to adjust, then confirm"}
+                </span>
+                {step === 3 && drawnArea > 0 && (
+                  <span className="shrink-0 rounded-full bg-[#fff7ed] px-2 py-0.5 text-[11px] font-semibold text-[#c2410c]">
+                    ≈ {Math.round(drawnArea)} m²
                   </span>
-                  <h3 id="loc-title" className="mt-3 text-[15px] font-semibold text-[#111111]">
-                    Share your location?
-                  </h3>
-                  <p className="mt-1.5 text-[12.5px] leading-relaxed text-[#787774]">
-                    Sol can center the map on where you are so it's easier to find your roof. Your location stays in
-                    your browser and isn't saved or sent to our server.
-                  </p>
-                  {consent === "error" && locError && <p className="mt-2 text-[12px] text-red-600">{locError}</p>}
-                  <div className="mt-4 flex gap-2">
+                )}
+              </div>
+            )}
+            {/* Undo / Check sit on the map itself, just outside the outline (see the "outline actions" effect) */}
+            {actionsEl &&
+              createPortal(
+                <div
+                  className="flex items-center gap-1 rounded-full bg-white p-1 shadow-[0_0_0_1px_#e5e5e4,0_4px_14px_rgba(0,0,0,0.18)]"
+                  role="group"
+                  aria-label="Outline actions"
+                >
+                  <button
+                    type="button"
+                    onClick={() => setPoints((p) => p.slice(0, -1))}
+                    disabled={!points.length}
+                    title="Undo last corner"
+                    aria-label="Undo last corner"
+                    className="flex h-9 w-9 items-center justify-center rounded-full text-[#111111] transition-colors hover:bg-[#f4f4f2] disabled:opacity-35 disabled:hover:bg-transparent"
+                  >
+                    {Icon.undo}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={sendDrawn}
+                    disabled={points.length < 3 || sending}
+                    title={points.length < 3 ? `Add ${3 - points.length} more corner${3 - points.length === 1 ? "" : "s"} first` : "Use this outline (Enter)"}
+                    aria-label="Use this outline"
+                    className="flex h-9 w-9 items-center justify-center rounded-full bg-[#ea580c] text-white transition-colors hover:bg-[#c2410c] disabled:bg-[#ececea] disabled:text-[#a3a3a3] [&_svg]:size-[18px]"
+                  >
+                    {sending ? <Spinner /> : Icon.check}
+                  </button>
+                </div>,
+                actionsEl,
+              )}
+            {/* Bottom-left stack: nothing here blocks the map, so you can pan, zoom and draw while it is showing.
+                Order, top to bottom: location question, "start a chat first" message, legend, Satellite/Street. */}
+            <div className="absolute bottom-8 left-3 z-[1000] flex max-w-[min(320px,calc(100%-72px))] flex-col items-start gap-2">
+              {consent !== "idle" && (
+                <div
+                  role="region"
+                  aria-labelledby="loc-title"
+                  className="w-full rounded-[12px] border border-[#e5e5e4] bg-white p-3 shadow-[0_4px_16px_rgba(0,0,0,0.14)]"
+                >
+                  <div className="flex items-start gap-2.5">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#fff7ed] text-[#ea580c]">{Icon.pin}</span>
+                    <div className="min-w-0">
+                      <h3 id="loc-title" className="text-[13px] font-semibold text-[#111111]">
+                        Share your location?
+                      </h3>
+                      <p className="mt-0.5 text-[12px] leading-relaxed text-[#787774]">
+                        Sol can center the map on you to help find your roof. It stays in your browser and isn't saved or sent to our server.
+                      </p>
+                    </div>
+                  </div>
+                  {consent === "error" && locError && <p className="mt-2 text-[12px] text-[#dc2626]">{locError}</p>}
+                  <div className="mt-2.5 flex gap-2">
                     <button type="button" className={`${btn.secondary} btn-sm flex-1`} onClick={declineLocation} disabled={consent === "locating"}>
                       Not now
                     </button>
-                    <button
-                      type="button"
-                      className={`${btn.primary} btn-sm flex-1`}
-                      onClick={() => locate()}
-                      disabled={consent === "locating"}
-                      autoFocus
-                    >
-                      {consent === "locating" ? <Spinner /> : consent === "error" ? "Try again" : "Share my location"}
+                    <button type="button" className={`${btn.primary} btn-sm flex-1`} onClick={() => locate()} disabled={consent === "locating"}>
+                      {consent === "locating" ? <Spinner /> : consent === "error" ? "Try again" : "Share"}
                     </button>
                   </div>
                 </div>
+              )}
+
+              {!conversationId && (
+                <div className="w-full rounded-[12px] border border-[#e5e5e4] bg-white p-3 shadow-[0_4px_16px_rgba(0,0,0,0.12)]">
+                  <div className="flex items-start gap-2.5">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#f4f4f2] text-[#787774]">{Icon.chat}</span>
+                    <div className="min-w-0">
+                      <p className="text-[13px] font-semibold text-[#111111]">Start with a message</p>
+                      <p className="mt-0.5 text-[12px] leading-relaxed text-[#787774]">Tell Sol about your home in the chat, then trace your roof here.</p>
+                    </div>
+                  </div>
+                  {onClose && (
+                    <button type="button" className={`${btn.secondary} btn-sm mt-2.5 w-full`} onClick={onClose}>
+                      Back to chat
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {legend.length > 0 && (
+                <ul className="flex flex-col gap-1 rounded-[10px] border border-[#e5e5e4] bg-white/95 px-2.5 py-1.5 text-[11px] font-medium text-[#111111] shadow-[0_2px_8px_rgba(0,0,0,0.1)]" aria-label="Map legend">
+                  {legend.map((l) => (
+                    <li key={l.key} className="flex items-center gap-2">
+                      <span className="flex w-4 shrink-0 items-center justify-center">{l.swatch}</span>
+                      {l.label}
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {/* Satellite / Street: both options visible, the current one highlighted */}
+              <div className="flex rounded-[10px] bg-white p-0.5 shadow-[0_0_0_1px_#e5e5e4,0_2px_8px_rgba(0,0,0,0.1)]" role="group" aria-label="Map type">
+                {(
+                  [
+                    { id: false, label: "Satellite", swatch: "bg-[linear-gradient(135deg,#3f5d3a,#8a7a58)]" },
+                    { id: true, label: "Street", swatch: "bg-[linear-gradient(135deg,#ecebe6_45%,#f6c453_46%,#f6c453_54%,#ecebe6_55%)]" },
+                  ] as const
+                ).map((o) => (
+                  <button
+                    key={o.label}
+                    type="button"
+                    onClick={() => setStreet(o.id)}
+                    aria-pressed={street === o.id}
+                    className={`flex h-7 items-center gap-1.5 rounded-[8px] px-2 text-[11px] font-medium transition-colors ${
+                      street === o.id ? "bg-[#fafaf9] text-[#ea580c]" : "text-[#787774] hover:bg-[#fafaf9] hover:text-[#111111]"
+                    }`}
+                  >
+                    <span className={`h-3.5 w-3.5 shrink-0 rounded-[4px] shadow-[0_0_0_1px_rgba(0,0,0,0.15)] ${o.swatch}`} />
+                    {o.label}
+                  </button>
+                ))}
               </div>
-            )}
+            </div>
           </div>
 
-          {roof && !drawing && (
-            <div className="rounded-[12px] bg-white px-3 py-2 text-[12px] shadow-[0_0_0_1px_var(--hairline)]">
-              <span className="font-medium text-[var(--fg)]">{roof.area_m2.toFixed(0)} m²</span> roof · faces{" "}
-              {compass(roof.azimuth_deg)} ({roof.azimuth_deg.toFixed(0)}°) · {roof.usable_area_m2.toFixed(0)} m² usable ·{" "}
-              {roof.confidence} confidence
-              {state?.layout ? ` · ${state.layout.count} panels placed` : ""}
-              {[...roof.warnings, ...roof.notes.filter((n) => /confirm|assumed/i.test(n))].map((w) => (
-                <div key={w} className="mt-1 text-[var(--accent-ink)]">{w}</div>
-              ))}
-            </div>
-          )}
-          {loadError && <p className="text-[12px] text-red-600">{loadError}</p>}
-          {sendError && <p className="text-[12px] text-red-600">{sendError}</p>}
+          {/* Footer: roof result tiles, messages and the drawing actions. @container: the panel width changes
+              when the split divider is dragged, so the tiles respond to this box, not to the screen. */}
+          <div className="@container flex shrink-0 flex-col gap-2.5 border-t border-[#f0f0ee] bg-white px-4 py-3">
+            {roof && stats && !drawing && (
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[12px] font-semibold text-[#111111]">Your roof</span>
+                  <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${CONFIDENCE_STYLE[roof.confidence]}`}>
+                    {roof.confidence.charAt(0).toUpperCase() + roof.confidence.slice(1)} confidence
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 @md:grid-cols-4">
+                  <StatTile label="Roof area">{stats.area}</StatTile>
+                  <StatTile label="Usable">{stats.usable}</StatTile>
+                  <StatTile label="Facing">
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      className="shrink-0 text-[#ea580c]"
+                      style={{ transform: `rotate(${stats.degrees}deg)` }}
+                      aria-hidden="true"
+                    >
+                      <path d="M12 3l6 15-6-3-6 3z" fill="currentColor" />
+                    </svg>
+                    <span>
+                      {stats.letters} <span className="text-[12px] font-medium text-[#787774]">{stats.degrees}°</span>
+                    </span>
+                  </StatTile>
+                  <StatTile label="Panels">{stats.panels}</StatTile>
+                </div>
+                {roofNotes.length > 0 && (
+                  <div className="rounded-[10px] bg-[#fffbeb] px-3 py-2 text-[12px] leading-relaxed text-[#b45309]">
+                    {roofNotes.map((w) => (
+                      <p key={w}>{w}</p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            {loadError && <p className="text-[12px] text-[#dc2626]">{loadError}</p>}
+            {sendError && <p className="text-[12px] text-[#dc2626]">{sendError}</p>}
 
-          <div className="flex flex-wrap items-center gap-2">
             {!drawing ? (
               <button
                 type="button"
-                className={`${btn.primary} btn-sm`}
+                className={primaryBig}
                 disabled={!conversationId}
                 onClick={() => {
                   setDrawing(true);
@@ -492,38 +897,59 @@ export function MapCanvas({
                   setSendError(null);
                 }}
               >
+                {/* outline-a-shape icon */}
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M5 8l7-4 7 4-2 10H7z" />
+                  <circle cx="5" cy="8" r="1.4" fill="currentColor" />
+                  <circle cx="12" cy="4" r="1.4" fill="currentColor" />
+                  <circle cx="19" cy="8" r="1.4" fill="currentColor" />
+                  <circle cx="17" cy="18" r="1.4" fill="currentColor" />
+                  <circle cx="7" cy="18" r="1.4" fill="currentColor" />
+                </svg>
                 {roof ? "Redraw roof outline" : "Draw roof outline"}
               </button>
             ) : (
-              <>
-                <select
-                  className="h-8 rounded-[8px] bg-white px-2 text-[13px] shadow-[0_0_0_1px_var(--hairline)] outline-none"
-                  value={roofType}
-                  onChange={(e) => setRoofType(e.target.value as typeof roofType)}
-                  aria-label="Roof type"
-                >
-                  <option value="flat">Flat roof</option>
-                  <option value="single_slope">Single slope</option>
-                  <option value="gable">Gable</option>
-                </select>
-                <button type="button" className={`${btn.secondary} btn-sm`} onClick={() => setPoints((p) => p.slice(0, -1))} disabled={!points.length}>
-                  Undo
+              <div className="flex flex-col gap-2">
+                <div className="flex gap-2">
+                  <RoofTypePicker value={roofType} onChange={setRoofType} />
+                  <button
+                    type="button"
+                    className={iconBig}
+                    onClick={() => setPoints((p) => p.slice(0, -1))}
+                    disabled={!points.length}
+                    title="Undo last corner"
+                    aria-label="Undo last corner"
+                  >
+                    {Icon.undo}
+                  </button>
+                  <button
+                    type="button"
+                    className={`${secondaryBig} @max-xs:w-10 @max-xs:flex-none @max-xs:px-0`}
+                    onClick={() => {
+                      setDrawing(false);
+                      setPoints([]);
+                    }}
+                    title="Cancel outlining (Esc)"
+                    aria-label="Cancel outlining"
+                  >
+                    {/* text in a wide panel, just an X in a narrow one */}
+                    <span className="hidden @xs:inline">Cancel</span>
+                    <span className="@xs:hidden">{Icon.close}</span>
+                  </button>
+                </div>
+                <button type="button" className={primaryBig} onClick={sendDrawn} disabled={points.length < 3 || sending}>
+                  {sending ? (
+                    <Spinner />
+                  ) : cornersLeft > 0 ? (
+                    `Add ${cornersLeft} more corner${cornersLeft === 1 ? "" : "s"} to continue`
+                  ) : (
+                    <>
+                      {Icon.check}
+                      Use this outline
+                    </>
+                  )}
                 </button>
-                <button
-                  type="button"
-                  className={`${btn.secondary} btn-sm`}
-                  onClick={() => {
-                    setDrawing(false);
-                    setPoints([]);
-                  }}
-                >
-                  Cancel
-                </button>
-                <span className="flex-1" />
-                <button type="button" className={`${btn.primary} btn-sm`} onClick={sendDrawn} disabled={points.length < 3 || sending}>
-                  {sending ? <Spinner /> : "Use this outline"}
-                </button>
-              </>
+              </div>
             )}
           </div>
         </>

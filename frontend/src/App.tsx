@@ -810,10 +810,10 @@ export default function App() {
                 animate={reduced ? { opacity: 1 } : { width: `${100 - splitPercent}%`, opacity: 1 }}
                 exit={reduced ? { opacity: 0 } : { width: "0%", opacity: 0 }}
                 transition={isDragging ? { duration: 0 } : { duration: 0.36, ease: [0.32, 0.72, 0, 1] }}
-                className="relative flex h-full shrink-0 overflow-hidden bg-[#fafaf9] border-l border-[#f0f0ee] will-change-transform"
+                className="relative flex h-full shrink-0 overflow-hidden bg-white border-l border-[#f0f0ee] will-change-transform"
               >
                 <div className="relative flex h-full w-full min-w-0 flex-col overflow-hidden">
-                  <MapCanvas conversationId={currentId} refreshKey={roofTick} onSubmitted={onRoofSubmitted} />
+                  <MapCanvas conversationId={currentId} refreshKey={roofTick} onSubmitted={onRoofSubmitted} onClose={toggleCanvas} />
                 </div>
               </m.div>
             )}

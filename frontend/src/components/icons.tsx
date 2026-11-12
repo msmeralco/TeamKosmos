@@ -117,6 +117,12 @@ export const Icon = {
       <path d="M5 12.5l4.5 4.5L19 7.5" />
     </Svg>
   ),
+  undo: (
+    <Svg size={16} stroke={2}>
+      <path d="M9 14L4 9l5-5" />
+      <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" />
+    </Svg>
+  ),
   close: (
     <Svg size={14} stroke={2}>
       <path d="M6 6l12 12M18 6L6 18" />

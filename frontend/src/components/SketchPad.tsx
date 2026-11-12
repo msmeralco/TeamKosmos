@@ -292,11 +292,12 @@ export function SketchPad({
     setError(null);
   };
 
-  const field = "h-8 rounded-[8px] bg-white px-2 text-[13px] shadow-[0_0_0_1px_var(--hairline)] outline-none";
+  const field =
+    "h-8 rounded-[8px] bg-white px-2 text-[12px] shadow-[0_0_0_1px_#e5e5e4] outline-none focus-visible:shadow-[0_0_0_1px_#ea580c]";
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto">
-      <div className="overflow-hidden rounded-[12px] bg-white shadow-[0_0_0_1px_var(--hairline)]">
+      <div className="overflow-hidden rounded-[12px] bg-white shadow-[0_0_0_1px_#e5e5e4]">
         <canvas
           ref={canvasRef}
           width={W}
@@ -377,7 +378,7 @@ export function SketchPad({
       </div>
 
       {!measured && points.length >= 2 && (
-        <p className="rounded-[10px] bg-[var(--accent-soft)] px-3 py-2 text-[12px] text-[var(--accent-ink)]">
+        <p className="rounded-[10px] bg-[#fffbeb] px-3 py-2 text-[12px] text-[#b45309]">
           The scale is only a suggestion (20 px = 1 m). Draw one edge, then enter its real length under &ldquo;Fix the
           scale&rdquo;. Without it the area and panel count can be far off and the roof is marked low confidence.
         </p>

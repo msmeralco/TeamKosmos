@@ -86,19 +86,23 @@ body {
   .btn-sm {
     height: 32px;
     padding: 0 12px;
-    font-size: 13px;
-    border-radius: 9px;
+    font-size: 12px;
+    border-radius: 8px;
   }
   .btn-primary {
-    background: var(--brand);
+    background: #111111;
     color: #fff;
+  }
+  .btn-primary:disabled {
+    opacity: 0.4;
   }
   .btn-secondary {
     background: #fff;
     color: var(--fg);
-    box-shadow:
-      0 0 0 1px var(--hairline),
-      0 1px 2px rgba(0, 0, 0, 0.03);
+    box-shadow: 0 0 0 1px #e5e5e4;
+  }
+  .btn-secondary:disabled {
+    opacity: 0.5;
   }
   .btn-ghost {
     background: transparent;
@@ -173,18 +177,56 @@ body {
 /* ---------- Hover only on real pointers ---------- */
 @media (hover: hover) and (pointer: fine) {
   .btn-primary:hover:not(:disabled) {
-    background: var(--brand-hover);
+    background: #333333;
   }
   .btn-secondary:hover:not(:disabled),
   .chip-btn:hover,
   .pill:hover {
-    background: var(--fill);
+    background: #fafaf9;
   }
   .btn-ghost:hover:not(:disabled),
   .btn-icon:hover,
   .row-btn:hover:not(:disabled) {
     background: var(--fill-2);
   }
+}
+
+/* ---------- Roof map (Leaflet) controls: flat, hairline, app type. Scoped to .roofmap so
+   selectors out-rank leaflet.css without !important ---------- */
+.roofmap .leaflet-container {
+  font-family: inherit;
+  background: var(--fill);
+}
+.roofmap .leaflet-bar {
+  border: 1px solid #e5e5e4;
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+}
+.roofmap .leaflet-bar a,
+.roofmap .leaflet-bar a:hover {
+  width: 30px;
+  height: 30px;
+  line-height: 30px;
+  background: #fff;
+  color: #111111;
+  border-bottom: 1px solid #f0f0ee;
+  border-radius: 0;
+}
+.roofmap .leaflet-bar a:last-child {
+  border-bottom: none;
+}
+.roofmap .leaflet-bar a:hover {
+  background: #fafaf9;
+  color: #ea580c;
+}
+.roofmap .leaflet-control-attribution {
+  background: rgba(255, 255, 255, 0.85);
+  color: #787774;
+  font-size: 10px;
+}
+.roofmap .leaflet-control-attribution a {
+  color: #787774;
 }
 
 /* ---------- App shell: sidebar column tweens on collapse ---------- */
