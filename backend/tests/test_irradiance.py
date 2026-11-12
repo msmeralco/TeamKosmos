@@ -120,7 +120,7 @@ def test_short_conversation_ids_are_refused(client):
 
 def test_change_menu_can_be_cancelled(client):
     cid = "conv-chg-0123456789"
-    for m in ["reyes demo", "Yes, use 450 kWh per month", "My budget is ₱150,000 to ₱300,000", "I want the fastest payback", "I want to change something"]:
+    for m in ["reyes demo", "Yes, use 450 kWh per month", "I want a grid-tied (on-grid) system", "My budget is ₱150,000 to ₱300,000", "I want the fastest payback", "I want to change something"]:
         out = client.post("/api/agent/chat?stream=false", data={"conversation_id": cid, "message": m}).json()
     assert out["reply"]["slot"] == "change"
     out = client.post("/api/agent/chat?stream=false", data={"conversation_id": cid, "message": "never mind"}).json()

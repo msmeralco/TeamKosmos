@@ -16,7 +16,7 @@ from ...config import Settings
 from ...errors import ApiError
 from ...models import PanelSpec, RoofModel
 from .. import geo, layout, load as load_svc, optimizer, passport, products, rag, simulate
-from ..assumptions import all_assumptions
+from ..assumptions import A, all_assumptions
 from ..scraper import search as product_search
 from . import intake, nlu, summary
 from .session import Session
@@ -139,6 +139,7 @@ def profile_view(s: Session) -> dict:
     return {
         "roof": intake.roof_label(p.roof), "roof_method": p.roof_method, "monthly_kwh": p.monthly_kwh,
         "monthly_bill_php": p.monthly_bill_php, "usage_confirmed": p.load_confirmed,
+        "system_type": p.system_type,
         "budget_min_php": p.budget_min_php, "budget_max_php": p.budget_max_php, "goal": p.goal,
         "goal_target_pct": p.goal_target_pct, "backup_hours": p.backup_hours, "net_metering": p.net_metering,
         "summary_confirmed": p.confirmed, "household": s.persona.name,
@@ -185,6 +186,8 @@ class UpdateProfileArgs(BaseModel):
     confirm_load: bool | None = Field(None, description="True when the user confirms the usage/bill shown.")
     load_source: Literal["user", "bill_photo"] | None = Field(None, description="bill_photo only if read from an attached bill and confirmed.")
     household_template: Literal["night_heavy", "balanced", "day_heavy"] | None = None
+    system_type: Literal["on_grid", "off_grid", "hybrid"] | None = Field(
+        None, description="Type of solar system the user chose: on_grid (grid-tied, no battery), off_grid (batteries, no utility) or hybrid (grid plus battery).")
     budget_min_php: float | None = Field(None, description="Lower end of the budget in pesos, 0 if the user gave only a maximum.")
     budget_max_php: float | None = Field(None, description="Maximum budget in pesos for the whole installed system.")
     goal: Literal["cut_bill", "max_savings_10y", "fastest_payback", "backup"] | None = None
@@ -343,11 +346,12 @@ def _run_analysis(ctx: TurnContext, _a: NoArgs) -> dict:
     if slot != "run":
         return {"error": "not_ready", "message": "The inputs are not complete or not confirmed yet.", **snapshot(ctx)}
     p = s.profile
+    s.pending.pop("full_roof", None)
     roof = RoofModel.model_validate(p.roof)
     ld = load_svc.from_profile(p)
     try:
         res = optimizer.optimize(roof, ld, budget_max_php=p.budget_max_php, budget_min_php=p.budget_min_php, goal=p.goal,
-                                 goal_target_pct=p.goal_target_pct, backup_hours=p.backup_hours)
+                                 goal_target_pct=p.goal_target_pct, backup_hours=p.backup_hours, system_type=p.system_type)
     except ApiError:
         # No design fits: send the user to the "change something" choices instead of looping on 'run'.
         p.confirmed = False
@@ -355,7 +359,7 @@ def _run_analysis(ctx: TurnContext, _a: NoArgs) -> dict:
         raise
     res = jsonable(res)
     s.results["analysis"] = {"optimize": res, "load": ld.to_dict(include_hourly=False), "selected_index": 0}
-    summ = summary.summarize_analysis(res, p.net_metering, roof)
+    summ = summary.summarize_analysis(res, p.net_metering, p.system_type, roof)
     s.results["summary"] = summ
     ctx.cards.append({"type": "analysis", "data": summ})
     return {"summary": summ, **snapshot(ctx)}
@@ -366,7 +370,7 @@ def _analysis_item(s: Session, idx: int | None) -> tuple[dict, int]:
     if not a:
         raise ApiError("not_ready", "There is no analysis yet. Run the numbers first.")
     pk = a["optimize"]["packages"]
-    i = 0 if idx is None else idx
+    i = a.get("selected_index", 0) if idx is None else idx
     if not 0 <= i < len(pk):
         raise ApiError("invalid_package", f"Package index must be between 0 and {len(pk) - 1}.")
     return pk[i], i
@@ -475,6 +479,11 @@ class PassportArgs(BaseModel):
 def _issue_passport(ctx: TurnContext, a: PassportArgs) -> dict:
     s = ctx.session
     item, i = _analysis_item(s, a.package_index)
+    existing = s.results.get("passport")
+    if existing and existing.get("package_index") == i:
+        # Same analysis, same option: show the record already issued instead of signing a duplicate.
+        ctx.cards.append({"type": "passport", "data": existing})
+        return {**existing, "already_issued": True}
     p = s.profile
     inputs = {
         "roof": p.roof, "load": {"params": load_params(s), "summary": s.results["analysis"]["load"]},
@@ -484,10 +493,43 @@ def _issue_passport(ctx: TurnContext, a: PassportArgs) -> dict:
     rec = passport.issue(inputs=jsonable(inputs), package=item["package"], results=item["roi"])
     checks = {c["name"]: c["status"] for c in rec["body"]["verification"]["checks"]}
     out = {"id": rec["id"], "short_hash": rec["short_hash"], "verify_path": rec["verify_path"], "hash": rec["hash"],
-           "package_index": i, "checks_at_issue": checks}
+           "package_index": i, "checks_at_issue": checks, "created_at": rec["created_at"],
+           "option": item["package"].get("label") or "Selected option",
+           "panels": item["package"]["panel_count"], "kwp": item["package"]["kwp"]}
     s.results["passport"] = out
     ctx.cards.append({"type": "passport", "data": out})
     return out
+
+
+@tool("toggle_roof_fill", "Switch the map between the chosen design and a preview with panels on the whole roof. "
+      "Use when the user wants to see the roof fully covered. The preview is a layout, not a recommendation.", NoArgs, "Laying panels on the roof")
+def _toggle_roof_fill(ctx: TurnContext, _a: NoArgs) -> dict:
+    s = ctx.session
+    item, _i = _analysis_item(s, None)
+    pkg = item["package"]
+    if s.pending.get("full_roof"):
+        s.pending.pop("full_roof")
+        ctx.flags["open_map"] = True
+        return {"mode": "design", "panels": pkg["panel_count"], "kwp": pkg["kwp"]}
+    roof = RoofModel.model_validate(s.profile.roof)
+    panel = pkg["panel"]
+    n = layout.panel_capacity(roof, *panel["dims_m"])
+    if n <= 0:
+        return {"error": "no_space", "message": "No more panels fit on this roof."}
+    kwp = n * panel["watts"] / 1000.0
+    cost = n * panel["price_php"] + A("install_cost_php_per_kw") * kwp + A("permits_misc_php")
+    s.pending["full_roof"] = True
+    ctx.flags["open_map"] = True
+    budget = s.profile.budget_max_php
+    return {
+        "mode": "full", "panels": n, "kwp": round(kwp, 2), "panel_model": f"{panel['brand']} {panel['model']} ({panel['watts']:g} W)",
+        "panel_area_m2": round(n * panel["dims_m"][0] * panel["dims_m"][1], 0), "roof_area_m2": roof.area_m2,
+        "rough_cost_php": round(cost, 0), "design_panels": pkg["panel_count"], "design_kwp": pkg["kwp"],
+        "design_cost_php": pkg["capex_php"], "budget_max_php": budget,
+        "over_budget_php": round(max(0.0, cost - budget), 0) if budget else None,
+        "net_metering_cap_kw": A("net_metering_cap_kw"), "above_net_metering_cap": kwp > A("net_metering_cap_kw"),
+        "largest_inverter_kw": max((p["inverter_ac_kw"] for p in products.list_products() if p["category"] == "inverter"), default=0),
+    }
 
 
 class ProductArgs(BaseModel):
@@ -543,7 +585,11 @@ def layout_for_selected(s: Session) -> dict | None:
     panel = item["package"]["panel"]
     roof = RoofModel.model_validate(s.profile.roof)
     res = layout.pack_panels(roof, PanelSpec(length_m=panel["dims_m"][0], width_m=panel["dims_m"][1]))
-    n = item["package"]["panel_count"]
+    n = len(res["panels_lonlat"]) if s.pending.get("full_roof") else item["package"]["panel_count"]
+    res["full_roof"] = bool(s.pending.get("full_roof"))
+    # Positions the roof could still hold are returned too, so the map can show the unused room.
+    res["spots_lonlat"] = res["panels_lonlat"][n:]
     res["panels_m"], res["panels_lonlat"] = res["panels_m"][:n], res["panels_lonlat"][:n]
     res["count"] = len(res["panels_m"])
+    res["capacity"] = res["count"] + len(res["spots_lonlat"])
     return jsonable(res)

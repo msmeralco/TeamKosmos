@@ -6,16 +6,29 @@ import { getRoofState, submitRoof, type RoofState, type RoofSubmission } from ".
 import { crossesItself, selfIntersects } from "../lib/geometry";
 import { Icon } from "./icons";
 import { SketchPad } from "./SketchPad";
-import { btn, MenuItem, Popover, Spinner } from "./ui";
+import { RoofTypePicker } from "./RoofTypePicker";
+import { btn, Spinner } from "./ui";
 
 /* The right-hand "Roof Map" panel: satellite map with the roof outline and panel layout from the backend,
    a polygon drawing tool, and a blank-canvas sketch tool. Both send the roof to the backend session. */
 
 const MANILA = { lat: 14.5995, lon: 120.9842, zoom: 12 };
-const SAT_URL = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
+const ESRI_KEY = (import.meta.env.VITE_ESRI_API_KEY as string | undefined) ?? "";
+/* Esri now serves a "API KEY REQUIRED" watermark to anonymous requests, so the key is appended as a token. */
+const SAT_URL =
+  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" +
+  (ESRI_KEY ? `?token=${ESRI_KEY}` : "");
 const SAT_ATTR = "Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community";
 const OSM_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 const OSM_ATTR = "&copy; OpenStreetMap contributors";
+/* Esri reference overlays: road lines + street names, and place names. They use the same key as the imagery. */
+const REF_BASE = "https://services.arcgisonline.com/arcgis/rest/services/Reference";
+const REF_TOKEN = ESRI_KEY ? `?token=${ESRI_KEY}` : "";
+const LABEL_URLS = [
+  `${REF_BASE}/World_Transportation/MapServer/tile/{z}/{y}/{x}${REF_TOKEN}`,
+  `${REF_BASE}/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}${REF_TOKEN}`,
+];
+const LABELS_ATTR = "Labels &copy; Esri";
 
 type Tab = "map" | "sketch";
 type Pt = [number, number]; // [lat, lng]
@@ -147,85 +160,6 @@ function actionOffset(map: L.Map, points: Pt[]): { x: number; y: number } {
   return { x: ux * r, y: uy * r };
 }
 
-/* ---- Roof type: a custom menu instead of the browser's <select> ---- */
-
-const ROOF_TYPES = [
-  { id: "flat", label: "Flat roof", hint: "Level surface" },
-  { id: "single_slope", label: "Single slope", hint: "One tilted side" },
-  { id: "gable", label: "Gable", hint: "Two sloping sides" },
-] as const;
-type RoofType = (typeof ROOF_TYPES)[number]["id"];
-
-/** Tiny side-view drawing of each roof shape. */
-function RoofGlyph({ type }: { type: RoofType }) {
-  const roof = type === "flat" ? "M3 9h18" : type === "single_slope" ? "M3 12l18-5" : "M3 11l9-6 9 6";
-  const walls = type === "flat" ? "M5.5 9v9M18.5 9v9" : type === "single_slope" ? "M5.5 11.3V18M18.5 7.7V18" : "M5.5 10v8M18.5 10v8";
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="shrink-0">
-      <path d={roof} />
-      <path d={walls} opacity="0.5" />
-    </svg>
-  );
-}
-
-function RoofTypePicker({ value, onChange }: { value: RoofType; onChange: (v: RoofType) => void }) {
-  const current = ROOF_TYPES.find((t) => t.id === value) ?? ROOF_TYPES[0];
-  return (
-    <div className="min-w-0 flex-[1.4]">
-      <Popover
-        label="Roof type"
-        placement="top-start"
-        className="w-[230px] max-w-[calc(100vw-40px)]"
-        trigger={({ open, toggle }) => (
-          <button
-            type="button"
-            onClick={toggle}
-            aria-haspopup="menu"
-            aria-expanded={open}
-            aria-label={`Roof type: ${current.label}`}
-            className={`flex h-10 w-full items-center justify-between gap-2 rounded-[10px] bg-white px-3 text-left text-[13px] text-[#111111] transition-colors hover:bg-[#fafaf9] ${
-              open ? "shadow-[0_0_0_2px_#ea580c]" : "shadow-[0_0_0_1px_#d4d4d2]"
-            }`}
-          >
-            <span className="flex min-w-0 items-center gap-2">
-              <span className="text-[#ea580c]">
-                <RoofGlyph type={current.id} />
-              </span>
-              <span className="truncate font-medium">{current.label}</span>
-            </span>
-            <span className={`shrink-0 text-[#787774] transition-transform ${open ? "rotate-180" : ""}`}>{Icon.chevronDown}</span>
-          </button>
-        )}
-      >
-        {(close) => (
-          <div role="menu" aria-label="Roof type">
-            {ROOF_TYPES.map((t) => (
-              <MenuItem
-                key={t.id}
-                checked={t.id === value}
-                onSelect={() => {
-                  onChange(t.id);
-                  close();
-                }}
-              >
-                <span className="flex items-center gap-2.5">
-                  <span className="text-[#787774]">
-                    <RoofGlyph type={t.id} />
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block text-[13px] font-medium text-[#111111]">{t.label}</span>
-                    <span className="block text-[11px] text-[#787774]">{t.hint}</span>
-                  </span>
-                </span>
-              </MenuItem>
-            ))}
-          </div>
-        )}
-      </Popover>
-    </div>
-  );
-}
-
 function StatTile({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="min-w-0 rounded-[10px] border border-[#f0f0ee] bg-white px-3 py-2">
@@ -260,6 +194,7 @@ export function MapCanvas({
   const hostRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const baseRef = useRef<L.TileLayer | null>(null);
+  const labelsRef = useRef<L.LayerGroup | null>(null);
   const overlayRef = useRef<L.LayerGroup | null>(null);
   const shapeRef = useRef<L.LayerGroup | null>(null);
   const handlesRef = useRef<L.LayerGroup | null>(null);
@@ -389,11 +324,31 @@ export function MapCanvas({
     const map = mapRef.current;
     if (!map || tab !== "map") return;
     baseRef.current?.remove();
+    labelsRef.current?.remove();
+    labelsRef.current = null;
     const layer = street
       ? L.tileLayer(OSM_URL, { maxZoom: 19, maxNativeZoom: 19, attribution: OSM_ATTR })
       : L.tileLayer(SAT_URL, { maxZoom: 19, maxNativeZoom: 18, attribution: SAT_ATTR }); // Esri has no tiles past ~z18 in many PH areas; Leaflet upscales instead
     layer.addTo(map).bringToBack();
     baseRef.current = layer;
+    if (!street) {
+      // Street and place names over the satellite imagery (the street map already has its own labels).
+      if (!map.getPane("labels")) {
+        const pane = map.createPane("labels");
+        pane.style.zIndex = "250";
+        pane.style.pointerEvents = "none";
+      }
+      labelsRef.current = L.layerGroup(
+        LABEL_URLS.map((url, i) =>
+          L.tileLayer(url, {
+            pane: "labels",
+            maxZoom: 19,
+            maxNativeZoom: 18,
+            attribution: i === 0 ? LABELS_ATTR : "",
+          }),
+        ),
+      ).addTo(map);
+    }
   }, [street, tab]);
 
   // ---- move the camera ----------------------------------------------------------------------------------------------------
@@ -447,6 +402,12 @@ export function MapCanvas({
         }),
         interactive: false,
         keyboard: false,
+      }).addTo(layer);
+    }
+    // Room left on the roof beyond the chosen design: faint dashed outlines.
+    for (const p of state?.layout?.spots_lonlat ?? []) {
+      L.polygon(p.map(([lon, lat]) => [lat, lon] as Pt), {
+        color: "#1d4ed8", weight: 1, dashArray: "3 3", fillColor: "#1d4ed8", fillOpacity: 0.08, opacity: 0.55, interactive: false,
       }).addTo(layer);
     }
     for (const p of state?.layout?.panels_lonlat ?? []) {
@@ -661,8 +622,6 @@ export function MapCanvas({
     "flex h-8 w-8 items-center justify-center rounded-[8px] bg-white text-[#111111] shadow-[0_0_0_1px_#e5e5e4,0_1px_3px_rgba(0,0,0,0.08)] transition-colors hover:bg-[#fafaf9] hover:text-[#ea580c]";
   /* The outlining buttons in the footer are the main action of this panel, so they are bigger (40px) than
      the rest of the controls, the main one is solid orange, and the disabled state is clearly grey. */
-  const iconBig =
-    "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-white text-[#111111] shadow-[0_0_0_1px_#d4d4d2] transition-colors hover:bg-[#fafaf9] disabled:opacity-40";
   const secondaryBig =
     "inline-flex h-10 min-w-0 flex-1 items-center justify-center rounded-[10px] bg-white px-3 text-[13px] font-medium text-[#111111] shadow-[0_0_0_1px_#d4d4d2] transition-colors hover:bg-[#fafaf9] disabled:opacity-40";
   const primaryBig =
@@ -678,7 +637,7 @@ export function MapCanvas({
       </div>
 
       {tab === "sketch" ? (
-        <div className="flex min-h-0 flex-1 flex-col p-4">
+        <div className="flex min-h-0 flex-1 flex-col">
           <SketchPad disabled={!conversationId} onSubmit={submit} />
         </div>
       ) : (
@@ -883,6 +842,25 @@ export function MapCanvas({
                 )}
               </div>
             )}
+            {state?.layout && !drawing && (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[#787774]">
+                <span>
+                  {state.layout.count}
+                  {state.layout.capacity ? ` of ${state.layout.capacity}` : ""} panel spots used
+                </span>
+                {(state.layout.spots_lonlat?.length ?? 0) > 0 && (
+                  <>
+                    <span className="inline-flex items-center gap-1">
+                      <span className="inline-block h-2.5 w-2.5 rounded-[2px] bg-[#1d4ed8]/70" /> in your design
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                      <span className="inline-block h-2.5 w-2.5 rounded-[2px] border border-dashed border-[#1d4ed8]/70" /> room for{" "}
+                      {state.layout.spots_lonlat?.length} more
+                    </span>
+                  </>
+                )}
+              </div>
+            )}
             {loadError && <p className="text-[12px] text-[#dc2626]">{loadError}</p>}
             {sendError && <p className="text-[12px] text-[#dc2626]">{sendError}</p>}
 
@@ -912,16 +890,6 @@ export function MapCanvas({
               <div className="flex flex-col gap-2">
                 <div className="flex gap-2">
                   <RoofTypePicker value={roofType} onChange={setRoofType} />
-                  <button
-                    type="button"
-                    className={iconBig}
-                    onClick={() => setPoints((p) => p.slice(0, -1))}
-                    disabled={!points.length}
-                    title="Undo last corner"
-                    aria-label="Undo last corner"
-                  >
-                    {Icon.undo}
-                  </button>
                   <button
                     type="button"
                     className={`${secondaryBig} @max-xs:w-10 @max-xs:flex-none @max-xs:px-0`}

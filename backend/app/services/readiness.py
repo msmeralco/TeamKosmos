@@ -19,7 +19,10 @@ def _peso(x: float) -> str:
     return f"₱{x:,.0f}"
 
 
-def _size(raw: dict, sc: dict, net_metering: bool) -> dict:
+def _size(raw: dict, sc: dict, net_metering: bool, off_grid: bool) -> dict:
+    if off_grid:
+        return {"id": "size", "title": "Right size", "status": "confirm", "source": SRC_DER,
+                "text": "An off-grid system must cover your night use and the cloudiest days, often with a generator. An installer has to confirm the size."}
     ac, used = raw["ac_kw"], sc["year1_self_consumption_pct"]
     watch, host = A("self_consumption_watch_pct"), A("hosting_capacity_smallest_kw")
     parts = [f"About {used:g}% of the solar power is used at home. The rest is exported " + ("at a lower credit than the retail rate." if net_metering else "with no credit, since net metering is off.")]
@@ -54,7 +57,11 @@ def _provider(pkg: dict) -> dict:
     return {"id": "provider", "title": "Right provider", "status": "confirm", "text": text, "source": SRC_NM}
 
 
-def _requirements(pkg: dict, net_metering: bool) -> dict:
+def _requirements(pkg: dict, net_metering: bool, off_grid: bool) -> dict:
+    if off_grid:
+        return {"id": "requirements", "title": "Know the requirements", "status": "confirm", "source": SRC_DER,
+                "text": "An isolated system that never connects to Meralco needs no notification to Meralco, but it still needs a building permit "
+                        "and must follow the Philippine Electrical Code. Households are exempt from the ERC Certificate of Compliance."}
     if net_metering:
         text = ("To export and earn credits you apply for Net Metering: Meralco's study, inspection, your city's electrical permit and "
                 f"Certificate of Final Electrical Inspection, then the agreement and commissioning. Expect an ERC fee of {_peso(A('erc_coc_fee_php'))} "
@@ -71,6 +78,7 @@ def _requirements(pkg: dict, net_metering: bool) -> dict:
     return {"id": "requirements", "title": "Know the requirements", "status": "confirm", "text": text, "source": src}
 
 
-def readiness(roof: RoofModel, raw: dict, pkg: dict, expected: dict, net_metering: bool) -> list[dict]:
+def readiness(roof: RoofModel, raw: dict, pkg: dict, expected: dict, net_metering: bool, system_type: str | None = None) -> list[dict]:
     """raw = optimizer package, pkg = its summary entry (display strings), expected = expected-scenario result."""
-    return [_size(raw, expected, net_metering), _location(roof), _provider(pkg), _requirements(pkg, net_metering)]
+    off_grid = system_type == "off_grid"
+    return [_size(raw, expected, net_metering, off_grid), _location(roof), _provider(pkg), _requirements(pkg, net_metering, off_grid)]

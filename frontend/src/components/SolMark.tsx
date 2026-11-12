@@ -8,7 +8,7 @@ const RAYS = Array.from({ length: 12 }, (_, i) => {
   return { x: 50 + Math.sin(a) * 44.5, y: 50 - Math.cos(a) * 44.5 };
 });
 
-export function SolMark({ size = 32, className = "" }: { size?: number; className?: string }) {
+export function SolMark({ size = 32, className = "", spinning = false }: { size?: number; className?: string; spinning?: boolean }) {
   const uid = useId().replace(/:/g, "");
   const body = `sol-body-${uid}`;
   const ray = `sol-ray-${uid}`;
@@ -39,9 +39,12 @@ export function SolMark({ size = 32, className = "" }: { size?: number; classNam
         </radialGradient>
       </defs>
 
-      {RAYS.map((r, i) => (
-        <circle key={i} cx={r.x} cy={r.y} r="4.6" fill={`url(#${ray})`} />
-      ))}
+      {/* the rays turn around the centre when `spinning` (used as the loading indicator) */}
+      <g className={spinning ? "sol-rays-spin" : undefined}>
+        {RAYS.map((r, i) => (
+          <circle key={i} cx={r.x} cy={r.y} r="4.6" fill={`url(#${ray})`} />
+        ))}
+      </g>
 
       <circle cx="50" cy="50" r="35.7" fill={`url(#${body})`} />
 

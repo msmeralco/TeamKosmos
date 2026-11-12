@@ -29,6 +29,8 @@ def test_slot_order_walks_to_done():
     s.profile.roof = ROOF
     assert intake.next_slot(s) == "load"  # persona kWh must still be confirmed
     intake.apply_updates(s, confirm_load=True)
+    assert intake.next_slot(s) == "system_type"
+    intake.apply_updates(s, system_type="hybrid")
     assert intake.next_slot(s) == "budget"
     intake.apply_updates(s, budget_min_php=150000, budget_max_php=300000)
     assert intake.next_slot(s) == "goal"
@@ -45,7 +47,7 @@ def test_slot_order_walks_to_done():
 def test_backup_goal_needs_hours_not_percent():
     s = new_session()
     s.profile.roof = ROOF
-    intake.apply_updates(s, confirm_load=True, budget_max_php=300000, goal="backup")
+    intake.apply_updates(s, confirm_load=True, system_type="hybrid", budget_max_php=300000, goal="backup")
     assert intake.next_slot(s) == "goal_param"
     applied, errors = intake.apply_updates(s, goal_target_pct=50)
     assert errors and "cut my bill" in errors[0]
@@ -92,7 +94,7 @@ def test_typing_kwh_replaces_bill_and_confirms_load():
 def test_changing_inputs_invalidates_results_and_confirmation():
     s = new_session()
     s.profile.roof = ROOF
-    intake.apply_updates(s, confirm_load=True, budget_max_php=300000, goal="fastest_payback", confirm_summary=True)
+    intake.apply_updates(s, confirm_load=True, system_type="on_grid", budget_max_php=300000, goal="fastest_payback", confirm_summary=True)
     s.results["analysis"] = {"x": 1}
     intake.apply_updates(s, budget_max_php=400000)
     assert s.results == {} and s.profile.confirmed is False
@@ -123,7 +125,7 @@ def test_every_choice_text_round_trips_through_match_choice():
     s.profile.roof = ROOF
     s.profile.goal = "cut_bill"
     s.results["analysis"] = {}
-    for slot in ["roof_method", "roof_address", "roof_pick", "roof_draw", "load", "budget", "goal", "goal_param",
+    for slot in ["roof_method", "roof_address", "roof_pick", "roof_draw", "load", "system_type", "budget", "goal", "goal_param",
                  "confirm", "change", "done"]:
         if slot == "roof_pick":
             s.profile.roof = None
@@ -151,7 +153,7 @@ def test_unknown_text_is_not_a_choice():
 def test_change_flow_resets_only_that_slot():
     s = new_session()
     s.profile.roof = ROOF
-    intake.apply_updates(s, confirm_load=True, budget_max_php=300000, goal="fastest_payback", confirm_summary=True)
+    intake.apply_updates(s, confirm_load=True, system_type="on_grid", budget_max_php=300000, goal="fastest_payback", confirm_summary=True)
     assert intake.next_slot(s) == "run"
     intake.run_action(s, intake.match_choice(s, intake.CHANGE_TEXT))
     assert intake.next_slot(s) == "change"

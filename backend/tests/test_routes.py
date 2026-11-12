@@ -102,7 +102,7 @@ def test_optimize_validation(client):
 
 def test_passport_endpoints_and_paste_to_verify(client):
     cid = "conv-pass-00001-0123456789"
-    for msg in ["reyes demo", "Yes, use 450 kWh per month", "My budget is ₱300,000 to ₱500,000", "I want the fastest payback", "Yes, run the numbers"]:
+    for msg in ["reyes demo", "Yes, use 450 kWh per month", "I want a grid-tied (on-grid) system", "My budget is ₱300,000 to ₱500,000", "I want the fastest payback", "Yes, run the numbers"]:
         assert client.post("/api/agent/chat?stream=false", data={"conversation_id": cid, "message": msg}).status_code == 200
     r = client.post("/api/passport", json={"session_id": cid})
     assert r.status_code == 200, r.text

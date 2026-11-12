@@ -26,10 +26,10 @@ class Provider(Protocol):
 
 def tool_sentences(ctx: TurnContext) -> list[str]:
     """Plain sentences for everything the tools did this turn (also the number-guard fallback)."""
-    out = []
+    out: list[str] = []
     for call in ctx.tool_calls:
         text = render_tool_result(call["name"], call["result"])
-        if text:
+        if text and text not in out:  # a tool called twice must not repeat its sentence
             out.append(text)
     return out
 
@@ -51,6 +51,8 @@ class ScriptedProvider:
         roof = s.profile.roof
         if roof and s.pending.get("roof_announced_id") != roof["id"]:
             s.pending["roof_announced_id"] = roof["id"]
+            if "analysis" in s.results:
+                return False  # results already exist for this roof, so announcing it again would only add noise
             from .summary import roof_text
 
             notes.append(roof_text(roof))
@@ -148,10 +150,22 @@ class ScriptedProvider:
             notes.append("I don't see a roof outline yet. Please finish it in the map panel, then tell me.")
             return True
         if slot == "change":
-            if re.search(r"\b(cancel|never ?mind|nvm|go back|keep (?:it|everything)|no changes?)\b", text.lower()):
+            low = text.lower().strip()
+            if re.search(r"\b(go|go ahead|run|retry|try again|proceed|sige)\b", low) and not nlu.extract(text, slot, s.profile.goal):
+                # "go" / "run the numbers": leave the menu and run with what is already filled in.
+                s.pending.pop("changing", None)
+                if intake.next_slot(s) == "confirm":
+                    s.profile.confirmed = True
+                return True
+            if re.search(r"\b(cancel|never ?mind|nvm|go back|keep (?:it|everything)|no changes?|nothing|none|nope|no)\b", low) \
+                    and not nlu.extract(text, slot, s.profile.goal):
                 s.pending.pop("changing", None)  # back out of the change menu
                 return True
-            for key, label in (("roof", "roof"), ("load", "bill"), ("budget", "budget"), ("goal", "goal")):
+            fields = nlu.extract(text, "budget", s.profile.goal)  # a bare amount here is most likely the budget
+            if fields:  # "make it 250k": apply the new value directly instead of asking again
+                ctx.call_tool("update_profile", fields)
+                return True
+            for key, label in (("roof", "roof"), ("load", "bill"), ("budget", "budget"), ("goal", "goal"), ("system", "system")):
                 if label in text.lower():
                     act = intake.match_choice(s, intake.CHANGE_CHOICES[key][2])
                     intake.run_action(s, act)  # type: ignore[arg-type]

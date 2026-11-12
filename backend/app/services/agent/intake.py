@@ -9,7 +9,7 @@ import re
 from typing import Any
 
 from ..assumptions import A
-from .session import GOALS, TEMPLATES, Session
+from .session import GOALS, SYSTEM_TYPES, TEMPLATES, Session
 
 Suggestion = dict  # {"id", "label", "hint"?, "text"}
 
@@ -35,6 +35,12 @@ ROOF_CHOICES = {
     "draw": ("Draw on the map", "Trace the roof on the satellite map", "I'll draw my roof on the map"),
     "sketch": ("Sketch on a canvas", "Draw with a metre scale on a blank canvas", "I'll sketch my roof on a blank canvas"),
 }
+SYSTEM_CHOICES = {
+    "on_grid": ("Grid-tied (on-grid)", "Panels plus the grid, no battery. Lowest cost", "I want a grid-tied (on-grid) system"),
+    "off_grid": ("Off-grid", "Panels plus batteries, no utility connection", "I want an off-grid system"),
+    "hybrid": ("Hybrid (solar + storage)", "Grid-connected with a battery for outages", "I want a hybrid system with a battery"),
+}
+SYSTEM_LABELS = {"on_grid": "Grid-tied (on-grid)", "off_grid": "Off-grid", "hybrid": "Hybrid (solar + storage)"}
 BUDGETS = [
     ("b1", 0.0, 150_000.0, "Under ₱150,000"),
     ("b2", 150_000.0, 300_000.0, "₱150,000 to ₱300,000"),
@@ -52,6 +58,7 @@ BACKUP_OPTIONS = (4, 8)
 CHANGE_CHOICES = {
     "roof": ("Change my roof", "Pick a different address or drawing", "Change my roof"),
     "load": ("Change my bill", "Use a different usage or bill", "Change my bill"),
+    "system": ("Change system type", "Grid-tied, off-grid or hybrid", "Change my system type"),
     "budget": ("Change my budget", "Pick another budget range", "Change my budget"),
     "goal": ("Change my goal", "Pick another goal", "Change my goal"),
 }
@@ -59,6 +66,8 @@ FOLLOW_UPS = {
     "net_metering_off": ("net metering off", "See results without net metering", "What if net metering is off?", "compare_net_metering"),
     "assumptions": ("Show the assumptions", "Every number with its source", "Show me the assumptions", "explain_assumptions"),
     "passport": ("Create my Solar Passport", "A signed record anyone can verify", "Create my Solar Passport", "issue_passport"),
+    "fill_roof": ("Fill my whole roof", "Preview panels on the entire roof", "Show panels on my whole roof", "toggle_roof_fill"),
+    "my_design": ("Back to my design", "Show only the panels in my design", "Show my design again", "toggle_roof_fill"),
 }
 RUN_TEXT = "Yes, run the numbers"
 CHANGE_TEXT = "I want to change something"
@@ -81,6 +90,8 @@ def next_slot(session: Session) -> str:
         return "roof_draw"
     if not p.load_confirmed or (p.monthly_kwh is None and p.monthly_bill_php is None):
         return "load"
+    if p.system_type is None:
+        return "system_type"
     if p.budget_max_php is None:
         return "budget"
     if p.goal is None:
@@ -165,9 +176,21 @@ def apply_updates(session: Session, **fields: Any) -> tuple[dict, list[str]]:
             p.budget_min_php, p.budget_max_php = new_min, new_max
             applied["budget_min_php"], applied["budget_max_php"] = new_min, new_max
 
+    system = fields.get("system_type")
+    if system is not None:
+        if system not in SYSTEM_TYPES:
+            errors.append(f"system_type must be one of {', '.join(SYSTEM_TYPES)}")
+        elif system == "on_grid" and (p.goal == "backup" or fields.get("goal") == "backup"):
+            errors.append("Blackout backup needs a battery, so it can't be a grid-tied system without storage. Pick hybrid or off-grid, or change the goal")
+        else:
+            p.system_type = system
+            applied["system_type"] = system
+
     goal = fields.get("goal")
     if goal is not None:
-        if goal in GOALS:
+        if goal == "backup" and p.system_type == "on_grid":
+            errors.append("Blackout backup needs a battery, so it doesn't fit a grid-tied system. Change the system type to hybrid or off-grid first")
+        elif goal in GOALS:
             if p.goal is not None and goal != p.goal:
                 p.goal_target_pct = None
                 p.backup_hours = None
@@ -210,6 +233,8 @@ def apply_updates(session: Session, **fields: Any) -> tuple[dict, list[str]]:
     if changed:
         # Inputs changed: any earlier analysis is stale and the summary must be re-confirmed.
         session.invalidate_results()
+        # The user has made their change, so leave the "what would you like to change?" menu.
+        session.pending.pop("changing", None)
 
     if fields.get("confirm_summary"):
         slot_now = next_slot(session)
@@ -260,11 +285,14 @@ def choices_for(slot: str, session: Session) -> list[Suggestion]:
         out.append(_s("load_bill", "I'll type my bill", "Pesos per month or kWh", "I'll type my monthly bill"))
         out.append(_s("load_photo", "Attach a bill photo", "I'll read it and ask you to confirm", "I'll attach a photo of my bill"))
         return out
+    if slot == "system_type":
+        return [_s(f"sys_{k}", *v) for k, v in SYSTEM_CHOICES.items()]
     if slot == "budget":
         return [_s(bid, label, "Whole system, installed", f"My budget is {label[0].lower() + label[1:] if label.startswith('Under') else label}")
                 for bid, _lo, _hi, label in BUDGETS]
     if slot == "goal":
-        return [_s(f"goal_{k}", *v) for k, v in GOAL_CHOICES.items()]
+        # Blackout backup needs a battery, so it is not offered for a grid-tied system.
+        return [_s(f"goal_{k}", *v) for k, v in GOAL_CHOICES.items() if not (k == "backup" and p.system_type == "on_grid")]
     if slot == "goal_param":
         if p.goal == "cut_bill":
             return [_s(f"cut_{t}", f"Cut by {t}%", "Target bill reduction", f"Cut my bill by {t}%") for t in CUT_TARGETS]
@@ -281,6 +309,9 @@ def choices_for(slot: str, session: Session) -> list[Suggestion]:
         for k, (label, hint, text, _tool) in FOLLOW_UPS.items():
             if k == "passport" and "passport" in session.results:
                 continue
+            filled = bool(session.pending.get("full_roof"))
+            if (k == "fill_roof" and filled) or (k == "my_design" and not filled):
+                continue
             out.append(_s(f"fu_{k}", label.capitalize() if k == "net_metering_off" else label, hint, text))
         out.append(_s("change", "Change something", "Roof, bill, budget or goal", CHANGE_TEXT))
         return out
@@ -292,6 +323,8 @@ def _static_table() -> dict[str, tuple]:
     t: dict[str, tuple] = {}
     for k, v in ROOF_CHOICES.items():
         t[norm(v[2])] = ("update", {"roof_method": k})
+    for k, v in SYSTEM_CHOICES.items():
+        t[norm(v[2])] = ("update", {"system_type": k})
     t[norm(USE_ADDRESS_TEXT)] = ("update", {"roof_method": "address"})
     t[norm(SKETCH_INSTEAD_TEXT)] = ("update", {"roof_method": "sketch"})
     t[norm(DRAW_INSTEAD_TEXT)] = ("update", {"roof_method": "draw"})
@@ -355,6 +388,8 @@ def run_action(session: Session, action: dict) -> tuple[dict, list[str]]:
             session.pending.pop("candidate_texts", None)
         elif payload == "load":
             p.load_confirmed = False
+        elif payload == "system":
+            p.system_type = None
         elif payload == "budget":
             p.budget_min_php = p.budget_max_php = None
         elif payload == "goal":
@@ -383,6 +418,8 @@ def summary_line(session: Session) -> str:
     p = session.profile
     load = f"about {p.monthly_kwh:g} kWh a month" if p.monthly_kwh else (f"a {php(p.monthly_bill_php)} monthly bill" if p.monthly_bill_php else "no usage yet")
     parts = [f"Roof: {roof_label(p.roof)}.", f"Usage: {load}."]
+    if p.system_type:
+        parts.append(f"System: {SYSTEM_LABELS[p.system_type]}.")
     if p.budget_max_php is not None:
         parts.append(f"Budget: up to {php(p.budget_max_php)}." if not p.budget_min_php
                      else f"Budget: {php(p.budget_min_php)} to {php(p.budget_max_php)}.")
@@ -420,6 +457,18 @@ def question_for(slot: str, session: Session, lang: str = "english") -> str:
             return f"Gagamitin ko ang {php(p.monthly_bill_php)} na buwanang bill. Okay ba?" if tag else f"I'll work from your {php(p.monthly_bill_php)} monthly bill. Is that right?"
         return ("Magkano ang buwanang bill mo sa kuryente, o ilang kWh ang konsumo mo?"
                 if tag else "What's your monthly electricity bill in pesos, or your usage in kWh?")
+    if slot == "system_type":
+        return (
+            "Anong uri ng solar system ang gusto mo?\n\n"
+            "- **Grid-tied (on-grid):** may koneksyon sa Meralco, walang battery. Pinakamura, pero namamatay kapag brownout.\n"
+            "- **Off-grid:** solar at battery lang, walang koneksyon sa utility.\n"
+            "- **Hybrid (solar + storage):** may koneksyon sa grid at may battery para may kuryente kapag brownout."
+            if tag else
+            "Which type of solar system do you want?\n\n"
+            "- **Grid-tied (on-grid):** connected to the utility with no battery. Lowest cost, but it shuts off during a blackout.\n"
+            "- **Off-grid:** solar and batteries only, with no utility connection.\n"
+            "- **Hybrid (solar + storage):** connected to the grid, with a battery that keeps essentials on during blackouts."
+        )
     if slot == "budget":
         return ("Magkano ang budget mo para sa buong sistema, kasama ang pagkakabit?"
                 if tag else "What budget range do you have in mind for the whole system, installed?")

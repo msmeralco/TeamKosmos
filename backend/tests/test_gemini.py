@@ -216,6 +216,7 @@ def test_llm_cannot_invent_numbers_or_confirm_for_the_user(client):
     cid = "conv-ground-0123456789"
     chat(client, "reyes demo", cid=cid)
     chat(client, "Yes, use 450 kWh per month", cid=cid)
+    chat(client, "I want a grid-tied (on-grid) system", cid=cid)
     chat(client, "My budget is ₱300,000 to ₱500,000", cid=cid)
     # the user only says which goal they want; the model also invents 50% and confirms the summary
     fake = use([fn_call("update_profile", goal="cut_bill", goal_target_pct=50, confirm_summary=True),
@@ -241,7 +242,7 @@ def test_llm_values_the_user_really_stated_are_accepted(client):
 
 def test_llm_cannot_bypass_the_confirmation_step(client):
     cid = "conv-ground-0000000002"
-    for m in ["reyes demo", "Yes, use 450 kWh per month", "My budget is ₱300,000 to ₱500,000", "I want the fastest payback"]:
+    for m in ["reyes demo", "Yes, use 450 kWh per month", "I want a grid-tied (on-grid) system", "My budget is ₱300,000 to ₱500,000", "I want the fastest payback"]:
         chat(client, m, cid=cid)
     use([fn_call("update_profile", confirm_summary=True), fn_call("run_analysis"), text_resp("Done.")])
     chat(client, "hmm okay", cid=cid)  # not an agreement

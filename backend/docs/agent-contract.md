@@ -52,11 +52,11 @@ Events, in order: `turn` → `step`\* → `reply` → `done`. A `: keepalive` co
 
 - **`step`** `{id, label, status}`. `id` is stable (`s0`, `s1`, ...): each id arrives once as `running` and once as `done`. Update the step with the same id (same as `AgentStep`). `s0` is always "Reading your message".
 - **`reply`** `{text, hasMapArtifact, next, cards, slot}`:
-  - `text`: plain text, no markdown.
+  - `text`: light Markdown. Render `**bold**`, `-` bullet lists, `###` headings, `>` notes and pipe tables. Results replies start with a table block built by the server from tool results.
   - `hasMapArtifact`: show the Roof Map card and open the right panel.
-  - `next`: up to 4 suggestions `{id, label, hint?, text}`; clicking one sends its `text` as the next message (same as `Suggestion`).
+  - `next`: up to 5 suggestions `{id, label, hint?, text}`; clicking one sends its `text` as the next message (same as `Suggestion`).
   - `cards` (extra, safe to ignore): structured results for later UI: `{type: "roof" | "analysis" | "passport", data}`.
-  - `slot` (extra): what the agent is asking about now (`roof_method`, `roof_address`, `roof_pick`, `roof_draw`, `load`, `budget`, `goal`, `goal_param`, `confirm`, `change`, `run`, `done`).
+  - `slot` (extra): what the agent is asking about now (`roof_method`, `roof_address`, `roof_pick`, `roof_draw`, `load`, `system_type`, `budget`, `goal`, `goal_param`, `confirm`, `change`, `run`, `done`).
 - **Always-reply guarantee:** a turn never ends without `reply` then `done`, even if Gemini fails, a tool fails, or the turn times out (75 s). Failures become a normal reply, so the UI never needs an error state for a stream that dies mid-way. HTTP errors only happen **before** streaming starts (see section 5).
 
 ### JSON mode (`?stream=false`)

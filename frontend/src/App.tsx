@@ -16,6 +16,7 @@ import { Icon } from "./components/icons";
 import { LoginView } from "./components/LoginView";
 import { MapCanvas } from "./components/MapCanvas";
 import { OverviewView, SavedView } from "./components/ResultsViews";
+import { RichText } from "./components/RichText";
 import { SolLogo } from "./components/SolLogo";
 import { AnimatedSol } from "./components/SolMascotLazy";
 import {
@@ -180,7 +181,9 @@ function TypedText({ id, text, animate }: { id: number; text: string; animate: b
     const t = setInterval(() => setShown((n) => (n >= words.length ? n : n + 2)), 28);
     return () => clearInterval(t);
   }, [play, id, words.length]);
-  return <p className="text-[15px] leading-relaxed">{words.slice(0, shown).join("")}</p>;
+  // Replies with lists or tables are shown whole: typing half a table or a half-open **bold** looks broken.
+  if (/\n/.test(text)) return <RichText text={text} />;
+  return <RichText text={words.slice(0, shown).join("")} />;
 }
 
 /* ------------------------------------------------------------------ */
