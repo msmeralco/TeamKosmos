@@ -1,5 +1,14 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import type { RoofSubmission } from "../lib/api";
+import { closingCrosses, crossesItself, selfIntersects } from "../lib/geometry";
 import { btn, Spinner } from "./ui";
 
 /* Blank-canvas roof sketch: click corners, see each edge in metres, correct the scale with one real measurement,
@@ -41,6 +50,9 @@ export function SketchPad({
   const [edgeLen, setEdgeLen] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sent, setSent] = useState(false);
+  const drag = useRef<{ idx: number; startX: number; startY: number; moved: boolean } | null>(null);
+  const suppressClick = useRef(false);
 
   const edges = useMemo(() => {
     const n = points.length;
@@ -52,6 +64,16 @@ export function SketchPad({
       return Math.hypot(x2 - x1, y2 - y1);
     });
   }, [points, closed]);
+
+  // Keep the edge picker pointing at a real edge after Undo, Clear or closing the shape.
+  useEffect(() => {
+    setEdgeIdx((i) => Math.min(i, Math.max(0, edges.length - 1)));
+  }, [edges.length]);
+
+  // Any change to the sketch or its settings means what was sent is no longer what is on screen.
+  useEffect(() => {
+    setSent(false);
+  }, [points, closed, pxPerM, northDeg, facing, roofType]);
 
   const areaM2 = closed && points.length >= 3 ? area(points) / (pxPerM * pxPerM) : null;
 
@@ -146,17 +168,88 @@ export function SketchPad({
 
   useEffect(draw, [draw]);
 
+  /** Pointer position in canvas units (the canvas may be shown larger or smaller than W x H). */
+  const toCanvas = (e: { clientX: number; clientY: number }, el: HTMLCanvasElement): Pt => {
+    const rect = el.getBoundingClientRect();
+    return [((e.clientX - rect.left) * W) / rect.width, ((e.clientY - rect.top) * H) / rect.height];
+  };
+
+  // ---- resize by dragging a corner ----------------------------------------------------------------------------------
+  const onPointerDown = (e: ReactPointerEvent<HTMLCanvasElement>) => {
+    if (disabled || !points.length) return;
+    const [x, y] = toCanvas(e, e.currentTarget);
+    let hit = -1;
+    let best = 12;
+    points.forEach(([px, py], i) => {
+      const d = Math.hypot(x - px, y - py);
+      if (d <= best) {
+        best = d;
+        hit = i;
+      }
+    });
+    if (hit < 0) return;
+    drag.current = { idx: hit, startX: e.clientX, startY: e.clientY, moved: false };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const onPointerMove = (e: ReactPointerEvent<HTMLCanvasElement>) => {
+    const d = drag.current;
+    if (!d) return;
+    if (!d.moved && Math.hypot(e.clientX - d.startX, e.clientY - d.startY) < 4) return; // still a click
+    d.moved = true;
+    const [x, y] = toCanvas(e, e.currentTarget);
+    const nx = Math.round(Math.min(W, Math.max(0, x)));
+    const ny = Math.round(Math.min(H, Math.max(0, y)));
+    const next = points.map((p, i) => (i === d.idx ? ([nx, ny] as Pt) : p));
+    if (selfIntersects(next, closed)) return; // keep the last valid position
+    setError(null);
+    setPoints(next);
+  };
+
+  const onPointerUp = () => {
+    const d = drag.current;
+    drag.current = null;
+    if (d?.moved) suppressClick.current = true; // the click that follows a drag must not add a corner
+  };
+
+  /** Grow or shrink the whole outline around its centre. */
+  const scaleShape = (factor: number) => {
+    if (points.length < 2) return;
+    const cx = points.reduce((s, p) => s + p[0], 0) / points.length;
+    const cy = points.reduce((s, p) => s + p[1], 0) / points.length;
+    const next = points.map(([x, y]) => [cx + (x - cx) * factor, cy + (y - cy) * factor] as Pt);
+    if (next.some(([x, y]) => x < 0 || x > W || y < 0 || y > H)) {
+      setError("The outline can't get any bigger on this canvas. Make the scale smaller, or shrink the outline.");
+      return;
+    }
+    setError(null);
+    setPoints(next);
+  };
+
   const onClick = (e: ReactMouseEvent<HTMLCanvasElement>) => {
+    if (suppressClick.current) {
+      suppressClick.current = false;
+      return;
+    }
     if (closed || disabled) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) * W) / rect.width;
-    const y = ((e.clientY - rect.top) * H) / rect.height;
+    const [x, y] = toCanvas(e, e.currentTarget);
     // clicking the first point closes the shape
     if (points.length >= 3 && Math.hypot(x - points[0][0], y - points[0][1]) < 12) {
+      if (closingCrosses(points)) {
+        setError("Closing here would make the outline cross itself. Undo the last corner and place it differently.");
+        return;
+      }
+      setError(null);
       setClosed(true);
       return;
     }
-    setPoints((p) => [...p, [Math.round(x), Math.round(y)]]);
+    const next: Pt = [Math.round(x), Math.round(y)];
+    if (crossesItself(points, next)) {
+      setError("That corner would make the outline cross itself. Click a different spot, or undo the last corner.");
+      return;
+    }
+    setError(null);
+    setPoints((p) => [...p, next]);
   };
 
   const applyMeasure = () => {
@@ -185,6 +278,7 @@ export function SketchPad({
         facing,
         roof_type: roofType,
       });
+      setSent(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not send the sketch.");
     } finally {
@@ -208,18 +302,27 @@ export function SketchPad({
           width={W}
           height={H}
           onClick={onClick}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerCancel={onPointerUp}
           className="block w-full cursor-crosshair touch-none"
-          aria-label="Roof sketch canvas. Click to add corners; click the first corner to close the shape."
+          aria-label="Roof sketch canvas. Click to add corners; click the first corner to close the shape. Drag a corner to resize."
         />
       </div>
 
       <p className="text-[12px] text-[var(--label-2)]">
         {closed
-          ? "Shape closed. Check the edge lengths, correct the scale if needed, then send it."
+          ? "Shape closed. Drag any corner to resize it, check the edge lengths, correct the scale if needed, then send it."
           : points.length < 3
             ? "Click the corners of your roof. Click the first (orange) corner again to close the shape."
             : "Keep clicking corners, or click the first (orange) corner to close the shape."}
-        {areaM2 !== null && <span className="font-medium text-[var(--fg)]"> About {areaM2.toFixed(0)} m².</span>}
+        {areaM2 !== null && (
+          <span className="font-medium text-[var(--fg)]">
+            {" "}
+            About {areaM2.toFixed(0)} m²{measured ? "." : " at the suggested scale (not measured yet)."}
+          </span>
+        )}
       </p>
 
       <div className="grid grid-cols-2 gap-2 max-sm:grid-cols-1">
@@ -273,12 +376,18 @@ export function SketchPad({
         </label>
       </div>
 
-      {!measured && points.length >= 3 && (
+      {!measured && points.length >= 2 && (
         <p className="rounded-[10px] bg-[var(--accent-soft)] px-3 py-2 text-[12px] text-[var(--accent-ink)]">
-          The scale is only a suggestion (20 px = 1 m). Measuring one real edge makes the area and panel count more accurate.
+          The scale is only a suggestion (20 px = 1 m). Draw one edge, then enter its real length under &ldquo;Fix the
+          scale&rdquo;. Without it the area and panel count can be far off and the roof is marked low confidence.
         </p>
       )}
       {error && <p className="text-[12px] text-red-600">{error}</p>}
+      {sent && !error && (
+        <p className="text-[12px] text-green-700" role="status">
+          Roof sent to Sol. Change the sketch to send it again.
+        </p>
+      )}
 
       <div className="flex flex-wrap gap-2 pb-1">
         <button type="button" className={`${btn.secondary} btn-sm`} onClick={() => (closed ? setClosed(false) : setPoints((p) => p.slice(0, -1)))} disabled={!points.length}>
@@ -287,9 +396,15 @@ export function SketchPad({
         <button type="button" className={`${btn.secondary} btn-sm`} onClick={reset} disabled={!points.length}>
           Clear
         </button>
+        <button type="button" className={`${btn.secondary} btn-sm`} onClick={() => scaleShape(0.9)} disabled={points.length < 2} title="Shrink the outline">
+          Smaller
+        </button>
+        <button type="button" className={`${btn.secondary} btn-sm`} onClick={() => scaleShape(1.1)} disabled={points.length < 2} title="Enlarge the outline">
+          Larger
+        </button>
         <span className="flex-1" />
-        <button type="button" className={`${btn.primary} btn-sm`} onClick={submit} disabled={!closed || busy || disabled}>
-          {busy ? <Spinner /> : "Use this sketch"}
+        <button type="button" className={`${btn.primary} btn-sm`} onClick={submit} disabled={!closed || busy || disabled || sent}>
+          {busy ? <Spinner /> : sent ? "Sent" : "Use this sketch"}
         </button>
       </div>
     </div>

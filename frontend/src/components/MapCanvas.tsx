@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { getRoofState, submitRoof, type RoofState, type RoofSubmission } from "../lib/api";
+import { crossesItself, selfIntersects } from "../lib/geometry";
 import { Icon } from "./icons";
 import { SketchPad } from "./SketchPad";
 import { btn, Spinner } from "./ui";
@@ -49,27 +50,6 @@ function formatMetres(m: number): string {
 }
 
 /** A small white pill showing a length, placed beside the middle of a drawn edge. */
-function segmentsCross(a: Pt, b: Pt, c: Pt, d: Pt): boolean {
-  const orient = (p: Pt, q: Pt, r: Pt) => (q[1] - p[1]) * (r[0] - q[0]) - (q[0] - p[0]) * (r[1] - q[1]);
-  const o1 = orient(a, b, c);
-  const o2 = orient(a, b, d);
-  const o3 = orient(c, d, a);
-  const o4 = orient(c, d, b);
-  return o1 * o2 < 0 && o3 * o4 < 0;
-}
-
-/** Would adding `next` make the outline cross itself (including the closing side back to the first corner)? */
-function crossesItself(points: Pt[], next: Pt): boolean {
-  const n = points.length;
-  if (n < 2) return false;
-  const last = points[n - 1];
-  // New side (last -> next) against every earlier side except the one touching `last`.
-  for (let i = 0; i < n - 2; i++) if (segmentsCross(points[i], points[i + 1], last, next)) return true;
-  // Closing side (next -> first) against every side except the ones touching `next` or the first corner.
-  if (n >= 2) for (let i = 1; i < n - 1; i++) if (segmentsCross(points[i], points[i + 1], next, points[0])) return true;
-  return false;
-}
-
 function lengthLabel(a: Pt, b: Pt): L.Marker {
   const mid: Pt = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
   const html =
@@ -107,6 +87,8 @@ export function MapCanvas({
   const mapRef = useRef<L.Map | null>(null);
   const baseRef = useRef<L.TileLayer | null>(null);
   const overlayRef = useRef<L.LayerGroup | null>(null);
+  const shapeRef = useRef<L.LayerGroup | null>(null);
+  const handlesRef = useRef<L.LayerGroup | null>(null);
   const drawingRef = useRef(false);
   const lastFitRef = useRef<string>("");
   const [zoom, setZoom] = useState(MANILA.zoom);
@@ -186,7 +168,8 @@ export function MapCanvas({
   useEffect(() => {
     setTabChoice(null);
     if (state?.roofMethod === "draw" && state.needsRoof) setDrawing(true);
-    if (state && !state.needsRoof) setDrawing(false);
+    // Don't throw away an outline the user is in the middle of drawing (e.g. after they typed an address).
+    if (state && !state.needsRoof && pointsRef.current.length === 0) setDrawing(false);
   }, [state?.roofMethod, state?.needsRoof]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---- create the Leaflet map once ---------------------------------------------------------------------------
@@ -198,6 +181,8 @@ export function MapCanvas({
     );
     mapRef.current = map;
     overlayRef.current = L.layerGroup().addTo(map);
+    shapeRef.current = L.layerGroup().addTo(map);
+    handlesRef.current = L.layerGroup().addTo(map);
     map.on("zoomend", () => setZoom(map.getZoom()));
     map.on("click", (e: L.LeafletMouseEvent) => {
       if (!drawingRef.current) return;
@@ -218,6 +203,8 @@ export function MapCanvas({
       mapRef.current = null;
       baseRef.current = null;
       overlayRef.current = null;
+      shapeRef.current = null;
+      handlesRef.current = null;
       lastFitRef.current = "";
     };
   }, [tab]);
@@ -270,7 +257,7 @@ export function MapCanvas({
     const roof = state?.roof;
     if (roof) {
       const ring = roof.polygon_lonlat.map(([lon, lat]) => [lat, lon] as Pt);
-      L.polygon(ring, { color: "#ea580c", weight: 3, fillColor: "#ea580c", fillOpacity: 0.12 }).addTo(layer);
+      L.polygon(ring, { color: "#ea580c", weight: 3, fillColor: "#ea580c", fillOpacity: 0.12, interactive: false }).addTo(layer);
     }
     if (state?.pin) {
       // The address the user typed, pinned on the map.
@@ -287,7 +274,7 @@ export function MapCanvas({
     }
     for (const p of state?.layout?.panels_lonlat ?? []) {
       L.polygon(p.map(([lon, lat]) => [lat, lon] as Pt), {
-        color: "#0b3d91", weight: 1, fillColor: "#1d4ed8", fillOpacity: 0.65,
+        color: "#0b3d91", weight: 1, fillColor: "#1d4ed8", fillOpacity: 0.65, interactive: false,
       }).addTo(layer);
     }
     if (userLoc) {
@@ -297,17 +284,68 @@ export function MapCanvas({
       }
       L.circleMarker(here, { radius: 7, color: "#ffffff", weight: 2, fillColor: "#2563eb", fillOpacity: 1, interactive: false }).addTo(layer);
     }
-    if (points.length) {
-      if (points.length >= 3) L.polygon(points, { color: "#f59e0b", weight: 3, fillOpacity: 0.15, dashArray: "6 4" }).addTo(layer);
-      else L.polyline(points, { color: "#f59e0b", weight: 3 }).addTo(layer);
-      points.forEach((pt, i) =>
-        L.circleMarker(pt, { radius: i === 0 ? 7 : 5, color: "#f59e0b", fillColor: "#fff", fillOpacity: 1, weight: 2 }).addTo(layer),
-      );
-      // Length of every side, written beside it (including the closing side once there are 3+ corners).
-      const sides = points.length >= 3 ? points.length : points.length - 1;
-      for (let i = 0; i < sides; i++) lengthLabel(points[i], points[(i + 1) % points.length]).addTo(layer);
+  }, [state, tab, userLoc]);
+
+  /** Draws the in-progress outline and its side lengths. Called while dragging a corner too. */
+  const drawShape = useCallback((pts: Pt[]) => {
+    const layer = shapeRef.current;
+    if (!layer) return;
+    layer.clearLayers();
+    if (!pts.length) return;
+    if (pts.length >= 3) L.polygon(pts, { color: "#f59e0b", weight: 3, fillOpacity: 0.15, dashArray: "6 4", interactive: false }).addTo(layer);
+    else L.polyline(pts, { color: "#f59e0b", weight: 3, interactive: false }).addTo(layer);
+    const sides = pts.length >= 3 ? pts.length : pts.length - 1;
+    for (let i = 0; i < sides; i++) lengthLabel(pts[i], pts[(i + 1) % pts.length]).addTo(layer);
+  }, []);
+
+  // ---- editable corners: drag a corner to resize; click a "+" on a side to add a corner ---------------------------------
+  useEffect(() => {
+    const handles = handlesRef.current;
+    if (!handles) return;
+    handles.clearLayers();
+    drawShape(points);
+    const dot = (size: number, first: boolean, plus: boolean) =>
+      L.divIcon({
+        className: "",
+        iconSize: [size, size],
+        iconAnchor: [size / 2, size / 2],
+        html: plus
+          ? `<div style="width:${size}px;height:${size}px;border-radius:50%;background:#f59e0b;color:#fff;font:700 12px/${size}px system-ui;text-align:center;opacity:.85;cursor:copy">+</div>`
+          : `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${first ? "#f59e0b" : "#fff"};border:2px solid #f59e0b;box-shadow:0 1px 4px rgba(0,0,0,.5);cursor:grab"></div>`,
+      });
+    points.forEach((pt, i) => {
+      const m = L.marker(pt, { icon: dot(i === 0 ? 18 : 14, i === 0, false), draggable: true, zIndexOffset: 2000, keyboard: false });
+      const moved = () => {
+        const ll = m.getLatLng();
+        return pointsRef.current.map((p, k) => (k === i ? ([ll.lat, ll.lng] as Pt) : p));
+      };
+      m.on("drag", () => drawShape(moved()));
+      m.on("dragend", () => {
+        const next = moved();
+        if (selfIntersects(next, next.length >= 3)) {
+          setSendError("That corner would make the outline cross itself, so it went back.");
+          setPoints([...pointsRef.current]); // new array: rebuilds the handles at the old position
+          return;
+        }
+        setSendError(null);
+        setPoints(next);
+      });
+      m.addTo(handles);
+    });
+    if (points.length >= 3) {
+      points.forEach((a, i) => {
+        const b = points[(i + 1) % points.length];
+        const mid: Pt = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+        L.marker(mid, { icon: dot(14, false, true), zIndexOffset: 1500, keyboard: false, title: "Add a corner here" })
+          .on("click", () => {
+            const next = [...pointsRef.current];
+            next.splice(i + 1, 0, mid);
+            setPoints(next);
+          })
+          .addTo(handles);
+      });
     }
-  }, [state, points, tab, userLoc]);
+  }, [points, tab, drawShape]);
 
   const submit = useCallback(
     async (body: RoofSubmission) => {
