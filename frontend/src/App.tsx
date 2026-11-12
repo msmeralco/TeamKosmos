@@ -527,41 +527,18 @@ export default function App() {
 
             <div className="my-1 h-px w-full bg-[#f0f0ee]" />
 
-            {/* 1. Home / Agent Chat */}
+            {/* 1. New Chat */}
             <button
               type="button"
-              onClick={() => go("chat")}
-              className={`flex h-10 w-full items-center rounded-[10px] text-left transition-colors ${
-                view === "chat"
-                  ? "bg-[#fafaf9] text-[#ea580c] font-medium"
-                  : "text-[#787774] hover:bg-[#fafaf9] hover:text-[#111111]"
-              }`}
-              title="Agent Chat"
+              onClick={newChat}
+              className="flex h-10 w-full items-center rounded-[10px] text-left text-[#787774] transition-colors hover:bg-[#fafaf9] hover:text-[#ea580c]"
+              title="Start a new chat"
             >
               <span className="flex h-10 w-10 shrink-0 items-center justify-center">
-                {Icon.home}
+                {Icon.plus}
               </span>
               <span className="min-w-0 flex-1 truncate pl-1.5 opacity-0 group-hover/rail:opacity-100 transition-opacity duration-200 text-[13px]">
-                Agent Chat
-              </span>
-            </button>
-
-            {/* 2. Roof Map Toggle Button */}
-            <button
-              type="button"
-              onClick={toggleCanvas}
-              className={`flex h-10 w-full items-center rounded-[10px] text-left transition-colors ${
-                canvasOpen
-                  ? "bg-[#fafaf9] text-[#ea580c] font-medium"
-                  : "text-[#787774] hover:bg-[#fafaf9] hover:text-[#111111]"
-              }`}
-              title={canvasOpen ? "Close map view" : "Open roof map"}
-            >
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center">
-                {Icon.map}
-              </span>
-              <span className="min-w-0 flex-1 truncate pl-1.5 opacity-0 group-hover/rail:opacity-100 transition-opacity duration-200 text-[13px]">
-                {canvasOpen ? "Close Roof Map" : "Roof Map"}
+                New Chat
               </span>
             </button>
 
@@ -703,14 +680,20 @@ export default function App() {
             <header className="flex h-12 shrink-0 items-center justify-end border-b border-[#f0f0ee] px-4">
               {/* Header Right Actions */}
               <div className="flex items-center gap-1.5">
+                {/* Roof Map toggle (moved here from the sidebar) */}
                 <button
                   type="button"
-                  onClick={newChat}
-                  className="row-btn press flex h-7 items-center gap-1.5 rounded-[7px] px-2.5 text-[12px] font-medium text-[#787774] transition-colors hover:text-[#ea580c]"
-                  title="Start a new chat"
+                  onClick={toggleCanvas}
+                  aria-pressed={canvasOpen}
+                  className={`row-btn press flex h-7 w-7 items-center justify-center rounded-[7px] transition-colors ${
+                    canvasOpen
+                      ? "bg-[#fafaf9] text-[#ea580c]"
+                      : "text-[#787774] hover:bg-[#fafaf9] hover:text-[#111111]"
+                  }`}
+                  title={canvasOpen ? "Close roof map" : "Open roof map"}
+                  aria-label={canvasOpen ? "Close roof map" : "Open roof map"}
                 >
-                  {Icon.plus}
-                  <span>New Chat</span>
+                  {Icon.map}
                 </button>
 
                 {/* Notifications Bell in Top Workspace Header */}
@@ -1083,13 +1066,17 @@ function ChatView({
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-white">
-      {/* Scrollable Conversation Body or Empty Hero Centering Space */}
-      <div ref={scrollRef} className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+      {/* Spacers above and below the hero + composer group. The bottom one is twice as tall, so the
+          group sits above the exact center by a share of the free space (works at every screen height). */}
+      {empty && <div className="min-h-3 flex-1" aria-hidden="true" />}
+
+      {/* Scrollable Conversation Body (sized to its content while empty, so the group can center) */}
+      <div
+        ref={scrollRef}
+        className={`flex min-h-0 flex-col overflow-y-auto ${empty ? "flex-initial" : "flex-1"}`}
+      >
         {empty ? (
           <>
-            {/* Top spacer to place hero & composer in the optical center */}
-            <div className="flex-1" aria-hidden="true" />
-
             {/* Hero Greeting */}
             <div
               className={`mx-auto flex w-full flex-col items-center px-6 text-center select-none ${
@@ -1360,13 +1347,8 @@ function ChatView({
         </div>
       </div>
 
-      {/* Bottom spacer when empty to achieve true optical vertical centering */}
-      {empty && <div className="flex-1" aria-hidden="true" />}
-
-      {/* Footnote */}
-      <p className="shrink-0 px-6 py-2.5 text-center text-[11px] text-[#a3a3a3]">
-        Estimates for planning only. Demo data based on Meralco residential tariff.
-      </p>
+      {/* Bottom spacer: twice the weight of the top one */}
+      {empty && <div className="flex-[2]" aria-hidden="true" />}
     </div>
   );
 }
