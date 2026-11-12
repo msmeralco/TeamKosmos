@@ -1,7 +1,7 @@
 # Runs the backend (uvicorn, port 8000) and the frontend (npm run dev) together.
-# Usage: .\dev.ps1     Stop both with Ctrl+C.
+# Usage: .\scripts\dev.ps1     Stop both with Ctrl+C.
 
-$root = $PSScriptRoot
+$root = Split-Path $PSScriptRoot -Parent
 $frontend = if (Test-Path "$root\frontend") { "$root\frontend" } else { "$root\frontendv2" }
 $python = "$root\.venv\Scripts\python.exe"
 
