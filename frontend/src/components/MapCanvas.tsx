@@ -6,7 +6,8 @@ import { getRoofState, submitRoof, type RoofState, type RoofSubmission } from ".
 import { crossesItself, selfIntersects } from "../lib/geometry";
 import { Icon } from "./icons";
 import { SketchPad } from "./SketchPad";
-import { btn, MenuItem, Popover, Spinner } from "./ui";
+import { RoofTypePicker } from "./RoofTypePicker";
+import { btn, Spinner } from "./ui";
 
 /* The right-hand "Roof Map" panel: satellite map with the roof outline and panel layout from the backend,
    a polygon drawing tool, and a blank-canvas sketch tool. Both send the roof to the backend session. */
@@ -145,85 +146,6 @@ function actionOffset(map: L.Map, points: Pt[]): { x: number; y: number } {
   }
   const r = reach(ux, uy);
   return { x: ux * r, y: uy * r };
-}
-
-/* ---- Roof type: a custom menu instead of the browser's <select> ---- */
-
-const ROOF_TYPES = [
-  { id: "flat", label: "Flat roof", hint: "Level surface" },
-  { id: "single_slope", label: "Single slope", hint: "One tilted side" },
-  { id: "gable", label: "Gable", hint: "Two sloping sides" },
-] as const;
-type RoofType = (typeof ROOF_TYPES)[number]["id"];
-
-/** Tiny side-view drawing of each roof shape. */
-function RoofGlyph({ type }: { type: RoofType }) {
-  const roof = type === "flat" ? "M3 9h18" : type === "single_slope" ? "M3 12l18-5" : "M3 11l9-6 9 6";
-  const walls = type === "flat" ? "M5.5 9v9M18.5 9v9" : type === "single_slope" ? "M5.5 11.3V18M18.5 7.7V18" : "M5.5 10v8M18.5 10v8";
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="shrink-0">
-      <path d={roof} />
-      <path d={walls} opacity="0.5" />
-    </svg>
-  );
-}
-
-function RoofTypePicker({ value, onChange }: { value: RoofType; onChange: (v: RoofType) => void }) {
-  const current = ROOF_TYPES.find((t) => t.id === value) ?? ROOF_TYPES[0];
-  return (
-    <div className="min-w-0 flex-[1.4]">
-      <Popover
-        label="Roof type"
-        placement="top-start"
-        className="w-[230px] max-w-[calc(100vw-40px)]"
-        trigger={({ open, toggle }) => (
-          <button
-            type="button"
-            onClick={toggle}
-            aria-haspopup="menu"
-            aria-expanded={open}
-            aria-label={`Roof type: ${current.label}`}
-            className={`flex h-10 w-full items-center justify-between gap-2 rounded-[10px] bg-white px-3 text-left text-[13px] text-[#111111] transition-colors hover:bg-[#fafaf9] ${
-              open ? "shadow-[0_0_0_2px_#ea580c]" : "shadow-[0_0_0_1px_#d4d4d2]"
-            }`}
-          >
-            <span className="flex min-w-0 items-center gap-2">
-              <span className="text-[#ea580c]">
-                <RoofGlyph type={current.id} />
-              </span>
-              <span className="truncate font-medium">{current.label}</span>
-            </span>
-            <span className={`shrink-0 text-[#787774] transition-transform ${open ? "rotate-180" : ""}`}>{Icon.chevronDown}</span>
-          </button>
-        )}
-      >
-        {(close) => (
-          <div role="menu" aria-label="Roof type">
-            {ROOF_TYPES.map((t) => (
-              <MenuItem
-                key={t.id}
-                checked={t.id === value}
-                onSelect={() => {
-                  onChange(t.id);
-                  close();
-                }}
-              >
-                <span className="flex items-center gap-2.5">
-                  <span className="text-[#787774]">
-                    <RoofGlyph type={t.id} />
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block text-[13px] font-medium text-[#111111]">{t.label}</span>
-                    <span className="block text-[11px] text-[#787774]">{t.hint}</span>
-                  </span>
-                </span>
-              </MenuItem>
-            ))}
-          </div>
-        )}
-      </Popover>
-    </div>
-  );
 }
 
 function StatTile({ label, children }: { label: string; children: ReactNode }) {
@@ -661,8 +583,6 @@ export function MapCanvas({
     "flex h-8 w-8 items-center justify-center rounded-[8px] bg-white text-[#111111] shadow-[0_0_0_1px_#e5e5e4,0_1px_3px_rgba(0,0,0,0.08)] transition-colors hover:bg-[#fafaf9] hover:text-[#ea580c]";
   /* The outlining buttons in the footer are the main action of this panel, so they are bigger (40px) than
      the rest of the controls, the main one is solid orange, and the disabled state is clearly grey. */
-  const iconBig =
-    "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-white text-[#111111] shadow-[0_0_0_1px_#d4d4d2] transition-colors hover:bg-[#fafaf9] disabled:opacity-40";
   const secondaryBig =
     "inline-flex h-10 min-w-0 flex-1 items-center justify-center rounded-[10px] bg-white px-3 text-[13px] font-medium text-[#111111] shadow-[0_0_0_1px_#d4d4d2] transition-colors hover:bg-[#fafaf9] disabled:opacity-40";
   const primaryBig =
@@ -678,7 +598,7 @@ export function MapCanvas({
       </div>
 
       {tab === "sketch" ? (
-        <div className="flex min-h-0 flex-1 flex-col p-4">
+        <div className="flex min-h-0 flex-1 flex-col">
           <SketchPad disabled={!conversationId} onSubmit={submit} />
         </div>
       ) : (
@@ -912,16 +832,6 @@ export function MapCanvas({
               <div className="flex flex-col gap-2">
                 <div className="flex gap-2">
                   <RoofTypePicker value={roofType} onChange={setRoofType} />
-                  <button
-                    type="button"
-                    className={iconBig}
-                    onClick={() => setPoints((p) => p.slice(0, -1))}
-                    disabled={!points.length}
-                    title="Undo last corner"
-                    aria-label="Undo last corner"
-                  >
-                    {Icon.undo}
-                  </button>
                   <button
                     type="button"
                     className={`${secondaryBig} @max-xs:w-10 @max-xs:flex-none @max-xs:px-0`}
