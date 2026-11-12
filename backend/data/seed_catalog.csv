@@ -1,0 +1,13 @@
+id,category,brand,model,price_php,watts,length_m,width_m,efficiency_pct,degradation_pct_per_year,warranty_years,inverter_ac_kw,max_dc_kw,hybrid,battery_kwh,battery_max_kw,chemistry,cycles,embodied_carbon_kg
+seed-panel-450,panel,DemoSolar,DS-450M,7200,450,1.91,1.13,20.8,0.55,25,,,,,,,,
+seed-panel-550,panel,DemoSolar,DS-550M,8800,550,2.28,1.13,21.3,0.45,25,,,,,,,,
+seed-panel-600,panel,DemoSolar,DS-600M,10200,600,2.38,1.13,22.3,0.40,30,,,,,,,,
+seed-inv-3,inverter,DemoVolt,DV-3000G,32000,,,,,,10,3,4.2,false,,,,,
+seed-inv-5,inverter,DemoVolt,DV-5000G,46000,,,,,,10,5,7.0,false,,,,,
+seed-inv-8,inverter,DemoVolt,DV-8000G,68000,,,,,,10,8,11.2,false,,,,,
+seed-inv-10,inverter,DemoVolt,DV-10000G,82000,,,,,,10,10,14.0,false,,,,,
+seed-hyb-5,inverter,DemoVolt,DV-5000H,78000,,,,,,10,5,7.5,true,,,,,
+seed-hyb-8,inverter,DemoVolt,DV-8000H,115000,,,,,,10,8,12.0,true,,,,,
+seed-hyb-10,inverter,DemoVolt,DV-10000H,140000,,,,,,10,10,15.0,true,,,,,
+seed-bat-5,battery,DemoCell,DC-5K LFP,110000,,,,,,10,,,,5.12,2.5,LiFePO4,6000,
+seed-bat-10,battery,DemoCell,DC-10K LFP,200000,,,,,,10,,,,10.24,5.0,LiFePO4,6000,

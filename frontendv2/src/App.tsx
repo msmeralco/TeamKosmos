@@ -2,6 +2,7 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
@@ -12,6 +13,8 @@ import {
 } from "react";
 import { AnimatePresence, domAnimation, LazyMotion, m } from "framer-motion";
 import { Icon } from "./components/icons";
+import { MapCanvas } from "./components/MapCanvas";
+import { ApiError, deleteSession, streamChat, type Language, type StepEvent } from "./lib/api";
 import {
   btn,
   ConfirmDialog,
@@ -171,6 +174,32 @@ function FileThumb({ file }: { file: File }) {
   );
 }
 
+const LANGS: Record<string, Language> = { Auto: "auto", English: "english", Taglish: "taglish" };
+
+/** Add a step, or update the one with the same id (ids are stable per turn). */
+function upsertStep(steps: AgentStep[], s: StepEvent): AgentStep[] {
+  const i = steps.findIndex((x) => x.id === s.id);
+  if (i < 0) return [...steps, s];
+  const next = steps.slice();
+  next[i] = s;
+  return next;
+}
+
+/** Reveals a reply word by word so it reads like someone answering. Plays once per message. */
+const typed = new Set<number>();
+function TypedText({ id, text, animate }: { id: number; text: string; animate: boolean }) {
+  const words = useMemo(() => text.split(/(\s+)/), [text]);
+  const [play] = useState(() => animate && !typed.has(id)); // decided once: later renders must not cancel the animation
+  const [shown, setShown] = useState(play ? 0 : words.length);
+  useEffect(() => {
+    if (!play) return;
+    typed.add(id);
+    const t = setInterval(() => setShown((n) => (n >= words.length ? n : n + 2)), 28);
+    return () => clearInterval(t);
+  }, [play, id, words.length]);
+  return <p className="text-[15px] leading-relaxed">{words.slice(0, shown).join("")}</p>;
+}
+
 const navBtn = "row-btn press flex h-8 w-full items-center gap-2.5 rounded-[8px] px-2.5 text-left text-[14px]";
 
 /* ------------------------------------------------------------------ */
@@ -185,6 +214,8 @@ export default function App() {
 
   /* Claude-style right-side Map Canvas state */
   const [canvasOpen, setCanvasOpen] = useState(false);
+  const [lang, setLang] = useState("Auto");
+  const [roofTick, setRoofTick] = useState(0);
 
   const [convos, setConvos] = useState<Conversation[]>([]);
   const [currentId, setCurrentId] = useState<string | null>(null);
@@ -212,9 +243,9 @@ export default function App() {
     setConvos((cs) => cs.map((c) => (c.id === cid ? { ...c, messages: [...c.messages, msg] } : c)));
   }, []);
 
-  /* Pure UI-only local turn simulation */
-  const runUiTurn = useCallback(
-    (cid: string, _promptText: string, isNew: boolean) => {
+  /* One real turn: stream the backend agent's steps and reply into the chat. */
+  const runTurn = useCallback(
+    (cid: string, text: string, isNew: boolean, rawFiles: File[]) => {
       if (busyRef.current) return;
       busyRef.current = true;
       setBusy(true);
@@ -226,97 +257,45 @@ export default function App() {
             c.id !== cid ? c : { ...c, messages: c.messages.map((m) => (m.id === mid && m.from === "agent" ? fn(m) : m)) },
           ),
         );
+      const allDone = (steps: AgentStep[]): AgentStep[] => steps.map((s) => ({ ...s, status: "done" as const }));
 
-      const stepLabels = [
-        "Reading household parameters",
-        "Preparing roof map canvas",
-        "Formatting summary",
-      ];
+      appendMsg(cid, { id: mid, from: "agent", phase: isNew ? "booting" : "working", steps: [] });
 
-      appendMsg(cid, {
-        id: mid,
-        from: "agent",
-        phase: isNew ? "booting" : "working",
-        steps: [],
-      });
-
-      const t1 = setTimeout(() => {
-        patch((m) => ({
-          ...m,
-          phase: "working",
-          steps: [{ id: "s1", label: stepLabels[0], status: "running" }],
-        }));
-      }, 280);
-
-      const t2 = setTimeout(() => {
-        patch((m) => ({
-          ...m,
-          phase: "working",
-          steps: [
-            { id: "s1", label: stepLabels[0], status: "done" },
-            { id: "s2", label: stepLabels[1], status: "running" },
-          ],
-        }));
-      }, 720);
-
-      const t3 = setTimeout(() => {
-        patch((m) => ({
-          ...m,
-          phase: "working",
-          steps: [
-            { id: "s1", label: stepLabels[0], status: "done" },
-            { id: "s2", label: stepLabels[1], status: "done" },
-            { id: "s3", label: stepLabels[2], status: "running" },
-          ],
-        }));
-      }, 1150);
-
-      const t4 = setTimeout(() => {
-        patch((m) => ({
-          ...m,
-          phase: "done",
-          steps: [
-            { id: "s1", label: stepLabels[0], status: "done" },
-            { id: "s2", label: stepLabels[1], status: "done" },
-            { id: "s3", label: stepLabels[2], status: "done" },
-          ],
-          reply: {
-            text: `Here is the roof map canvas for ${persona.name} (${persona.subtitle} · ${persona.location}). You can toggle the map canvas anytime from the card below or the top-right toolbar.`,
-            hasMapArtifact: true,
-            next: [
-              {
-                id: "bill",
-                label: "Compare monthly bill options",
-                hint: "On-grid vs hybrid solar overview",
-                text: "Compare monthly bill options",
-              },
-              {
-                id: "roof",
-                label: "Adjust roof area & orientation",
-                hint: "Enter roof type, tilt, and usable area",
-                text: "Adjust roof area & orientation",
-              },
-            ],
-          },
-        }));
-        /* Auto-open the Claude-style right Map Canvas when the turn finishes */
-        setCanvasOpen(true);
-        busyRef.current = false;
-        setBusy(false);
-      }, 1500);
-
-      return () => {
-        clearTimeout(t1);
-        clearTimeout(t2);
-        clearTimeout(t3);
-        clearTimeout(t4);
-      };
+      streamChat({
+        conversationId: cid,
+        message: text || "Attached files",
+        personaId,
+        language: LANGS[lang] ?? "auto",
+        files: rawFiles,
+        onStep: (s) => patch((m) => ({ ...m, phase: "working", steps: upsertStep(m.steps, s) })),
+      })
+        .then((reply) => {
+          patch((m) => ({
+            ...m,
+            phase: "done",
+            steps: allDone(m.steps),
+            reply: { text: reply.text, hasMapArtifact: reply.hasMapArtifact, next: reply.next },
+          }));
+          if (reply.hasMapArtifact) setCanvasOpen(true);
+          setRoofTick((t) => t + 1);
+        })
+        .catch((err: unknown) => {
+          const message =
+            err instanceof ApiError && err.status > 0
+              ? err.message
+              : "I couldn't reach the Sol server. Make sure the backend is running on port 8000, then try again.";
+          patch((m) => ({ ...m, phase: "done", steps: allDone(m.steps), reply: { text: message, hasMapArtifact: false, next: [] } }));
+        })
+        .finally(() => {
+          busyRef.current = false;
+          setBusy(false);
+        });
     },
-    [appendMsg, persona],
+    [appendMsg, personaId, lang],
   );
 
   const ask = useCallback(
-    (text: string, files: string[] = [], previews?: (string | null)[]) => {
+    (text: string, files: string[] = [], previews?: (string | null)[], rawFiles: File[] = []) => {
       const t = text.trim();
       if ((!t && !files.length) || busyRef.current) return;
       let cid = currentId;
@@ -334,9 +313,14 @@ export default function App() {
         files: files.length ? files : undefined,
         previews: files.length ? previews : undefined,
       });
-      runUiTurn(cid, t, isNew);
+      runTurn(cid, t, isNew, rawFiles);
     },
-    [currentId, appendMsg, runUiTurn],
+    [currentId, appendMsg, runTurn],
+  );
+
+  const onRoofSubmitted = useCallback(
+    (what: "drawn" | "sketch") => ask(what === "sketch" ? "I've finished sketching my roof." : "I've finished drawing my roof outline."),
+    [ask],
   );
 
   const newChat = () => {
@@ -348,6 +332,7 @@ export default function App() {
 
   const deleteChat = (id: string) => {
     setDeleteOpen(false);
+    void deleteSession(id);
     setConvos((cs) => cs.filter((c) => c.id !== id));
     if (currentId === id) {
       setCurrentId(null);
@@ -605,6 +590,8 @@ export default function App() {
                 canvasOpen={canvasOpen}
                 onToggleCanvas={() => setCanvasOpen((o) => !o)}
                 onAsk={ask}
+                lang={lang}
+                onLang={setLang}
               />
             )}
             {view === "overview" && (
@@ -650,11 +637,7 @@ export default function App() {
                   </button>
                 </div>
 
-                <div className="flex min-h-0 flex-1 p-4">
-                  <div className="flex flex-1 items-center justify-center rounded-[14px] bg-[var(--fill)] text-[14px] font-medium text-[var(--label-3)] shadow-[0_0_0_1px_var(--hairline)]">
-                    Map Placeholder
-                  </div>
-                </div>
+                <MapCanvas conversationId={currentId} personaId={personaId} refreshKey={roofTick} onSubmitted={onRoofSubmitted} />
               </m.aside>
             )}
           </AnimatePresence>
@@ -761,6 +744,8 @@ function ChatView({
   canvasOpen,
   onToggleCanvas,
   onAsk,
+  lang,
+  onLang,
 }: {
   messages: ChatMsg[];
   busy: boolean;
@@ -768,12 +753,13 @@ function ChatView({
   subtitle: string;
   canvasOpen: boolean;
   onToggleCanvas: () => void;
-  onAsk: (text: string, files?: string[], previews?: (string | null)[]) => void;
+  onAsk: (text: string, files?: string[], previews?: (string | null)[], rawFiles?: File[]) => void;
+  lang: string;
+  onLang: (l: string) => void;
 }) {
   const [input, setInput] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [lightbox, setLightbox] = useState<{ src: string; name: string } | null>(null);
-  const [lang, setLang] = useState("Auto");
 
   const fileRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -826,6 +812,7 @@ function ChatView({
       message,
       currentFiles.map((f) => f.name),
       previews,
+      currentFiles,
     );
     setInput("");
     setFiles([]);
@@ -932,7 +919,7 @@ function ChatView({
                         {msg.steps.length > 0 && <ThinkingSteps steps={msg.steps} done={msg.phase === "done"} />}
                         {msg.phase === "done" && msg.reply && (
                           <div className="enter-card flex flex-col gap-3">
-                            <p className="text-[15px] leading-relaxed">{msg.reply.text}</p>
+                            <TypedText id={msg.id} text={msg.reply.text} animate={msg.id === messages.at(-1)?.id} />
                             {msg.reply.hasMapArtifact && (
                               <MapArtifactCard open={canvasOpen} onToggle={onToggleCanvas} />
                             )}
@@ -1086,7 +1073,7 @@ function ChatView({
                       key={l}
                       checked={lang === l}
                       onSelect={() => {
-                        setLang(l);
+                        onLang(l);
                         close();
                       }}
                     >
