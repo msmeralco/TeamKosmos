@@ -2,8 +2,8 @@
 
 Usage (from backend/):  python scripts/seed_users.py [--file data/seed_users.json] [--reset-passwords]
 
-Passwords are never stored in the repo. Set SEED_PASSWORD to use one password for every seeded account;
-otherwise a random password is generated per account and printed once. Existing accounts are left alone
+Passwords are never stored in the repo. Set SEED_PASSWORD to use another password for every seeded account;
+otherwise new accounts get the demo password "password". Existing accounts are left alone
 unless --reset-passwords is given.
 """
 from __future__ import annotations
@@ -28,7 +28,7 @@ def main() -> int:
     args = ap.parse_args()
 
     users = json.loads(Path(args.file).read_text(encoding="utf-8"))
-    shared = os.environ.get("SEED_PASSWORD", "").strip()
+    shared = os.environ.get("SEED_PASSWORD", "password").strip()
     repo = get_repo()
     print(f"Database: {db_status()['active']}")
     for u in users:

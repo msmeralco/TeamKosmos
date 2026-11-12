@@ -1,0 +1,13 @@
+{
+  "note": "Sample vouchers for the demo. Nothing here is agreed with Meralco or any business, and none has a cash value.",
+  "vouchers": [
+    {"id": "site-survey", "title": "Free site survey", "value": "Worth ₱3,500", "partner": "Sample installer partner",
+     "terms": "One survey of your installation site. Sample value."},
+    {"id": "installer-discount", "title": "5% off your solar package", "value": "Up to ₱15,000 off", "partner": "Sample installer partner",
+     "terms": "Applies once to a package from the sample partner. Sample value."},
+    {"id": "battery-addon", "title": "Battery add-on credit", "value": "₱10,000 credit", "partner": "Sample storage partner",
+     "terms": "Credit toward adding a battery later. Sample value."},
+    {"id": "led-bundle", "title": "LED lighting bundle", "value": "20% off", "partner": "Sample retail partner",
+     "terms": "Lower your usage after going solar. Sample value."}
+  ]
+}

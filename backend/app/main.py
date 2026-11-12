@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from .config import BACKEND_DIR, get_settings
 from .db import db_status
 from .errors import install_error_handlers
-from .routes import agent, auth, engine, passport, roof
+from .routes import agent, auth, engine, passport, rewards, roof
 
 logging.basicConfig(level=logging.INFO)
 
@@ -27,7 +27,7 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     install_error_handlers(app)
-    for r in (auth.router, agent.router, roof.router, engine.router, passport.router):
+    for r in (auth.router, agent.router, roof.router, engine.router, passport.router, rewards.router):
         app.include_router(r)
 
     @app.get("/api/health")

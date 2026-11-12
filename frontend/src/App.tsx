@@ -17,12 +17,14 @@ import { LoginView } from "./components/LoginView";
 import { MapCanvas } from "./components/MapCanvas";
 import { OverviewView, SavedView } from "./components/ResultsViews";
 import { ListingPanel } from "./components/ListingPanel";
+import { RewardsView } from "./components/RewardsView";
 import { RichText } from "./components/RichText";
 import { AnimatedSol } from "./components/SolMascotLazy";
 import {
   ApiError,
   deleteSession,
   fetchMe,
+  getRewards,
   getSessionHistory,
   listSessions,
   logout,
@@ -31,6 +33,7 @@ import {
   streamChat,
   type Language,
   type Listing,
+  type Rewards,
   type StepEvent,
   type User,
 } from "./lib/api";
@@ -48,7 +51,7 @@ import {
 /* Types & helpers                                                     */
 /* ------------------------------------------------------------------ */
 
-type View = "chat" | "overview" | "saved";
+type View = "chat" | "overview" | "saved" | "rewards";
 /** What the UI shows about the signed-in household. Built from the account, never hardcoded. */
 type Persona = {
   initials: string;
@@ -238,6 +241,20 @@ export default function App() {
       live = false;
     };
   }, []);
+
+  /* Only the seeded solar owner has a Passport; everyone else gets passport: null and no nav entry. */
+  const [rewards, setRewards] = useState<Rewards | null>(null);
+  useEffect(() => {
+    setRewards(null);
+    if (!user) return;
+    let live = true;
+    getRewards()
+      .then((r) => live && setRewards(r.passport ? r : null))
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [user]);
 
   /* Clear everything that belongs to the previous account. */
   const resetWorkspace = useCallback(() => {
@@ -659,6 +676,23 @@ export default function App() {
 
           {/* Bottom: Overview, then the user profile */}
           <div className="flex shrink-0 flex-col gap-1 px-2 pt-2">
+            {rewards && (
+              <button
+                type="button"
+                onClick={() => go("rewards")}
+                className={`flex h-10 w-full items-center rounded-[10px] text-left transition-colors ${
+                  view === "rewards"
+                    ? "bg-[#fafaf9] text-[#ea580c] font-medium"
+                    : "text-[#787774] hover:bg-[#fafaf9] hover:text-[#111111]"
+                }`}
+                title="Passport & Vouchers"
+              >
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center">{Icon.gift}</span>
+                <span className="min-w-0 flex-1 truncate pl-1.5 opacity-0 group-hover/rail:opacity-100 transition-opacity duration-200 text-[13px]">
+                  Passport
+                </span>
+              </button>
+            )}
             {/* 4. Overview & Settings */}
             <button
               type="button"
@@ -839,6 +873,7 @@ export default function App() {
               {view === "overview" && (
                 <OverviewView conversationId={currentId} onNewChat={() => setView("chat")} />
               )}
+              {view === "rewards" && rewards && <RewardsView data={rewards} holder={user.name} onChange={setRewards} />}
               {view === "saved" && (
                 <SavedView conversationId={currentId} onNewChat={() => setView("chat")} />
               )}

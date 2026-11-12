@@ -116,6 +116,27 @@ class PostgresRepository(Repository):
         with self.pool.connection() as conn:
             conn.execute(f"update users set {sets} where id = %s", [fields[c] for c in cols] + [user_id])
 
+    # --- rewards ---------------------------------------------------
+    def set_user_passport(self, user_id: str, passport_id: str) -> None:
+        with self.pool.connection() as conn:
+            conn.execute("insert into user_passports (user_id, passport_id) values (%s, %s) "
+                         "on conflict (user_id) do update set passport_id = excluded.passport_id", (user_id, passport_id))
+
+    def get_user_passport(self, user_id: str) -> str | None:
+        with self.pool.connection() as conn:
+            row = conn.execute("select passport_id from user_passports where user_id = %s", (user_id,)).fetchone()
+        return row["passport_id"] if row else None
+
+    def redeem_voucher(self, user_id: str, voucher_id: str, code: str, at: float) -> bool:
+        with self.pool.connection() as conn:
+            cur = conn.execute("insert into voucher_redemptions (user_id, voucher_id, code, redeemed_at) values (%s, %s, %s, %s) "
+                               "on conflict do nothing", (user_id, voucher_id, code, at))
+            return cur.rowcount == 1
+
+    def list_redemptions(self, user_id: str) -> list[dict]:
+        with self.pool.connection() as conn:
+            return list(conn.execute("select voucher_id, code, redeemed_at from voucher_redemptions where user_id = %s", (user_id,)).fetchall())
+
     def create_token(self, token_hash: str, user_id: str, expires_at: float) -> None:
         with self.pool.connection() as conn:
             conn.execute("insert into auth_tokens (token_hash, user_id, expires_at) values (%s, %s, %s)", (token_hash, user_id, expires_at))

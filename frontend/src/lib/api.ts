@@ -415,3 +415,40 @@ export async function verifyPastedPassport(text: string): Promise<VerifyResult> 
   if (!res.ok) throw await toError(res);
   return (await res.json()) as VerifyResult;
 }
+
+/* ---- Solar Passport rewards (demo): only the seeded solar owner has a Passport ------------------- */
+export type RewardPassport = {
+  id: string;
+  short_hash: string;
+  created_at: string;
+  verify_path: string;
+  installation: { installer: string; installed_on: string; sample: boolean } | null;
+  option: string;
+  panels: number | null;
+  kwp: number | null;
+  capex_php: number | null;
+  valid: boolean;
+};
+export type Voucher = {
+  id: string;
+  title: string;
+  value: string;
+  partner: string;
+  terms: string;
+  redeemed: boolean;
+  code: string | null;
+  redeemed_at: number | null;
+};
+export type Rewards = { passport: RewardPassport | null; vouchers: Voucher[] };
+
+export async function getRewards(): Promise<Rewards> {
+  const res = await fetch(`${BASE}/api/rewards`, { headers: authHeaders() });
+  if (!res.ok) throw await toError(res);
+  return (await res.json()) as Rewards;
+}
+
+export async function redeemVoucher(id: string): Promise<Rewards> {
+  const res = await fetch(`${BASE}/api/rewards/${encodeURIComponent(id)}/redeem`, { method: "POST", headers: authHeaders() });
+  if (!res.ok) throw await toError(res);
+  return (await res.json()) as Rewards;
+}

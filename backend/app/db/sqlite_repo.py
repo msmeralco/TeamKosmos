@@ -50,6 +50,17 @@ CREATE TABLE IF NOT EXISTS ledger (
     signature TEXT NOT NULL,
     created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS user_passports (
+    user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    passport_id TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS voucher_redemptions (
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    voucher_id TEXT NOT NULL,
+    code TEXT NOT NULL,
+    redeemed_at REAL NOT NULL,
+    PRIMARY KEY (user_id, voucher_id)
+);
 CREATE TABLE IF NOT EXISTS cache (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL,
@@ -160,6 +171,30 @@ class SQLiteRepository(Repository):
         with self._lock, closing(self._connect()) as conn:
             conn.execute(f"UPDATE users SET {sets} WHERE id = ?", [fields[c] for c in cols] + [user_id])
             conn.commit()
+
+    # --- rewards ---------------------------------------------------
+    def set_user_passport(self, user_id: str, passport_id: str) -> None:
+        with self._lock, closing(self._connect()) as conn:
+            conn.execute("INSERT INTO user_passports (user_id, passport_id) VALUES (?, ?) "
+                         "ON CONFLICT(user_id) DO UPDATE SET passport_id = excluded.passport_id", (user_id, passport_id))
+            conn.commit()
+
+    def get_user_passport(self, user_id: str) -> str | None:
+        with closing(self._connect()) as conn:
+            row = conn.execute("SELECT passport_id FROM user_passports WHERE user_id = ?", (user_id,)).fetchone()
+        return row["passport_id"] if row else None
+
+    def redeem_voucher(self, user_id: str, voucher_id: str, code: str, at: float) -> bool:
+        with self._lock, closing(self._connect()) as conn:
+            cur = conn.execute("INSERT OR IGNORE INTO voucher_redemptions (user_id, voucher_id, code, redeemed_at) VALUES (?, ?, ?, ?)",
+                               (user_id, voucher_id, code, at))
+            conn.commit()
+            return cur.rowcount == 1
+
+    def list_redemptions(self, user_id: str) -> list[dict]:
+        with closing(self._connect()) as conn:
+            return [dict(r) for r in conn.execute(
+                "SELECT voucher_id, code, redeemed_at FROM voucher_redemptions WHERE user_id = ?", (user_id,))]
 
     def create_token(self, token_hash: str, user_id: str, expires_at: float) -> None:
         with self._lock, closing(self._connect()) as conn:

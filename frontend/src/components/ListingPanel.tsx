@@ -49,14 +49,9 @@ const Chevron = <span className="shrink-0 text-[#c4c4c0]">{Icon.chevronRight}</s
 
 /* ---------------------------------- Installers ---------------------------------- */
 
-function ListStatus({ lists }: { lists: string[] }) {
-  const both = lists.length > 1;
-  return (
-    <span className={`inline-flex items-center gap-1.5 text-[11px] font-medium ${both ? "text-[#346538]" : "text-[#787774]"}`}>
-      <span className={`h-1.5 w-1.5 rounded-full ${both ? "bg-[#346538]" : "bg-[#a3a3a3]"}`} />
-      {both ? "On both DOE lists" : `${lists[0]?.replace(/,? 2026/, " 2026")} list only`}
-    </span>
-  );
+function PrimaryContact({ x }: { x: InstallerRow }) {
+  const c = x.phones[0] || x.phone || x.emails[0] || x.email || x.website;
+  return <span className="min-w-0 truncate text-[12px] font-medium text-[#346538]">{c || "No contact listed"}</span>;
 }
 
 function Monogram({ name, size }: { name: string; size: "sm" | "lg" }) {
@@ -100,7 +95,6 @@ function InstallerDetail({ x, sourceUrl }: { x: InstallerRow; sourceUrl: string 
         <div className="min-w-0">
           <h3 className="text-[20px] font-semibold leading-tight tracking-[-0.01em] text-[#111111]">{x.name}</h3>
           <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
-            <ListStatus lists={x.lists} />
             {x.esco && (
               <span className="text-[11px] text-[#787774]" title="Energy service company that also installs solar">
                 ESCO
@@ -209,7 +203,7 @@ function InstallersPanel({ data, onClose }: { data: InstallerList; onClose: () =
                     <span className="block truncate text-[15px] font-medium text-[#111111]">{x.name}</span>
                     <span className="mt-0.5 block truncate text-[12px] text-[#787774]">{x.area || x.address}</span>
                     <span className="mt-1 flex items-center gap-3">
-                      <ListStatus lists={x.lists} />
+                      <PrimaryContact x={x} />
                       {x.esco && <span className="text-[11px] text-[#787774]">ESCO</span>}
                     </span>
                   </span>

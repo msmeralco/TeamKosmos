@@ -86,6 +86,20 @@ class Repository(ABC):
     @abstractmethod
     def list_products(self, category: str | None = None) -> list[dict]: ...
 
+    # --- rewards (demo): the owner's Passport and redeemed vouchers ---
+    @abstractmethod
+    def set_user_passport(self, user_id: str, passport_id: str) -> None: ...
+
+    @abstractmethod
+    def get_user_passport(self, user_id: str) -> str | None: ...
+
+    @abstractmethod
+    def redeem_voucher(self, user_id: str, voucher_id: str, code: str, at: float) -> bool:
+        """Insert once. Returns False if this voucher was already redeemed (the stored row is untouched)."""
+
+    @abstractmethod
+    def list_redemptions(self, user_id: str) -> list[dict]: ...
+
     # --- append-only ledger (Solar Passport) ------------------------
     @abstractmethod
     def append_ledger(self, make_record: Callable[[str], dict]) -> dict:

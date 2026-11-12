@@ -46,6 +46,14 @@ export const Icon = {
       <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
     </Svg>
   ),
+  gift: (
+    <Svg>
+      <rect x="3" y="8" width="18" height="4" rx="1" />
+      <path d="M12 8v13" />
+      <path d="M5 12v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-8" />
+      <path d="M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 0 1 0 5" />
+    </Svg>
+  ),
   map: (
     <Svg>
       <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21" />
