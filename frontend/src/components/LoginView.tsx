@@ -2,7 +2,6 @@ import { useState, type FormEvent } from "react";
 import { AnimatePresence, LazyMotion, domAnimation, m, type Variants } from "framer-motion";
 import { SolLogo } from "./SolLogo";
 import { ApiError, login, signup, type User } from "../lib/api";
-import { Login3DPlaceholder } from "./Login3DPlaceholder";
 
 interface LoginViewProps {
   onLogin: (user: User) => void;
@@ -143,7 +142,7 @@ export function LoginView({ onLogin }: LoginViewProps) {
     <LazyMotion features={domAnimation}>
       <div className="relative flex h-dvh w-screen overflow-hidden bg-white text-[#111111]">
         {/* ---------------- Left Pane: Minimalist Auth Form ---------------- */}
-        <div className="relative flex h-full w-full lg:w-1/2 flex-col justify-between overflow-y-auto lg:overflow-hidden px-6 py-6 sm:px-12 md:px-16 lg:px-20 select-none">
+        <div className="relative flex h-full w-full flex-col justify-between overflow-y-auto px-6 py-6 sm:px-12 md:px-16 lg:px-20 select-none">
           {/* Top Bar: Sol Logo Mark */}
           <div className="flex items-center gap-2.5">
             <SolLogo height={40} />
@@ -424,11 +423,6 @@ export function LoginView({ onLogin }: LoginViewProps) {
 
           {/* Spacer to balance bottom */}
           <div className="h-4" />
-        </div>
-
-        {/* ---------------- Right Pane: 3D Presentation Viewport ---------------- */}
-        <div className="hidden lg:block lg:w-1/2 h-full">
-          <Login3DPlaceholder />
         </div>
       </div>
     </LazyMotion>
