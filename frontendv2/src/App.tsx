@@ -14,7 +14,7 @@ import {
 import { AnimatePresence, domAnimation, LazyMotion, m } from "framer-motion";
 import { Icon } from "./components/icons";
 import { MapCanvas } from "./components/MapCanvas";
-import { ApiError, deleteSession, streamChat, type StepEvent } from "./lib/api";
+import { ApiError, deleteSession, streamChat, type Language, type StepEvent } from "./lib/api";
 import {
   ConfirmDialog,
   MenuItem,
@@ -44,27 +44,27 @@ type Persona = {
 const PERSONAS: Record<PersonaId, Persona> = {
   reyes: {
     id: "reyes",
-    initials: "RR",
-    name: "Reyes Household",
-    subtitle: "Typical residential · 450 kWh/mo",
+    initials: "RF",
+    name: "Reyes Family",
+    subtitle: "450 kWh/mo · Balanced",
     location: "Quezon City, Metro Manila",
     first: "Reyes Family",
   },
   maria: {
     id: "maria",
-    initials: "MC",
-    name: "Maria Santos",
-    subtitle: "High daytime usage · 780 kWh/mo",
+    initials: "AM",
+    name: "Ate Maria",
+    subtitle: "250 kWh/mo · Night-heavy",
     location: "Pasig City, Metro Manila",
     first: "Maria",
   },
   wfh: {
     id: "wfh",
-    initials: "DL",
-    name: "David Lim",
-    subtitle: "WFH professional · 320 kWh/mo",
-    location: "Taguig, Metro Manila",
-    first: "David",
+    initials: "WC",
+    name: "WFH Couple",
+    subtitle: "700 kWh/mo · Day-heavy",
+    location: "Makati City, Metro Manila",
+    first: "Alex & Sam",
   },
 };
 
@@ -152,6 +152,9 @@ function FileThumb({ file }: { file: File }) {
   return <img src={url} alt={file.name} className="h-5 w-5 rounded-[4px] object-cover" />;
 }
 
+const LANGS = { Auto: "auto", English: "english", Taglish: "taglish" } as const satisfies Record<string, Language>;
+type LangLabel = keyof typeof LANGS;
+
 /** Add a step, or update the one with the same id (ids are stable per turn). */
 function upsertStep(steps: AgentStep[], s: StepEvent): AgentStep[] {
   const i = steps.findIndex((x) => x.id === s.id);
@@ -210,6 +213,7 @@ export default function App() {
     },
   ]);
 
+  const [lang, setLang] = useState<LangLabel>("Auto");
   const nextMsg = useRef(1);
   const busyRef = useRef(false);
   const abortRef = useRef<(() => void) | null>(null);
@@ -304,7 +308,7 @@ export default function App() {
         conversationId: cid,
         message: text || "Attached files",
         personaId,
-        language: "auto",
+        language: LANGS[lang],
         files: rawFiles,
         signal: controller.signal,
         onStep: (s) => patch((m) => ({ ...m, phase: "working", steps: upsertStep(m.steps, s) })),
@@ -336,7 +340,7 @@ export default function App() {
           setBusy(false);
         });
     },
-    [appendMsg, personaId],
+    [appendMsg, personaId, lang],
   );
 
   const ask = useCallback(
@@ -739,6 +743,8 @@ export default function App() {
                   onToggleCanvas={toggleCanvas}
                   onAsk={ask}
                   onStop={stopTurn}
+                  lang={lang}
+                  onLang={setLang}
                 />
               )}
               {view === "overview" && (
@@ -883,6 +889,8 @@ function ChatView({
   onToggleCanvas,
   onAsk,
   onStop,
+  lang,
+  onLang,
 }: {
   messages: ChatMsg[];
   busy: boolean;
@@ -891,6 +899,8 @@ function ChatView({
   onToggleCanvas: () => void;
   onAsk: (text: string, files?: string[], previews?: (string | null)[], rawFiles?: File[]) => void;
   onStop: () => void;
+  lang: LangLabel;
+  onLang: (l: LangLabel) => void;
 }) {
   const [input, setInput] = useState("");
   const [files, setFiles] = useState<File[]>([]);
@@ -1189,6 +1199,41 @@ function ChatView({
               >
                 {Icon.upload}
               </button>
+
+              {/* Reply language: Auto follows the user, Taglish forces a Tagalog-English mix */}
+              <Popover
+                label="Reply language"
+                placement="top-start"
+                className="w-[170px]"
+                trigger={({ open, toggle }) => (
+                  <button
+                    type="button"
+                    onClick={toggle}
+                    aria-expanded={open}
+                    title="Reply language"
+                    className="flex h-8 items-center gap-1 rounded-[8px] px-2 text-[12px] font-medium text-[#787774] hover:bg-[#fafaf9] hover:text-[#ea580c] transition-colors"
+                  >
+                    {lang} {Icon.chevronDown}
+                  </button>
+                )}
+              >
+                {(close) => (
+                  <div role="menu" aria-label="Reply language">
+                    {(Object.keys(LANGS) as LangLabel[]).map((l) => (
+                      <MenuItem
+                        key={l}
+                        checked={lang === l}
+                        onSelect={() => {
+                          onLang(l);
+                          close();
+                        }}
+                      >
+                        {l === "Auto" ? "Auto-detect" : l}
+                      </MenuItem>
+                    ))}
+                  </div>
+                )}
+              </Popover>
             </div>
 
             {busy ? (
