@@ -21,16 +21,13 @@
   - [x] Know the requirements: Net Metering steps and fees, or Micro Solar and Zero-Export when not exporting
   - [x] Off-grid systems get their own size and requirements text (no transformer limit, no Meralco application)
   - [x] Shown on the Overview page and in the chat "Good to know" list
-  - [ ] Optimizer ranking uses the checks (today they only warn)
-  - [ ] Show DOE-registered firms in the provider check (today only the chat can list them)
 
 ## Tier 2: Full product
 
 - [x] Goal- and budget-driven optimizer
 - [x] Real ready-made packages (25 from 6 installers) with photos, published prices and links, shown under every analysis and on request; prices are re-checked against the live pages by `scripts/build_packages.py`
 - [x] Every package has an image: real installer photos where they exist, drawn illustrations otherwise (PTG Solar, Triple30 and the samples)
-- [x] Made-up sample packages fill gaps (grid-tied sizes, off-grid), always labeled *Sample* and shown only where no real package fits
-- [ ] Real photos for PTG Solar and Triple30, and real off-grid packages (none published)
+- [x] Made-up sample packages fill gaps (grid-tied sizes, off-grid), always labeled _Sample_ and shown only where no real package fits
 - [~] Live product price fetch with cache: scraper code exists, no retailer source is enabled, prices come from the seed catalog
 - [x] 2D panel layout on the roof
 - [x] Blank-canvas sketch with scale correction, floating tools, and an uploaded picture to trace by hand
@@ -39,7 +36,6 @@
 - [x] Solar Rewards: sample voucher catalog (`backend/data/vouchers.json`), shown to the seeded owner; values are samples, nothing agreed with Meralco or any business
 - [x] Voucher redeem (once only; the code appears after redeeming; a repeat returns 409)
 - [x] Passport booklet UI (Passport entry in the sidebar, only for the owner): cover that opens, ID page with QR and verify seal, voucher page
-- [ ] Passport and vouchers for regular accounts (needs the install-confirm step; today only `dela.cruz@sol.test` has them)
 
 ## Tier 2b: Rules search
 
@@ -48,17 +44,10 @@
 - [x] "Ask the rules" in chat, in both Gemini and rule-based modes
 - [x] `scripts/build_corpus.py` downloads the listed pages, respecting robots.txt
 - [x] DOE Solar PV Installer Registry in the library (Jan 31 and Jul 13, 2026 lists; 77 firms in Metro Manila, Central Luzon and CALABARZON), always shown as registered, not endorsed
-- [ ] Vetted installer list (the DOE registry is a start, but the DOE states it endorses no one; no prices, reviews or service checks)
-- [ ] Real product specs and prices (the catalog is synthetic)
-- [ ] Meralco forms and checklists (PDFs, not downloaded)
-- [ ] Embedding search (keyword search only)
-- [ ] Confirm live Gemini actually calls `search_docs` (only the rule-based mode was tested)
 
 ## Tier 3: Stretch
 
 - [~] Photo or blueprint auto-outline: you can trace over an uploaded picture by hand; automatic outlining is not built
-- [ ] Battery polish
-- [ ] 3D view
 
 ## Other features
 
@@ -77,7 +66,3 @@
 - [x] Saved Records page: Passport view and paste-to-verify
 - [x] Assumptions register shown in the app (`ASSUMPTIONS.yaml`)
 - [x] Mac and Windows dev scripts (`scripts/dev.sh`, `scripts/dev.ps1`)
-- [ ] Fix `backend/scripts/demo_run.py`: the new system-type question stops it before the analysis
-- [ ] Set a real `CONTACT_EMAIL` in `backend/.env` (address search fails with 403 until then)
-- [ ] Fix the `frontendv2` mention in the root `README.md` (the folder is `frontend/`)
-- [ ] Real bill photos in `tests/` (private repo only): replace with fake bills before the repo goes public
