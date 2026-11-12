@@ -1,0 +1,298 @@
+@import url("./tokens.css");
+@import url("./base.css");
+
+/* Fonts are local files, so the deck runs offline. */
+@font-face { font-family: "Instrument Sans"; font-weight: 400; font-style: normal; font-display: swap; src: url("assets/fonts/instrument-sans-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "Instrument Sans"; font-weight: 500; font-style: normal; font-display: swap; src: url("assets/fonts/instrument-sans-latin-500-normal.woff2") format("woff2"); }
+@font-face { font-family: "Figtree"; font-weight: 400; font-style: normal; font-display: swap; src: url("assets/fonts/figtree-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "Figtree"; font-weight: 500; font-style: normal; font-display: swap; src: url("assets/fonts/figtree-latin-500-normal.woff2") format("woff2"); }
+
+:root {
+  --stage-bg: oklch(13.2% 0.022 258);
+  --k: 1;
+  /* sizes are authored for the fixed 1920 x 1080 stage */
+  --slide-h: 5.25rem; --slide-lead: 1.875rem; --slide-note: 1.375rem; --slide-tag: 1.5rem; --slide-row: 2.25rem;
+  /* the Ribbon colourway "two-in-the-morning", used on the night slides */
+  --night-paper: oklch(13.2% 0.022 258); --night-paper-2: oklch(16.4% 0.024 258); --night-paper-3: oklch(19% 0.026 258);
+  --night-ink: oklch(93.5% 0.012 85); --night-ink-2: oklch(84% 0.014 85); --night-muted: oklch(72% 0.02 255);
+  --night-rule: oklch(27% 0.024 258); --night-rule-2: oklch(22% 0.022 258);
+  --night-accent: oklch(82% 0.095 68); --night-accent-ink: oklch(20% 0.03 62);
+}
+
+.slide[data-tone="night"], body[data-tone="night"] {
+  color-scheme: dark;
+  --color-paper: var(--night-paper); --color-paper-2: var(--night-paper-2); --color-paper-3: var(--night-paper-3);
+  --color-ink: var(--night-ink); --color-ink-2: var(--night-ink-2); --color-muted: var(--night-muted);
+  --color-rule: var(--night-rule); --color-rule-2: var(--night-rule-2);
+  --color-accent: var(--night-accent); --color-accent-ink: var(--night-accent-ink); --color-focus: var(--night-accent);
+}
+
+html, body { width: 100%; height: 100%; margin: 0; overflow: clip; background: var(--stage-bg); }
+
+#gl { position: fixed; inset: 0; width: 100%; height: 100%; display: block; z-index: 0; }
+
+/* ---------- the fixed 16:9 stage that carries the copy ---------- */
+.deck-viewport { position: fixed; inset: 0; overflow: clip; pointer-events: none; z-index: 2; }
+.deck-stage { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; }
+.slide { position: absolute; inset: 0; width: 1920px; height: 1080px; display: none; color: var(--color-ink); }
+.slide.active, .slide.leaving { display: block; }
+.slide.leaving { opacity: 0; transition: opacity var(--dur-short) var(--ease-out); }
+.slide.active .copy { animation: rise 0.9s var(--ease-out) 0.5s both; }
+@keyframes rise { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
+
+.copy {
+  position: absolute; left: var(--space-3xl); bottom: var(--space-3xl); width: 760px;
+  display: flex; flex-direction: column; gap: var(--space-lg);
+  padding: var(--space-xl) var(--space-xl) var(--space-lg);
+  border-radius: var(--radius-card);
+  background: color-mix(in oklab, var(--color-paper) 84%, transparent);
+  box-shadow: var(--edge-light), 0 30px 70px -30px oklch(10% 0.02 260 / 0.55);
+  -webkit-backdrop-filter: blur(14px) saturate(1.1); backdrop-filter: blur(14px) saturate(1.1);
+}
+.copy h1, .copy h2 { max-width: 14ch; font-size: 4.5rem; line-height: 1.04; color: var(--color-ink); }
+.copy .lead { font-size: var(--slide-lead); line-height: 1.4; max-width: 30ch; color: var(--color-ink-2); }
+.copy .source { display: block; max-width: 50ch; padding-top: var(--space-md); border-top: var(--rule-hair) solid var(--color-rule); font-size: 1.125rem; line-height: 1.45; color: var(--color-muted); }
+
+/* ---------- the opening title (slide 0): words on the left, the sun on the right ---------- */
+/* calms the busy street: blur + dim everywhere except a hole around the sun, then a warm glow behind it */
+/* the scrim and glow overshoot the 16:9 stage by --o on every side, so they cover the whole window on any aspect ratio; the sun's centre moves with them */
+.intro-scrim, .intro-glow { --o: 2400px; position: absolute; inset: calc(var(--o) * -1); }
+.intro-scrim {
+  background: oklch(10% 0.04 260 / 0.45); -webkit-backdrop-filter: blur(7px) saturate(0.7); backdrop-filter: blur(7px) saturate(0.7);
+  -webkit-mask-image: radial-gradient(circle at calc(1440px + var(--o)) calc(400px + var(--o)), transparent 0 210px, #000 520px); mask-image: radial-gradient(circle at calc(1440px + var(--o)) calc(400px + var(--o)), transparent 0 210px, #000 520px);
+}
+.intro-glow { mix-blend-mode: screen; background: radial-gradient(circle at calc(1440px + var(--o)) calc(400px + var(--o)), oklch(78% 0.15 75 / 0.5), oklch(60% 0.12 60 / 0.18) 260px, transparent 520px); }
+.intro-block { position: absolute; left: 120px; top: 0; bottom: 0; width: 1000px; display: flex; flex-direction: column; justify-content: center; gap: 36px; }
+.intro {
+  width: auto; max-width: none; margin: 0; text-align: left; font-family: var(--font-display); font-weight: 500;
+  font-size: 7rem; line-height: 1.04; letter-spacing: -0.035em; color: oklch(95% 0.012 85);
+  text-shadow: 0 0 60px oklch(80% 0.08 260 / 0.45), 0 4px 40px oklch(8% 0.03 260 / 0.7);
+}
+.intro-sub { margin: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; font-size: 1.875rem; color: oklch(86% 0.014 85); text-shadow: 0 2px 24px oklch(8% 0.03 260 / 0.85); }
+.intro-sub b { font-family: var(--font-display); font-weight: 500; font-size: 2.5rem; color: oklch(95% 0.012 85); }
+.slide.active .intro { animation: introIn 2.2s var(--ease-out) 0.4s both; }
+.slide.active .intro-sub { animation: rise 1.4s var(--ease-out) 1.6s both; }
+@keyframes introIn { from { opacity: 0; transform: translateY(18px); filter: blur(10px); } to { opacity: 1; transform: none; filter: none; } }
+
+/* ---------- labels tied to points in the 3D world ---------- */
+#labels { position: fixed; inset: 0; pointer-events: none; overflow: clip; z-index: 4; }
+.tag {
+  position: absolute; left: 0; top: 0; display: none; flex-direction: column; align-items: center; gap: calc(2px * var(--k));
+  padding: calc(8px * var(--k)) calc(16px * var(--k)); border-radius: calc(12px * var(--k));
+  font-family: var(--font-body); font-weight: 500; line-height: 1.15; text-align: center; white-space: nowrap;
+  color: var(--color-ink); background: color-mix(in oklab, var(--color-paper) 86%, transparent);
+  box-shadow: var(--edge-light), 0 10px 26px -12px oklch(10% 0.02 260 / 0.6);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  opacity: 0; transition: opacity 0.5s var(--ease-out);
+  will-change: transform;
+}
+.tag.on { display: flex; }
+.tag.show { opacity: 1; }
+.tag .fig { font-family: var(--font-display); font-size: calc(30px * var(--k)); font-weight: 500; letter-spacing: var(--tracking-display); font-variant-numeric: tabular-nums; }
+.tag .cap { font-weight: 400; font-size: calc(17px * var(--k)); color: var(--color-muted); }
+.tag::after { content: ""; position: absolute; left: 50%; top: 100%; width: 1px; height: calc(var(--leader, 26px) * var(--k)); background: var(--color-muted); }
+/* tags that sit beside what they name, with a short level leader */
+.tag[data-side]::after { top: 50%; height: 1px; width: calc(20px * var(--k)); }
+.tag[data-side="below"]::after { top: auto; bottom: 100%; }
+.tag[data-side="right"] { align-items: flex-start; text-align: left; }
+.tag[data-side="right"]::after { left: auto; right: 100%; }
+.tag[data-side="left"] { align-items: flex-end; text-align: right; }
+.tag[data-side="left"]::after { left: 100%; }
+/* speech bubbles: what the people in the scene say */
+.tag.bubble {
+  white-space: normal; width: calc(300px * var(--k)); padding: calc(14px * var(--k)) calc(18px * var(--k)); border-radius: calc(20px * var(--k));
+  background: oklch(99% 0.006 85); color: oklch(20% 0.01 80); text-align: left; align-items: flex-start;
+  font-size: calc(24px * var(--k)); line-height: 1.25; font-weight: 500;
+}
+.tag.bubble::after { left: 50%; top: 100%; width: calc(16px * var(--k)); height: calc(16px * var(--k)); background: oklch(99% 0.006 85); transform: translate(-50%, -55%) rotate(45deg); border-radius: 2px; }
+.tag.bubble.sol { background: oklch(86% 0.1 72); }
+.tag.bubble.sol::after { background: oklch(86% 0.1 72); }
+/* the three things the homeowner tells Sol */
+.tag.chip { flex-direction: column-reverse; align-items: flex-start; border-radius: calc(14px * var(--k)); padding: calc(10px * var(--k)) calc(18px * var(--k)); border: 1px solid oklch(80% 0.02 80); }
+.tag.chip .fig { font-size: calc(26px * var(--k)); }
+.tag.chip .cap { text-transform: uppercase; letter-spacing: 0.08em; font-size: calc(13px * var(--k)); }
+/* check results on the Passport */
+.tag.ok { background: oklch(94% 0.07 160); color: oklch(26% 0.07 160); }
+.tag.ok .cap { color: oklch(40% 0.08 160); }
+.tag.ok::after { background: oklch(55% 0.12 160); }
+.tag.bad { background: oklch(93% 0.06 25); color: oklch(30% 0.12 25); }
+.tag.bad .cap { color: oklch(42% 0.12 25); white-space: normal; max-width: calc(250px * var(--k)); }
+.tag.bad::after { background: oklch(55% 0.18 25); }
+
+/* what the two colours of cube mean (slide 3) */
+.copy .legend { display: flex; align-items: center; gap: var(--space-md); margin: calc(-1 * var(--space-xs)) 0 0; font-size: 1.375rem; color: var(--color-ink-2); }
+.legend .dot { display: inline-block; width: 18px; height: 18px; margin-right: 8px; border-radius: 4px; vertical-align: -2px; }
+.legend .dot.amber { background: oklch(80% 0.16 72); box-shadow: 0 0 12px oklch(80% 0.16 72 / 0.8); }
+.legend .dot.cyan { margin-left: var(--space-sm); background: oklch(82% 0.11 215); box-shadow: 0 0 12px oklch(82% 0.11 215 / 0.8); }
+
+/* the Passport steps (slide 8) light up as the scene reaches them */
+.copy .steps { display: flex; flex-wrap: wrap; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.steps li { padding: 8px 18px; border-radius: 999px; font-size: 1.25rem; font-weight: 500; color: var(--color-muted); background: color-mix(in oklab, var(--color-ink) 7%, transparent); transition: background 0.4s, color 0.4s; }
+.steps li.on { background: oklch(88% 0.08 175); color: oklch(26% 0.06 175); }
+.steps li.bad.on { background: oklch(88% 0.09 25); color: oklch(30% 0.12 25); }
+
+/* the five-year table (slide 6) */
+.table-card {
+  position: absolute; right: var(--space-3xl); bottom: var(--space-3xl); width: 880px; display: flex; flex-direction: column; gap: var(--space-md);
+  padding: var(--space-lg) var(--space-xl); border-radius: var(--radius-card);
+  background: color-mix(in oklab, var(--color-paper) 88%, transparent); box-shadow: var(--edge-light), 0 30px 70px -30px oklch(10% 0.02 260 / 0.55);
+  -webkit-backdrop-filter: blur(14px) saturate(1.1); backdrop-filter: blur(14px) saturate(1.1);
+  animation: rise 0.9s var(--ease-out) 0.9s both;
+}
+.tc-head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-md); }
+.tc-head h3 { margin: 0; font-size: 2rem; font-weight: 500; letter-spacing: var(--tracking-display); }
+.tc-head span { font-size: 1.125rem; color: var(--color-muted); }
+.tc-grid { display: flex; flex-direction: column; }
+.tc-row { display: grid; grid-template-columns: 230px 180px 200px 1fr; column-gap: var(--space-md); align-items: center; padding: 10px 0; border-top: var(--rule-hair) solid var(--color-rule); font-size: 1.375rem; font-variant-numeric: tabular-nums; }
+.tc-row b { font-family: var(--font-display); font-weight: 500; font-size: 1.5rem; }
+.tc-top { padding: 0 0 8px; border-top: 0; font-size: 1rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-muted); }
+.tc-row .bar { position: relative; height: 40px; }
+.tc-row .bar em { position: absolute; top: 6px; height: 28px; min-width: 12px; border-radius: 14px; background: oklch(74% 0.1 175); }
+.tc-row .bar em.mark { width: 12px; margin-left: -6px; border-radius: 50%; background: var(--color-ink); }
+.tc-row .bar .gridline { position: absolute; top: -8px; bottom: -8px; width: 0; border-left: 2px dashed oklch(55% 0.1 40 / 0.55); }
+.tc-row strong { font-weight: 500; font-size: 1.5rem; }
+.tc-note { margin: 0; font-size: 0.9rem; line-height: 1.45; color: var(--color-muted); }
+
+body { --color-paper: oklch(98.2% 0.008 82); }
+
+/* ---------- the conversation with Sol (slide 5) ---------- */
+.chat {
+  position: absolute; right: 72px; top: 96px; width: 640px; height: 860px; display: flex; flex-direction: column; justify-content: flex-end; gap: 16px;
+  padding: 104px 28px 28px; border-radius: var(--radius-card); overflow: hidden;
+  background: color-mix(in oklab, var(--color-paper) 88%, transparent); box-shadow: var(--edge-light), 0 30px 70px -30px oklch(10% 0.02 260 / 0.55);
+  -webkit-backdrop-filter: blur(14px) saturate(1.1); backdrop-filter: blur(14px) saturate(1.1);
+}
+.slide.active .chat { animation: rise 0.9s var(--ease-out) 0.3s both; }
+.chat-head { position: absolute; inset: 0 0 auto 0; display: flex; align-items: center; gap: 14px; padding: 26px 28px; border-bottom: var(--rule-hair) solid var(--color-rule); font-size: 1.5rem; }
+.chat-head b { font-family: var(--font-display); font-weight: 500; font-size: 1.75rem; }
+.chat-head span { margin-left: auto; font-size: 1.125rem; color: var(--color-muted); }
+.chat-head span::before { content: ""; display: inline-block; width: 10px; height: 10px; margin-right: 8px; border-radius: 50%; background: oklch(70% 0.15 155); }
+.chat-head .av { position: relative; width: 38px; height: 38px; border-radius: 10px; background: oklch(82% 0.13 72); }
+.chat-head .av::before, .chat-head .av::after { content: ""; position: absolute; top: 11px; width: 5px; height: 11px; background: oklch(22% 0.03 62); }
+.chat-head .av::before { left: 10px; } .chat-head .av::after { right: 10px; }
+.msg { display: none; max-width: 84%; margin: 0; padding: 16px 22px; border-radius: 22px; font-size: 1.625rem; line-height: 1.3; }
+.msg.show { display: block; animation: rise 0.45s var(--ease-out) both; }
+.msg.user { align-self: flex-end; border-bottom-right-radius: 6px; background: var(--color-ink); color: var(--color-paper); }
+.msg.sol { align-self: flex-start; border-bottom-left-radius: 6px; background: oklch(89% 0.085 72); color: oklch(22% 0.03 62); }
+.msg.typing { width: 96px; height: 56px; padding: 0; overflow: hidden; color: transparent; position: relative; }
+.msg.typing::after { content: "• • •"; position: absolute; inset: 0; display: grid; place-content: center; color: oklch(40% 0.05 62); font-size: 1.5rem; letter-spacing: 2px; animation: blink 1s infinite; }
+@keyframes blink { 50% { opacity: 0.35; } }
+
+/* ---------- the steps Sol runs, one by one (How Sol works) ---------- */
+/* ---------- who it helps: three groups, revealed one after another ---------- */
+.impact {
+  position: absolute; right: 72px; top: 96px; width: 700px; padding: 20px 28px 24px; border-radius: var(--radius-card);
+  background: color-mix(in oklab, var(--color-paper) 90%, transparent); box-shadow: var(--edge-light), 0 30px 70px -30px oklch(10% 0.02 260 / 0.55);
+  -webkit-backdrop-filter: blur(14px) saturate(1.1); backdrop-filter: blur(14px) saturate(1.1);
+}
+.im-row { display: flex; gap: 22px; align-items: flex-start; padding: 22px 0; border-bottom: var(--rule-hair) solid var(--color-rule); }
+.im-row b { display: block; font-family: var(--font-display); font-weight: 500; font-size: 2.25rem; letter-spacing: var(--tracking-display); }
+.im-row p { margin: 6px 0 0; font-size: 1.5rem; line-height: 1.4; color: var(--color-ink-2); }
+.im-dot { flex: none; width: 22px; height: 22px; margin-top: 14px; border-radius: 6px; }
+.im-dot.c { background: oklch(70% 0.15 155); } .im-dot.b { background: oklch(82% 0.13 72); } .im-dot.m { background: oklch(68% 0.13 240); }
+.im-note { margin: 18px 0 0; font-size: 1.125rem; line-height: 1.4; color: var(--color-muted); }
+.slide.active .im-row { animation: rise 0.9s var(--ease-out) both; }
+.slide.active .im-row:nth-child(1) { animation-delay: 0.6s; } .slide.active .im-row:nth-child(2) { animation-delay: 1.5s; } .slide.active .im-row:nth-child(3) { animation-delay: 2.4s; }
+.slide.active .im-note { animation: rise 0.9s var(--ease-out) 3.2s both; }
+.flow {
+  position: absolute; right: 72px; top: 72px; width: 640px; padding: 104px 28px 24px; border-radius: var(--radius-card);
+  background: color-mix(in oklab, var(--color-paper) 90%, transparent); box-shadow: var(--edge-light), 0 30px 70px -30px oklch(10% 0.02 260 / 0.55);
+  -webkit-backdrop-filter: blur(14px) saturate(1.1); backdrop-filter: blur(14px) saturate(1.1);
+}
+.slide.active .flow { animation: rise 0.9s var(--ease-out) 0.3s both; }
+.flow-head { position: absolute; inset: 0 0 auto 0; display: flex; align-items: center; gap: 14px; padding: 26px 28px; border-bottom: var(--rule-hair) solid var(--color-rule); font-size: 1.5rem; }
+.flow-head b { font-family: var(--font-display); font-weight: 500; font-size: 1.75rem; }
+.flow-head span { margin-left: auto; font-size: 1.125rem; color: var(--color-muted); }
+.flow-head span::before { content: ""; display: inline-block; width: 10px; height: 10px; margin-right: 8px; border-radius: 50%; background: oklch(70% 0.15 155); }
+.flow-head .av { position: relative; width: 38px; height: 38px; border-radius: 10px; background: oklch(82% 0.13 72); }
+.flow-head .av::before, .flow-head .av::after { content: ""; position: absolute; top: 11px; width: 5px; height: 11px; background: oklch(22% 0.03 62); }
+.flow-head .av::before { left: 10px; } .flow-head .av::after { right: 10px; }
+.flow ol { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.flow li { display: flex; gap: 20px; align-items: flex-start; padding: 12px 14px; border-radius: 16px; opacity: 0.5; transition: opacity 0.4s, background 0.4s; }
+.flow li.cur, .flow li.done { opacity: 1; }
+.flow li.cur { background: oklch(93% 0.05 80 / 0.7); }
+.flow li > div { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 14px; min-width: 0; flex: 1; }
+.flow li b { font-family: var(--font-display); font-weight: 500; font-size: 1.75rem; }
+.flow li code { font-size: 1.0625rem; color: var(--color-muted); }
+.flow .n { flex: none; display: grid; place-items: center; width: 40px; height: 40px; margin-top: 2px; border-radius: 50%; border: 2px solid var(--color-rule); font-style: normal; font-size: 1.25rem; transition: background 0.3s, border-color 0.3s; }
+.flow li.cur .n { background: oklch(82% 0.13 72); border-color: oklch(82% 0.13 72); color: oklch(22% 0.03 62); animation: blink 1s infinite; }
+.flow li.done .n { background: oklch(70% 0.15 155); border-color: oklch(70% 0.15 155); color: transparent; position: relative; }
+.flow li.done .n::after { content: "✓"; position: absolute; color: oklch(98% 0.01 160); font-size: 1.375rem; }
+.flow .d { display: none; flex: 0 0 100%; margin: 6px 0 0; font-size: 1.375rem; line-height: 1.35; color: var(--color-ink-2); }
+.flow li.cur .d, .flow li.done .d { display: block; }
+.flow .field { display: inline-block; padding: 8px 14px; border-radius: 10px; border: 1.5px solid var(--color-rule); background: var(--color-paper); }
+.flow .typed { display: inline-block; max-width: 0; overflow: hidden; white-space: nowrap; vertical-align: bottom; }
+.flow li.cur .typed { animation: typing 1.7s steps(26) 0.2s forwards; border-right: 2px solid var(--color-ink); }
+.flow li.done .typed { max-width: 30ch; }
+@keyframes typing { to { max-width: 30ch; } }
+.flow .pinicon { display: inline-block; width: 16px; height: 16px; margin-right: 10px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); background: oklch(62% 0.2 28); vertical-align: -2px; }
+.flow li.cur .pinicon { animation: pindrop 0.6s var(--ease-out) both; }
+@keyframes pindrop { from { transform: translateY(-26px) rotate(-45deg); opacity: 0; } }
+.flow .prog { display: block; height: 8px; margin-top: 10px; border-radius: 4px; background: var(--color-rule); overflow: hidden; }
+.flow .prog i { display: block; height: 100%; width: 0; background: oklch(74% 0.1 175); }
+.flow li.cur .prog i { animation: fill 2.2s ease-in-out forwards; }
+.flow li.done .prog i { width: 100%; }
+@keyframes fill { to { width: 100%; } }
+
+/* ---------- presenter chrome ---------- */
+.notes-panel { position: fixed; left: var(--space-lg); right: var(--space-lg); bottom: var(--space-lg); z-index: var(--z-modal); display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-xl); padding: var(--space-lg); border-radius: var(--radius-card); background: oklch(98.2% 0.008 82); color: oklch(18% 0.006 80); box-shadow: var(--edge-light), var(--shadow-panel); font-size: var(--text-lg); line-height: 1.5; }
+.notes-panel[hidden] { display: none !important; }
+.notes-panel .when { color: oklch(47% 0.012 80); font-size: var(--text-md); }
+.notes-panel .say { margin-top: var(--space-xs); max-width: 70ch; }
+.notes-panel .next { margin-top: var(--space-sm); color: oklch(47% 0.012 80); font-size: var(--text-md); }
+.notes-panel .clock { font-family: var(--font-display); font-size: var(--text-3xl); letter-spacing: var(--tracking-display); font-variant-numeric: tabular-nums; text-align: right; }
+.hint { position: fixed; left: 50%; bottom: var(--space-md); transform: translateX(-50%); z-index: var(--z-toast); padding: var(--space-xs) var(--space-md); border-radius: var(--radius-pill); background: oklch(18% 0.02 258 / 0.78); color: oklch(93% 0.012 85); font-size: var(--text-sm); transition: opacity 0.6s; pointer-events: none; }
+.hint.gone { opacity: 0; }
+
+/* ---------- loader ---------- */
+.loader { position: fixed; inset: 0; z-index: 900; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; background: oklch(13.2% 0.022 258); color: oklch(93.5% 0.012 85); transition: opacity 1.2s ease; }
+.loader.gone { opacity: 0; pointer-events: none; visibility: hidden; transition: opacity 1.2s ease, visibility 0s 1.2s; }
+.loader .mark { font-family: var(--font-display); font-size: 88px; letter-spacing: -0.04em; color: oklch(82% 0.095 68); }
+.loader .bar { width: 320px; height: 3px; background: oklch(27% 0.024 258); border-radius: 3px; overflow: hidden; }
+.loader .bar i { display: block; height: 100%; width: 0; background: oklch(82% 0.095 68); transition: width 0.3s; }
+.loader p { font-size: 15px; letter-spacing: 0.04em; color: oklch(72% 0.02 255); }
+.fail { position: fixed; inset: 0; z-index: 950; display: grid; place-content: center; padding: 48px; text-align: center; background: oklch(13.2% 0.022 258); color: oklch(93.5% 0.012 85); font-size: 20px; line-height: 1.5; }
+.fail[hidden] { display: none; }
+.fail code { background: oklch(22% 0.022 258); padding: 2px 8px; border-radius: 6px; }
+.noscript { position: fixed; inset: 0; display: grid; place-content: center; background: oklch(13.2% 0.022 258); color: oklch(93.5% 0.012 85); }
+
+@media (prefers-reduced-motion: reduce) { .slide.active .copy { animation: none; } }
+
+/* ---------- Sol picks: a parts catalog, then installer quotes (slide 7) ---------- */
+.pick {
+  position: absolute; right: 72px; top: 72px; width: 800px; display: flex; flex-direction: column; gap: 14px; padding: 104px 28px 26px; border-radius: var(--radius-card);
+  background: color-mix(in oklab, var(--color-paper) 90%, transparent); box-shadow: var(--edge-light), 0 30px 70px -30px oklch(10% 0.02 260 / 0.55);
+  -webkit-backdrop-filter: blur(14px) saturate(1.1); backdrop-filter: blur(14px) saturate(1.1);
+}
+.slide.active .pick { animation: rise 0.9s var(--ease-out) 0.3s both; }
+.pick h3 { margin: 10px 0 0; font-size: 1.125rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-muted); }
+.pick [data-show] { opacity: 0; transform: translateY(10px); transition: opacity 0.5s, transform 0.5s; }
+.pick [data-show].show { opacity: 1; transform: none; }
+.cat { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.tile, .q { position: relative; padding: 14px 16px; border-radius: 16px; border: 2px solid var(--color-rule); transition: border-color 0.4s, background 0.4s, opacity 0.4s; }
+.tile b, .q b { display: block; font-family: var(--font-display); font-weight: 500; font-size: 1.5rem; }
+.tile span, .q span { display: block; font-size: 1.0625rem; line-height: 1.35; color: var(--color-muted); }
+.chk { display: block; margin-top: 6px; font-style: normal; font-size: 1.0625rem; font-weight: 500; color: oklch(34% 0.1 160); opacity: 0; transition: opacity 0.4s; }
+.chk.sel { opacity: 1; }
+.tile:has(.chk.sel), .q:has(.chk.sel) { border-color: oklch(70% 0.15 155); background: oklch(94% 0.07 160); }
+.tile.skip:has(.chk.sel) { border-color: var(--color-rule); background: transparent; opacity: 0.55; }
+.tile.skip .chk { color: var(--color-muted); }
+.quotes { display: flex; flex-direction: column; gap: 10px; }
+.q { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.q strong { font-weight: 500; font-size: 1.75rem; font-variant-numeric: tabular-nums; }
+.q.over { opacity: 0.6; }
+
+/* the copy card that changes its words part-way through a stop (slide 4): data-sel fades the first out, data-show fades the second in */
+.copy.swap { display: grid; }
+.copy.swap > * { grid-area: 1 / 1; display: flex; flex-direction: column; gap: var(--space-lg); transition: opacity 0.6s, transform 0.6s; }
+.copy.swap > [data-show] { opacity: 0; transform: translateY(12px); }
+.copy.swap > [data-show].show { opacity: 1; transform: none; }
+.copy.swap > .sel { opacity: 0; transform: translateY(-12px); }
+
+/* pictures of kit models in the catalog and quote cards (slide 7) */
+.thumb { flex: none; width: 76px; height: 76px; object-fit: contain; }
+.thumb.face { width: 72px; height: 72px; border-radius: 14px; background: oklch(90% 0.03 80 / 0.7); }
+.tile { display: flex; align-items: center; gap: 10px; }
+.tile > div { min-width: 0; }
+.q .thumb { margin-right: -2px; }
+.q > div { flex: 1; min-width: 0; }

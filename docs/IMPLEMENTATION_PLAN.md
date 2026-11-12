@@ -10,21 +10,34 @@ Status tags used below: **[DECIDED]** agreed in planning, **[PROPOSED]** my defa
 ## 1. Goal, scope and success criteria
 
 ### 1.1 One-sentence product
-Sol is a conversational agent that takes a Meralco household's roof, bill, budget and goal, then returns sized solar options, a 25-year ROI comparison with honest ranges, and a signed, verifiable record of what was recommended and why.
+Sol is a conversational agent that takes a Meralco household's roof, bill, budget and goal, then returns sized solar options, a 10-year cost comparison with honest ranges (a 25-year cash flow sits behind it), and a Solar Passport: proof of going solar that earns vouchers and discounts once an installer confirms the install.
+
+### 1.1b Who it serves **[DECIDED]**
+Build the customer chat agent first. Three groups benefit, and the deck has a slide for each (slide 9, "Who it helps"):
+
+| Group | What they get | Built or pitch |
+|---|---|---|
+| **Customers** | An honest range instead of one number, what net metering really credits, answers to rule questions with source links (RAG), and a Passport that earns vouchers and discounts for going solar. | Built |
+| **Business owners** (installers and sellers) | The customer arrives with a layout, a priced package and the assumptions in one place. They open the same `/passport/{id}` link as a quote brief, confirm the install, and redeem vouchers with a code. | Built as part of the Passport page, install confirmation and redeem route; no installer accounts or dashboard. Partner funding is pitch only. |
+| **Meralco** | Better-prepared customers who know how exports are credited and which grid pathway applies (DOE DC2026-08-0017), and a Passport to point to when referring a customer to an accredited installer. | Pitch only. No integration, no referral feature, and **no promise of any Meralco benefit**. |
+
+There are no separate pages for installers or Meralco. The Passport page is the shared surface.
 
 ### 1.2 In scope
 - Roof input by address (OpenStreetMap outline autofill) and by drawing on a satellite map. Later: blank-canvas sketch with manual scale, photo/blueprint auto-outline.
 - Household load estimate from monthly kWh or bill.
 - Hourly solar simulation (PVGIS-ERA5 data) with optional battery.
 - Net-metering-correct billing with on/off toggle and editable export credit.
-- 25-year ROI table: grid-only vs on-grid solar vs hybrid.
+- ROI table: grid-only vs on-grid solar vs hybrid. The headline is the **10-year** total (the same horizon as the deck). The 25-year cash flow behind it gives payback and lifetime profit.
 - Budget- and goal-driven optimizer producing the top 2 or 3 parts lists.
 - Live equipment price search with cache fallback and source/timestamp on every price.
-- Solar Passport: signed, hashed verification record of inputs, assumptions and results.
+- **Solar Passport:** the customer's proof of going solar. Sol issues it with the plan (inputs, assumptions, package, results) and signs it. A listed installer confirms the install, and the confirmed Passport unlocks vouchers and discounts. Three stages: plan, installed, redeemed.
+- **Solar Rewards:** vouchers and discounts issued once the install is confirmed, from a small static catalog (section 7.11b). Each voucher is tied to one Passport and redeems once. Reward values are sample values until a partner funds them.
 - A chat agent over all of the above, with a "show the math" drawer.
+- **RAG grounding:** local corpus (SQLite + embeddings, keyword fallback) of Meralco tariff and net-metering pages, DOE DC2026-08-0017, and product pages. `search_docs` returns passages with source URLs. Facts and citations only, never calculations.
 
 ### 1.3 Out of scope
-- Recognition tiers, rewards, points, and any promise of Meralco benefits. **[DECIDED]**
+- Recognition tiers, points, leaderboards, cash payouts and any promise of Meralco benefits. Installer accounts, referrals and a pathway classifier are not built (pitch only). Vouchers are in scope as of Nov 12 (changed from the earlier decision to leave rewards out); a voucher is a signed code, not money. **[DECIDED]**
 - Electrical engineering sign-off (string design, protection, permits). Everything is labeled an estimate for a licensed installer to confirm.
 - Real customer data. All demo data is synthetic and labeled.
 - Multi-plane roof modeling and detailed shading (Tier 3 or later).
@@ -34,10 +47,10 @@ Sol is a conversational agent that takes a Meralco household's roof, bill, budge
 
 | Criterion (weight) | What must be true at the pitch |
 |---|---|
-| Innovation (30) | Roof input by address/draw/sketch; ranges not single numbers; goal-driven optimizer; verifiable Passport. |
+| Innovation (30) | Roof input by address/draw/sketch; ranges not single numbers; goal-driven optimizer; a Passport that earns vouchers and discounts once an installer confirms the install. |
 | Functionality (25) | Live demo on 3 prepared addresses runs end to end with no manual fixes. Works even if the LLM or scraper fails. |
-| Impact (20) | Real Meralco tariff, correct net-metering treatment, plain-language outputs, clear "how Meralco adopts this" slide. |
-| Technical Challenge (15) | Hourly simulation over 16 weather years, battery dispatch, constrained optimizer, signed hash-chained records, tool-calling agent with number guard. |
+| Impact (20) | Real Meralco tariff, correct net-metering treatment, plain-language outputs, a "Who it helps" slide for customers, business owners and Meralco; vouchers that reward going solar; RAG answers with source links. |
+| Technical Challenge (15) | Hourly simulation over 16 weather years, battery dispatch, constrained optimizer, signed Passports with one-time vouchers, tool-calling agent with number guard. |
 | Presentation (10) | Rehearsed 10-minute script, backup video, answers to the likely questions in section 13. |
 
 ---
@@ -80,7 +93,7 @@ Sol is a conversational agent that takes a Meralco household's roof, bill, budge
 | Numerics | numpy, pandas, scipy, shapely, pyproj, pvlib (>= 0.10) | Standard tools for geometry and PV. Pin versions; the azimuth convention changed between pvlib releases. |
 | Storage | SQLite | Zero setup, single file, enough for catalog, cache and ledger. |
 | Scraping | httpx, selectolax or BeautifulSoup; Playwright only if forced (Tier 3) | Static pages first. |
-| Crypto | `cryptography` (Ed25519), hashlib SHA-256 | Standard, no blockchain needed. |
+| Crypto | `cryptography` (Ed25519) | Signs the Passport so vouchers can't be forged. No blockchain. |
 | Frontend | Vite, React, TypeScript, Leaflet + Leaflet-Geoman (polygon editing), Recharts, qrcode.react | Fast, well documented, satellite tiles trivial. |
 | LLM | Gemini free tier via Google GenAI SDK, a Flash-class model with function calling and image input **[VERIFY tonight which model supports both on your key]** | Already available to you. |
 | Run mode | Everything on one laptop: FastAPI serves the built frontend. Phone hotspot as network backup. | Venue wifi risk. |
@@ -111,7 +124,7 @@ sol/
   backend/
     app/
       main.py  config.py  db.py  models.py   (Pydantic contracts)
-      routes/ geo.py roof.py load.py products.py optimize.py simulate.py passport.py agent.py
+      routes/ geo.py roof.py load.py products.py optimize.py simulate.py passport.py rewards.py agent.py
       services/
         geo.py            Nominatim + Overpass clients, caching
         roof.py           projection, area, azimuth guess, usable polygon
@@ -123,17 +136,21 @@ sol/
         finance.py        25-year cash flow, payback, NPV, IRR, LCOE
         optimizer.py      candidate search by goal
         scraper/          fetch.py extract.py validate.py sources.yaml
-        passport.py       canonical JSON, hash chain, signature, verify
+        passport.py       canonical JSON, Ed25519 signature, install confirmation
+        rewards.py        voucher catalog, eligibility, issue, redeem
         agent/            tools.py prompt.py loop.py guard.py
+        rag.py            chunk, embed, search_docs (SQLite, keyword fallback)
     data/
+      docs_corpus/
+      rewards.yaml    voucher catalog (sample values, partner label, rule)
       seed_catalog.csv  demo_outlines.geojson  pvgis_cache/  load_templates.json
     tests/
   frontend/
     src/ main.tsx api.ts mocks/ state/
       components/ MapPanel RoofEditor BillForm GoalForm ChatPanel PackageCards
                   RoiTable CashflowChart DayProfileChart LayoutView MathDrawer
-                  ProductCard PassportView
-      pages/ Home Verify
+                  ProductCard PassportView RewardCards
+      pages/ Home Passport
   scripts/ demo_run.py (runs the three demo scenarios end to end)
   docs/ contracts.md demo-script.md backup-video-checklist.md
 ```
@@ -225,8 +242,19 @@ type Passport = {
   inputs: { roof: RoofModel; load: LoadProfile; budget_php: [number, number]; goal: string };
   assumptions: { key: string; value: number | string; unit: string; source_url: string; as_of: string }[];
   package: Package; results: RoiTable;
-  verification: { checks: { name: string; method: string; status: "pass" | "fail" | "n/a" }[] };
-  prev_hash: string; hash: string; signature: string;
+  status: "plan" | "installed";          // installed = an installer confirmed the install
+  installer: { label: string; confirmed_at: string } | null; // demo installers are synthetic
+  rewards_eligible: string[];            // reward ids this record qualifies for, inside the signed body
+  signature: string;                     // Ed25519 over the canonical body (status and installer included)
+};
+
+type Voucher = {
+  code: string;                           // short code derived from the signature
+  passport_id: string;                    // the voucher is tied to this Passport
+  reward_id: string; title: string; value_label: string; // "sample value" until a partner funds it
+  partner_label: string;                  // for example "Sample installer"; never a real company unless agreed
+  status: "issued" | "redeemed";          // issued only after the install is confirmed
+  issued_at: string; redeemed_at: string | null; signature: string;
 };
 ```
 
@@ -244,9 +272,11 @@ type Passport = {
 | `POST /api/optimize` `{roof, load, budget, goal, params}` | Top packages | `Package[]` + per-package quick stats |
 | `POST /api/simulate` `{package, roof, load, overrides}` | Full 3-scenario result | `RoiTable` |
 | `POST /api/agent/chat` `{session_id, message, attachments}` | Agent turn | SSE: text deltas, tool events, UI cards |
-| `POST /api/passport` `{sim_id}` | Issue Passport | `Passport` |
-| `GET /api/passport/{id}` and `GET /verify/{id}` | Fetch and verify | `Passport` + verification result |
-| `POST /api/passport/verify` (optional) | Paste a Passport JSON, recompute hash and signature; supports a live tamper test | pass or fail with reasons |
+| `POST /api/passport` `{sim_id}` | Issue the Passport (status `plan`) | `Passport` |
+| `POST /api/passport/{id}/confirm-install` `{installer_code}` | Demo installer confirms the install; status becomes `installed` and vouchers are issued | `Passport` |
+| `GET /api/passport/{id}` and `GET /passport/{id}` | Fetch the Passport (JSON and shareable page) | `Passport` |
+| `GET /api/rewards/{passport_id}` | Vouchers for a Passport | `Voucher[]` (empty until installed) |
+| `POST /api/rewards/redeem` `{code}` | Mark one voucher redeemed (once only) | `Voucher` or error |
 | `GET /api/assumptions` | Show every assumption | list |
 
 ---
@@ -426,7 +456,7 @@ Per scenario, 25 years:
 ### 7.10 Agent (`services/agent/`)
 
 **Tools** (all deterministic, thin wrappers over the services above):
-`geocode_address`, `get_building_outline`, `set_roof_polygon`, `estimate_load`, `search_products`, `optimize_system`, `simulate_system`, `compare_net_metering`, `explain_assumptions`, `issue_passport`.
+`geocode_address`, `get_building_outline`, `set_roof_polygon`, `estimate_load`, `search_products`, `optimize_system`, `simulate_system`, `compare_net_metering`, `explain_assumptions`, `search_docs` (RAG: passages with source links, facts only), `issue_passport` (also returns the Passport's vouchers).
 
 **State (session):** `roof`, `load`, `budget`, `goal`, `packages`, `sim_id`. The agent asks for any missing slot, one question at a time, and accepts image attachments (roof photo, bill photo) for the vision step.
 
@@ -442,18 +472,27 @@ Per scenario, 25 years:
 
 ### 7.11 Solar Passport (`services/passport.py`)
 
-1. **Canonicalize:** serialize the passport body with sorted keys, no whitespace, UTF-8, floats rounded to fixed precision.
-2. **Hash chain:** `hash = SHA256(canonical_body || prev_hash)`. `prev_hash` is the previous ledger row's hash (genesis row fixed).
-3. **Sign:** Ed25519 signature over `hash`, using a key generated at first run (private key file excluded from git; public key shown on the verify page).
-4. **Store:** `ledger(id, body_json, prev_hash, hash, signature, created_at)` append-only.
-5. **Verify page `/verify/{id}`:** recompute the hash from stored body, check the signature, check the chain link, and show a green or red result with the human-readable passport. QR code encodes `/verify/{id}` and the first 12 chars of the hash.
-6. **Verification checks** shown on every Passport and verify page:
-   - **Integrity:** the stored body hashes to the recorded hash and the chain link to the previous record holds.
-   - **Signature:** the Ed25519 signature verifies against the public key.
-   - **Sourced inputs:** every assumption in the record has a source URL and an "as of" date.
-   - **Reproducible:** re-running the engine on the stored inputs gives the same results (within rounding), using the recorded model version.
-7. **Optional paste-to-verify** (`POST /api/passport/verify`): recompute the hash and signature for a pasted record, so a live demo can change one digit and show the check fail.
-8. Disclosure printed on every Passport: demo data is synthetic and every result is an estimate for a licensed installer to confirm. The Passport verifies the record, not the household's real roof or usage.
+The Passport is the customer's proof of going solar, in three stages.
+
+1. **Plan:** `issue_passport` builds the body (inputs, assumptions with sources, package, results) with `status: "plan"`, canonicalizes it (sorted keys, no whitespace, UTF-8, fixed float precision), signs it with Ed25519 (key generated at first run, private key excluded from git), and stores it in SQLite. A QR code encodes `/passport/{id}`.
+2. **Installed:** `confirm-install` takes a demo installer code (from `data/installers.yaml`, synthetic and labeled), sets `status: "installed"` and `installer`, re-signs the body, and issues the vouchers. In the demo the code is typed by the presenter. A real flow would have a listed installer, or Meralco after net-metering approval, confirm it. That is a next step.
+3. **Redeemed:** a business redeems a voucher with its code (section 7.11b).
+4. **Passport page `/passport/{id}`:** the layout, ROI, assumptions with sources, status badge, installer label, vouchers. An installer can open it as a quote brief.
+5. Disclosure printed on every Passport: demo data is synthetic, every result is an estimate for a licensed installer to confirm, and Sol cannot verify the household's real roof or usage.
+
+### 7.11b Solar Rewards (`services/rewards.py`, `data/rewards.yaml`)
+
+Vouchers and discounts reward going solar and give the Passport a purpose. Small by design.
+
+1. **Catalog** (`rewards.yaml`, static): each entry has `id`, `title`, `value_label`, `partner_label`, `rule`, `stage`. All values are labeled "sample" and partner names are generic ("Sample installer", "Sample appliance store") until a real partner agrees. Starter set:
+   - `site_survey`: a free site survey from a listed installer. Rule: any Passport.
+   - `install_offer`: an installer discount on the package Sol recommended. Rule: the package fits the budget.
+   - `usage_reward`: a reward once real generation is reported. Stage: **next step**. Shown locked in the demo.
+2. **Eligibility** is computed from the Passport inputs by rules in code, and the eligible ids go inside the signed body (`rewards_eligible`).
+3. **Issue:** vouchers are created when the install is confirmed, one per eligible, non-locked reward: `code = base32(first 8 bytes of Ed25519 signature over passport_id || reward_id)`, `status: issued`. Before that, `GET /api/rewards/{id}` returns an empty list.
+4. **Redeem:** `POST /api/rewards/redeem {code}` checks the Passport is `installed` and its signature is valid, then marks the voucher `redeemed` once. A second try returns an error.
+5. **Later (not built):** a monthly generation reading from a REC meter unlocks `usage_reward`. Partner funding and Meralco-backed incentives need agreements; Sol promises none.
+6. Disclosure on every voucher: sample value, no cash value, not an offer from Meralco.
 
 ### 7.12 Frontend (`frontend/`)
 
@@ -465,7 +504,7 @@ Per scenario, 25 years:
 3. **Results:** `PackageCards` (2 or 3, each with capex, kWp, payback range, 25-year profit range), `RoiTable` with net-metering toggle and editable export rate, `CashflowChart` (three scenario lines with shaded band), `DayProfileChart` (typical day: load, solar, battery, grid), `LayoutView` (panels overlaid on the roof map).
 4. **Products:** `ProductCard` with brand, model, ₱, ₱/W, efficiency, degradation, warranty, embodied carbon or "not disclosed", source link, freshness chip (live, cached), confidence dot. Live feed list while scraping.
 5. **Math drawer:** formulas, inputs, assumptions with source links, scenario definitions, data sources (PVGIS-ERA5 modeled estimate), and the disclaimer.
-6. **Passport:** `PassportView` with QR, hash, a pass/fail checks list, link to `/verify/{id}`, "Download JSON", and the optional paste-to-verify box.
+6. **Passport and rewards:** `PassportView` with QR, status badge (plan or installed), installer label, link to `/passport/{id}`, "Download JSON", and a "Confirm install" box for the demo installer code. `RewardCards` shows each voucher (title, sample value, code, status, locked ones greyed) and a redeem box.
 7. **Chat:** `ChatPanel` with streaming text, tool-activity chips ("fetching roof outline...", "simulating 16 weather years..."), quick-reply buttons, image upload.
 8. **Offline/mock mode:** `?mock=1` runs against `src/mocks/*.json` for UI work and as a last-resort demo.
 
@@ -484,8 +523,8 @@ Per the "no untested non-trivial logic" rule, a handful of tests, run before eac
 | `test_finance.py` | Payback, NPV, LCOE | Constant cash flow case with a known closed-form payback and NPV. |
 | `test_layout.py` | Panel packing | Rectangle roof 10 m × 6 m, 2.28 × 1.13 m panels: assert count within the expected range and no panel outside the polygon. |
 | `test_dispatch.py` | Energy balance | For random inputs: `generation = direct + charge_in + export` and `load = direct + discharge + import` each hour. |
-| `test_passport.py` | Signing | Round trip verifies; changing one byte of the body fails verification. |
-| `scripts/demo_run.py` | End-to-end smoke | Runs the three demo scenarios through the HTTP API and prints a one-page table. Run at every gate and after every merge in the last 6 hours. |
+| `test_passport.py` | Signing | Round trip verifies; changing one byte of the body fails the signature; confirming the install changes status and re-signs. |
+| `test_rewards.py` | Vouchers | No vouchers before install is confirmed; a voucher redeems once; a second redeem fails; `rewards_eligible` is inside the signed body. |
 
 ---
 
@@ -500,7 +539,7 @@ Per the "no untested non-trivial logic" rule, a handful of tests, run before eac
 | 10:00 to 13:00 | H1 to H4 | Irradiance fetch and cache, load estimator, dispatch (no battery), billing. FastAPI skeleton, geocode and Overpass routes with demo-outline fallback, SQLite, seed catalog loader. Map with address search and polygon editing, bill and goal forms against mocks. `ASSUMPTIONS.yaml`, three personas, hand-calculated expected results for tests. | Roof from address works |
 | 13:00 to 17:00 | H4 to H8 | Finance and three-scenario output, battery dispatch. Roof finalize and layout endpoint, `/simulate`, `/optimize` stub, agent tool wrappers. ROI table, cash-flow chart, day-profile chart wired to the real API. QA of numbers against hand calculations, README skeleton, pitch outline. Stagger meals. | Forms path end to end |
 | 17:00 to 23:00 | H8 to H14 | Agent loop with tools, Gemini integration, streaming. Chat route, SSE, tests. Chat UI, package cards, math drawer. Rehearse agent flows, log bad answers, refine prompts. | **Gate G1 (23:00):** Tier 1 works on all 3 demo addresses; record a rough backup video now. |
-| 23:00 to 5:00 | H14 to H20 | Tier 2: optimizer by goal; scraper pipeline and live feed; Passport and verify page; layout overlay, product cards with freshness chips, sketch canvas; product-source QA, Passport copy, draft slides. Sleep blocks of about 3 hours, staggered, in the designated area only; quiet hours are 12 AM to 6 AM, so no calls at the table. | **Gate G2 (5:00):** Tier 2 works or the cut list is applied. |
+| 23:00 to 5:00 | H14 to H20 | Tier 2: optimizer by goal; scraper pipeline and live feed; Passport, install confirmation and vouchers; layout overlay, product cards with freshness chips, sketch canvas; product-source QA, Passport copy, draft slides. Sleep blocks of about 3 hours, staggered, in the designated area only; quiet hours are 12 AM to 6 AM, so no calls at the table. | **Gate G2 (5:00):** Tier 2 works or the cut list is applied. |
 | 6:00 | H21 | **Feature freeze.** Only bug fixes after this. | |
 | 6:00 to 8:00 | H21 to H23 | Bug fixes, `demo_run.py` green, refresh cache, README final, record **final backup video**, rehearse the pitch twice with a timer. | |
 | 8:30 | H23.5 | Tag release, push to GitHub, submit repo link through the organizers' channel. Verify the link opens from another account. | |
@@ -515,7 +554,7 @@ Per the "no untested non-trivial logic" rule, a handful of tests, run before eac
 5. Number guard (fall back to cards-only text)
 6. Live scraping (fall back to cache and seed catalog, labeled as such)
 7. Layout overlay (keep panel count only)
-Never cut: address/draw roof input, simulation, ROI table with ranges, Passport verify.
+Never cut: address/draw roof input, simulation, ROI table with ranges, Passport.
 
 ---
 
@@ -531,6 +570,7 @@ Never cut: address/draw roof input, simulation, ROI table with ranges, Passport 
 | Scraping blocked or terms issue | Medium | Medium | Only shortlisted static sites, polite rates, robots.txt respected |
 | Numbers disputed by judges | Medium | High | Math drawer, sources, scenario ranges, hand-calculated tests |
 | Net-metering credit method misunderstood | Medium | High | Editable credit, sensitivity row, disclosed approximation |
+| Vouchers read as a real offer or a Meralco promise | Medium | High | Every voucher says "sample value"; generic partner names; Q&A answer ready; no Meralco logo or claim |
 | Scope creep | High | High | Tier gates and cut list |
 | Integration breakage late | Medium | High | Contract-first, daily `demo_run.py`, freeze at 6:00 |
 | Team exhaustion | High | Medium | Staggered sleep, meals, no all-nighters for the same person on the same critical path |
@@ -544,11 +584,12 @@ Never cut: address/draw roof input, simulation, ROI table with ranges, Passport 
 1. **0:00 to 1:00, hook and problem.** Rate up 16% since January, the 450 kWh household, then two gaps: solar options are hard to compare, and hard to understand. Three short slides, each with a source line.
 2. **1:00 to 2:45, Sol.** Introduce Sol. Type an address (prepared). Satellite map shows the roof outline; adjust one corner.
 3. **2:45 to 5:00, ask and answer.** Chat: bill amount, budget, goal. Sol fetches products live (feed visible), optimizes, shows 3 packages.
-4. **5:00 to 6:45, compare.** ROI table: grid-only vs on-grid vs hybrid. Flip the net-metering toggle. Show best-case and bad-year range and 25-year cash flow.
-5. **6:45 to 7:45, show the math.** Open the drawer: sources, assumptions, export credit approximation, scenario definitions. This is the "verifiable" moment.
-6. **7:45 to 9:15, Passport.** Issue the Passport, scan the QR, open the verify page, show the green check. Optional: change one digit in the downloaded record and show verification fail.
-7. **9:15 to 10:00, close.** "Compare honestly. Understand clearly. Verify openly."
-8. **Q&A (5 min).** See section 13.
+4. **5:00 to 6:45, compare.** ROI table: grid-only vs on-grid vs hybrid over 10 years. Flip the net-metering toggle. Show best-case and bad-year range, then the 25-year cash flow for payback.
+5. **6:45 to 7:45, show the math and the sources.** Open the drawer: sources, assumptions, export credit approximation, scenario definitions. Ask Sol one rule question (for example how exports are credited) and show the RAG answer with its source link. This is the "verifiable" moment.
+6. **7:45 to 9:00, Passport and rewards.** Issue the Passport and show its QR. Enter the demo installer code to confirm the install; the status flips to installed and the vouchers appear. Redeem one with its code. Say the programme is our proposal.
+7. **9:00 to 9:35, who it helps.** Deck slide: customers, business owners, Meralco. Say which parts are built and which are our pitch.
+8. **9:35 to 10:00, close.** "Compare honestly. Understand clearly. Go solar, get rewarded."
+9. **Q&A (5 min).** See section 13.
 
 Backup: if live fails at any point, say so and switch to the recorded video at the same step. Keep the video chaptered by the same steps.
 
@@ -590,10 +631,16 @@ Planning, installs and data gathering are allowed before the window. Writing cod
 | What stops the AI from making up numbers? | It can't compute. Numbers come from deterministic tools and render as cards. A guard checks the model's text against tool results. |
 | How accurate is the irradiance data? | PVGIS-ERA5 is a modeled reanalysis dataset, labeled as such. We show a pessimistic and optimistic range instead of a single number. |
 | Is this safe with customer data? | The demo uses synthetic data only. Uploaded images and bills are processed per session and not kept. |
-| What does the Passport prove? | That the record hasn't changed since it was issued, that Sol signed it, that every assumption has a source and date, and that the results can be reproduced from the stored inputs. It does not verify the household's real roof or usage; those are inputs. |
+| What is the Passport? | Your proof of going solar. Sol issues it with your plan and signs it. An installer confirms the install, and then it unlocks vouchers and discounts. It does not prove your real roof or usage; those are inputs. |
 | Is anything real-world verified? | Not in the demo. Results are modeled estimates on synthetic households, and the Passport says so. Real meter data would be a later step. |
 | What can't it do? | Electrical design, shading analysis, multi-plane roofs, permitting. It tells users an installer must confirm. |
-| What was technically hard? | Hourly dispatch over 16 years with a battery, a goal-driven optimizer under budget and roof constraints, resilient live scraping, and a signed hash-chained record. |
+| What was technically hard? | Hourly dispatch over 16 years with a battery, a goal-driven optimizer under budget and roof constraints, resilient live scraping, and a signed Passport with install confirmation and one-time vouchers. |
+| What are the vouchers? | Signed codes tied to one Passport, issued after the install is confirmed. They reward going solar, for example a site survey or an installer discount. Values are samples until a partner funds them. They have no cash value and Meralco is not involved. |
+| Can someone fake or reuse a voucher? | The code comes from Sol's signature, so it can't be made up. It is only issued after the install is confirmed, and it redeems once. |
+| Why would installers fund vouchers? | They get a customer who arrives with a layout, a price and the assumptions already checked. That's a pitch, not an agreement. |
+| How does this help Meralco? | Customers arrive knowing how exports are credited and which grid pathway applies, and there is a record to point to in referrals. This is a next step. Sol promises no Meralco benefit. |
+| Why 10 years, not 25? | Ten years is the headline so the comparison is easy to read. The 25-year cash flow sits behind it for payback and lifetime profit. |
+| Does the battery pay for itself? | Not within 10 years in the deck's illustrative case. It buys backup power. Sol shows the numbers and lets you decide. |
 | What would you build next? | Multi-plane roofs and shading from imagery, real meter integration, and installer-side quotes. |
 
 ---
@@ -619,8 +666,10 @@ Planning, installs and data gathering are allowed before the window. Writing cod
 ## 15. Definition of done
 
 - [ ] `demo_run.py` passes on all three personas with no errors.
-- [ ] Address → roof → bill → budget/goal → packages → ROI → Passport verified, live, in under about 90 seconds of interaction.
+- [ ] Address → roof → bill → budget/goal → packages → ROI → Passport, install confirmed, live, in under about 90 seconds of interaction.
 - [ ] Forms path works with the LLM disabled.
+- [ ] The Passport shows no vouchers until the install is confirmed; then vouchers appear and one redeems once.
+- [ ] Rewards say "sample value" everywhere.
 - [ ] Scraper path works live and falls back to cache with the right label.
 - [ ] Math drawer lists every assumption with a source and date.
 - [ ] README explains how to run, what is synthetic, limitations and data sources.
@@ -638,4 +687,6 @@ Planning, installs and data gathering are allowed before the window. Writing cod
 - **[VERIFY]** OpenStreetMap coverage for each chosen demo address.
 - **[VERIFY]** Robots.txt and terms of each shortlisted retail site.
 - **[VERIFY]** Where and how the repo link is submitted.
+- **[VERIFY]** Whether the hackathon rules say anything about reward or incentive features (the guidelines PDF has no text layer, so it could not be searched; read it by hand and ask a coach at check-in).
+- **[PROPOSED]** Reward catalog (three entries) and the 10-year headline horizon.
 - **[PROPOSED]** Schedule, demo script, and stack choices were not formally confirmed.

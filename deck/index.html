@@ -1,0 +1,823 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sol: Your Clean Energy Partner</title>
+    <meta
+      name="description"
+      content="Sol is a clean energy partner for Meralco households: compare solar options honestly, understand what you would get, and earn rewards for going solar."
+    />
+    <script>
+      document.documentElement.classList.add("js");
+    </script>
+    <link rel="stylesheet" href="deck.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "./vendor/three/build/three.module.js",
+          "three/addons/": "./vendor/three/examples/jsm/"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <!--
+  SOL PITCH DECK, one continuous voxel world.
+  The camera flies down one street, from 3 AM to noon. Each slide is a stop on the route.
+  Run it from a folder server (the 3D kit is a .glb, which browsers will not load from file://):
+      double-click start.command        or        python3 -m http.server 8000   then open http://localhost:8000
+  Keys: arrows, space, page up/down, home/end move. N notes and timer, T start/stop timer, R reset timer,
+  Q draw quality, F full screen. Add #6 to start on slide 6, ?still for a frozen frame.
+  The model kit is built in Blender: blender/kit/*.py -> world/kit.glb (see README).
+-->
+    <canvas id="gl" aria-hidden="true"></canvas>
+    <div id="labels" aria-hidden="true">
+      <div class="tag" data-for="hook" data-anchor="jan">
+        <span class="fig">₱12.95</span><span class="cap">Jan 2026</span>
+      </div>
+      <div class="tag" data-for="hook" data-anchor="oct">
+        <span class="fig">₱15.06</span><span class="cap">Oct 2026</span>
+      </div>
+
+      <div
+        class="tag bubble"
+        data-for="compare"
+        data-anchor="talk0"
+        data-at="1.3"
+      >
+        “₱45 a watt. Cheapest in town.”
+      </div>
+      <div
+        class="tag bubble"
+        data-for="compare"
+        data-anchor="talk1"
+        data-at="2.2"
+      >
+        “Trust me. It’s a good deal.”
+      </div>
+      <div
+        class="tag bubble"
+        data-for="compare"
+        data-anchor="talk2"
+        data-at="3.1"
+      >
+        “₱75 a watt. Premium quality.”
+      </div>
+      <div
+        class="tag"
+        data-for="compare"
+        data-anchor="price0"
+        data-side="below"
+        data-at="1.9"
+      >
+        <span class="fig">₱45/W</span>
+      </div>
+      <div
+        class="tag"
+        data-for="compare"
+        data-anchor="price1"
+        data-side="below"
+        data-at="2.8"
+      >
+        <span class="fig">₱?/W</span><span class="cap">no number given</span>
+      </div>
+      <div
+        class="tag"
+        data-for="compare"
+        data-anchor="price2"
+        data-side="below"
+        data-at="3.7"
+      >
+        <span class="fig">₱75/W</span>
+      </div>
+
+      <div
+        class="tag"
+        data-for="understand"
+        data-anchor="panels3"
+        data-at="1.2"
+      >
+        <span class="fig">Panels</span><span class="cap">make the power</span>
+      </div>
+      <div
+        class="tag"
+        data-for="understand"
+        data-anchor="inverter"
+        data-side="right"
+        data-at="2.4"
+      >
+        <span class="fig">Inverter</span
+        ><span class="cap">makes it usable at home</span>
+      </div>
+      <div
+        class="tag"
+        data-for="understand"
+        data-anchor="recm"
+        data-side="right"
+        data-at="3.2"
+      >
+        <span class="fig">REC meter</span
+        ><span class="cap">optional; if missing, output is estimated</span>
+      </div>
+      <div
+        class="tag"
+        data-for="understand"
+        data-anchor="netm"
+        data-side="right"
+        data-at="4"
+      >
+        <span class="fig">Net meter</span
+        ><span class="cap">counts power in and out</span>
+      </div>
+      <div
+        class="tag"
+        data-for="understand"
+        data-anchor="home"
+        data-side="left"
+        data-at="3"
+      >
+        <span class="fig">Your home</span
+        ><span class="cap">uses solar first</span>
+      </div>
+      <div
+        class="tag"
+        data-for="understand"
+        data-anchor="gridPole"
+        data-side="right"
+        data-at="5.4"
+      >
+        <span class="fig">Grid</span
+        ><span class="cap">pays less for exports</span>
+      </div>
+
+      <div
+        class="tag"
+        data-for="sol"
+        data-anchor="sol"
+        data-at="2"
+        data-until="5"
+      >
+        <span class="fig">Sol</span
+        ><span class="cap">an AI agent for anything solar</span>
+      </div>
+      <div
+        class="tag"
+        data-for="sol"
+        data-anchor="pin"
+        data-at="7.8"
+        data-until="10.4"
+      >
+        <span class="fig">Your address</span
+        ><span class="cap">found on the map</span>
+      </div>
+      <div class="tag" data-for="sol" data-anchor="house" data-at="10.6">
+        <span class="fig">Your roof</span
+        ><span class="cap">measured, not guessed</span>
+      </div>
+      <div
+        class="tag"
+        data-for="sol"
+        data-anchor="layout"
+        data-side="below"
+        data-at="13.6"
+      >
+        <span class="fig">Panel layout</span
+        ><span class="cap">8 panels fit this roof</span>
+      </div>
+
+      <div class="tag chip" data-for="ask" data-anchor="chip0" data-at="1.6">
+        <span class="cap">Bill</span><span class="fig">₱6,780 a month</span>
+      </div>
+      <div class="tag chip" data-for="ask" data-anchor="chip1" data-at="6.2">
+        <span class="cap">Budget</span><span class="fig">up to ₱300k</span>
+      </div>
+      <div class="tag chip" data-for="ask" data-anchor="chip2" data-at="10.8">
+        <span class="cap">Goal</span><span class="fig">cut my bill</span>
+      </div>
+
+      <div class="tag" data-for="range" data-anchor="grid">
+        <span class="fig">Grid only</span><span class="cap">no panels</span>
+      </div>
+      <div class="tag" data-for="range" data-anchor="solar">
+        <span class="fig">Solar</span><span class="cap">panels only</span>
+      </div>
+      <div class="tag" data-for="range" data-anchor="hybrid">
+        <span class="fig">Solar and battery</span
+        ><span class="cap">panels and storage</span>
+      </div>
+
+      <div class="tag" data-for="passport" data-anchor="passport" data-at="1.2">
+        <span class="fig">Solar Passport</span
+        ><span class="cap">your proof of going solar</span>
+      </div>
+
+      <div
+        class="tag"
+        data-for="passport"
+        data-anchor="reward"
+        data-side="right"
+        data-at="5.6"
+      >
+        <span class="fig">Vouchers and discounts</span
+        ><span class="cap">from Meralco and partner businesses</span>
+      </div>
+
+      <div
+        class="tag"
+        data-for="sources"
+        data-anchor="weather"
+        data-side="right"
+        data-at="1.2"
+      >
+        <span class="fig">Weather</span
+        ><span class="cap">PVGIS-ERA5 hourly data; a modeled estimate</span>
+      </div>
+      <div
+        class="tag"
+        data-for="sources"
+        data-anchor="tariff"
+        data-side="right"
+        data-at="2"
+      >
+        <span class="fig">Tariff</span
+        ><span class="cap">₱15.0615 per kWh, Meralco, Oct 2026</span>
+      </div>
+      <div
+        class="tag"
+        data-for="sources"
+        data-anchor="credit"
+        data-side="right"
+        data-at="2.8"
+      >
+        <span class="fig">Export credit</span
+        ><span class="cap">approximated by the ₱10.2005 generation charge</span>
+      </div>
+      <div
+        class="tag"
+        data-for="sources"
+        data-anchor="prices"
+        data-side="right"
+        data-at="3.6"
+      >
+        <span class="fig">Prices</span
+        ><span class="cap">public listings; confirm with the seller</span>
+      </div>
+
+      <div
+        class="tag"
+        data-for="limits"
+        data-anchor="crew"
+        data-side="right"
+        data-dx="273"
+        data-dy="10"
+        data-at="1.2"
+      >
+        <span class="fig">Design</span
+        ><span class="cap">no electrical design or permits</span>
+      </div>
+      <div
+        class="tag"
+        data-for="limits"
+        data-anchor="house"
+        data-side="right"
+        data-dx="223"
+        data-dy="-20"
+        data-at="2"
+      >
+        <span class="fig">Roofs</span
+        ><span class="cap">more complex roofs need a proper analysis</span>
+      </div>
+      <div
+        class="tag"
+        data-for="limits"
+        data-anchor="gate"
+        data-side="right"
+        data-dx="218"
+        data-at="2.8"
+      >
+        <span class="fig">Prices</span
+        ><span class="cap">only estimates and suggestions</span>
+      </div>
+      <div
+        class="tag"
+        data-for="limits"
+        data-anchor="owner"
+        data-side="right"
+        data-dx="348"
+        data-dy="-20"
+        data-at="3.6"
+      >
+        <span class="fig">Proof</span
+        ><span class="cap">household data are synthetic</span>
+      </div>
+    </div>
+
+    <div class="deck-viewport">
+      <main class="deck-stage" id="deckStage">
+        <section
+          class="slide"
+          data-step="intro"
+          data-tone="night"
+          data-time="Intro"
+          data-title="Sol"
+          data-say="We’re Team Kosmos, and this is Sol, your clean energy partner. Let’s start at 3 AM."
+        >
+          <div class="intro-scrim"></div>
+          <div class="intro-glow"></div>
+          <div class="intro-block">
+            <h1 class="intro">Sol: Your Clean<br />Energy Partner</h1>
+            <p class="intro-sub">
+              <span>IDOL Hackathon 2026</span><b>Team Kosmos</b>
+            </p>
+          </div>
+        </section>
+
+        <section
+          class="slide"
+          data-step="hook"
+          data-time="0:15"
+          data-title="Hook"
+          data-say="A household using 450 kilowatt-hours now pays about 6,780 pesos a month. Meralco’s typical rate is up 16 percent since January. Solar is the obvious answer, so people start asking."
+        >
+          <div class="copy">
+            <h1>Rates up 16% since January 2026.</h1>
+            <p class="lead">
+              A typical household using 450 kWh now pays about ₱6,780 from
+              ₱5,830 a month.
+            </p>
+          </div>
+        </section>
+
+        <section
+          class="slide"
+          data-step="compare"
+          data-time="0:50"
+          data-title="Compare"
+          data-say="But the options are hard to compare. Three sellers, three setups that look the same. Published installed prices run from 45 to 75 pesos a watt. Installers say buyers can’t tell a qualified quote from a cheap one, and the DTI wants mandatory certification because of substandard products."
+        >
+          <div class="copy">
+            <h2>Too many options</h2>
+            <p class="lead">
+              Quotation prices run ₱45 to ₱75 a watt, and customers can’t tell
+              which one to choose.
+            </p>
+          </div>
+        </section>
+
+        <section
+          class="slide"
+          data-step="understand"
+          data-time="1:30"
+          data-title="Understand"
+          data-say="And it’s hard to predict what you’d save. Your panels power your home first. Any extra power goes out to the grid, and Meralco credits it at a lower rate than the rate you pay. At night, power comes back from the grid at the full rate. And without a REC meter, your generation is estimated by formula. Sol is built to make all of this clear and checkable."
+        >
+          <div class="copy">
+            <h2>Your savings are hard to predict.</h2>
+            <p class="lead">
+              Your panels power your home first. Any extra power goes to the
+              grid, and Meralco credits it at a lower rate than the rate you
+              pay.
+            </p>
+          </div>
+        </section>
+
+        <section
+          class="slide"
+          data-step="sol"
+          data-time="2:20"
+          data-title="Sol"
+          data-say="Meet Sol, an AI agent for anything solar. Sol starts with your address, not a form. It finds your roof on the map and measures it."
+        >
+          <div class="copy swap">
+            <div data-sel="5.2">
+              <h2>Meet Sol.</h2>
+              <p class="lead">
+                Your clean energy partner. An AI agent for anything solar.
+              </p>
+            </div>
+            <div data-show="5.6">
+              <h2>Start with your address.</h2>
+              <p class="lead">
+                Sol finds your roof on the map and measures it.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section
+          class="slide"
+          data-step="ask"
+          data-time="3:20"
+          data-title="Ask"
+          data-say="Now we just talk to it."
+        >
+          <div class="copy">
+            <h2>Tell Sol your bill, budget, goal.</h2>
+          </div>
+          <div class="chat" aria-label="A conversation with Sol">
+            <div class="chat-head">
+              <i class="av"></i><b>Sol</b><span>online</span>
+            </div>
+            <p class="msg user" data-at="1">
+              My bill is ₱6,780 a month. I want it lower.
+            </p>
+            <p class="msg sol" data-at="3.2">
+              Got it. That is about 450 kWh a month. What budget feels
+              comfortable?
+            </p>
+            <p class="msg user" data-at="5.6">Up to ₱300,000.</p>
+            <p class="msg sol" data-at="7.8">
+              Noted. Do you want the lowest bill, or the fastest payback?
+            </p>
+            <p class="msg user" data-at="10.2">Cut my bill.</p>
+            <p class="msg sol" data-at="12.4">
+              Done. I’ll compare grid only, solar and solar with a battery for
+              your roof, as ranges.
+            </p>
+          </div>
+        </section>
+
+        <section
+          class="slide"
+          data-step="range"
+          data-time="4:30"
+          data-title="Compare options"
+          data-say="Here’s where most tools stop at one confident number. Over ten years, grid only costs about 813 thousand pesos. Solar lands between 248 and 457 thousand, and solar with a battery between 287 and 502 thousand. The battery buys backup power; at these prices it has not paid for itself yet. The spread comes from the price you are quoted and the weather year you get."
+        >
+          <div class="copy">
+            <h2>Grid, solar, hybrid.</h2>
+          </div>
+          <div class="table-card" id="econ">
+            <div class="tc-head">
+              <h3>Ten years, three options</h3>
+              <span>450 kWh a month, flat tariff, no upkeep</span>
+            </div>
+            <div class="tc-grid" role="table">
+              <div class="tc-row tc-top" role="row">
+                <span></span><span>Upfront</span><span>Total over 10 years</span
+                ><span>Range</span>
+              </div>
+              <div class="tc-row" role="row">
+                <b>Grid only</b><span>₱0</span
+                ><strong data-econ="grid-total"></strong
+                ><span class="bar"
+                  ><i class="gridline" data-gridline></i
+                  ><em class="mark" data-bar="grid"></em
+                ></span>
+              </div>
+              <div class="tc-row" role="row">
+                <b>Solar</b><span data-econ="solar-up"></span
+                ><strong data-econ="solar-total"></strong
+                ><span class="bar"
+                  ><i class="gridline" data-gridline></i
+                  ><em data-bar="solar"></em
+                ></span>
+              </div>
+              <div class="tc-row" role="row">
+                <b>Solar and battery</b><span data-econ="hybrid-up"></span
+                ><strong data-econ="hybrid-total"></strong
+                ><span class="bar"
+                  ><i class="gridline" data-gridline></i
+                  ><em data-bar="hybrid"></em
+                ></span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section
+          class="slide"
+          data-step="match"
+          data-time="5:40"
+          data-title="Sol picks"
+          data-say="Now Sol picks for you. It opens a catalog of parts and selects the ones that fit your roof and goal: the 550 watt panel, because eight of them fit your roof, and the 5 kilowatt inverter. It skips the battery, since at these prices the battery has not paid for itself in ten years. Then it collects quotations from installers and picks one: the one inside your 300 thousand peso budget that also files the permit and net metering paperwork. The parts picking is built on the optimizer. The installer match is our proposal. The catalog and the quotes on screen are samples, and nothing is agreed with any installer."
+        >
+          <div class="copy">
+            <h2>Sol picks for you</h2>
+            <p class="lead">
+              Suggests parts and an installer that fits your roof, budget and
+              goal.
+            </p>
+          </div>
+          <div class="pick" aria-label="Sol picks parts and an installer">
+            <h3 data-show="0.4">1 · Parts catalog</h3>
+            <div class="cat">
+              <div class="tile" data-show="0.8">
+                <img class="thumb" data-model="panel" data-fit="1.7" alt="" />
+                <div><b>Panel</b><span>450 W</span></div>
+              </div>
+              <div class="tile" data-show="1">
+                <img class="thumb" data-model="panel" data-fit="1.25" alt="" />
+                <div>
+                  <b>Panel</b><span>550 W · 8 fit your roof</span
+                  ><i class="chk" data-sel="3">✓ Sol’s pick</i>
+                </div>
+              </div>
+              <div class="tile" data-show="1.2">
+                <img
+                  class="thumb"
+                  data-model="inverter"
+                  data-fit="1.7"
+                  alt=""
+                />
+                <div><b>Inverter</b><span>3 kW</span></div>
+              </div>
+              <div class="tile" data-show="1.4">
+                <img
+                  class="thumb"
+                  data-model="inverter"
+                  data-fit="1.25"
+                  alt=""
+                />
+                <div>
+                  <b>Inverter</b><span>5 kW · fits 4.4 kW of panels</span
+                  ><i class="chk" data-sel="4.4">✓ Sol’s pick</i>
+                </div>
+              </div>
+              <div class="tile skip" data-show="1.6">
+                <img class="thumb" data-model="battery" data-fit="1.7" alt="" />
+                <div>
+                  <b>Battery</b><span>5 kWh</span
+                  ><i class="chk" data-sel="5.8">skipped</i>
+                </div>
+              </div>
+              <div class="tile skip" data-show="1.8">
+                <img
+                  class="thumb"
+                  data-model="battery"
+                  data-fit="1.25"
+                  alt=""
+                />
+                <div>
+                  <b>Battery</b><span>10 kWh · not paid back in 10 years</span
+                  ><i class="chk" data-sel="5.8">skipped</i>
+                </div>
+              </div>
+            </div>
+            <h3 data-show="7.2">2 · Quotes for 8 panels and a 5 kW inverter</h3>
+            <div class="quotes">
+              <div class="q" data-show="7.8">
+                <img
+                  class="thumb face"
+                  data-model="installer_a"
+                  data-view="face"
+                  data-fit="1.15"
+                  alt=""
+                />
+                <div>
+                  <b>Installer A</b
+                  ><span
+                    >Cheapest. You file the permit and net-metering
+                    papers.</span
+                  >
+                </div>
+                <strong>₱198k</strong>
+              </div>
+              <div class="q" data-show="8.6">
+                <img
+                  class="thumb face"
+                  data-model="installer_b"
+                  data-view="face"
+                  data-fit="1.15"
+                  alt=""
+                />
+                <div>
+                  <b>Installer B</b
+                  ><span>Files the permit and net metering for you.</span
+                  ><i class="chk" data-sel="11.4">✓ Sol’s pick: in budget</i>
+                </div>
+                <strong>₱250k</strong>
+              </div>
+              <div class="q over" data-show="9.4">
+                <img
+                  class="thumb face"
+                  data-model="seller_c"
+                  data-view="face"
+                  data-fit="1.15"
+                  alt=""
+                />
+                <div>
+                  <b>Installer C</b><span>Over your ₱300k budget.</span>
+                </div>
+                <strong>₱330k</strong>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section
+          class="slide"
+          data-step="sources"
+          data-time="6:50"
+          data-title="Assumptions and sources"
+          data-say="Sol uses RAG for its data sources. It searches a local library of Meralco and DOE documents and gets passages back with source links. RAG gives facts and citations. The numbers come from the tools."
+        >
+          <div class="copy">
+            <h2>Assumptions and sources</h2>
+            <p class="lead">RAG powered agent.</p>
+          </div>
+        </section>
+
+        <section
+          class="slide"
+          data-step="passport"
+          data-time="7:40"
+          data-title="Passport"
+          data-say="Sol gives you a Solar Passport. It is your proof that you went solar. Your installer confirms the install, and then the Passport unlocks vouchers and discounts from Meralco and partner businesses. This is the rewards side of the challenge. The programme is our proposal. Nothing here is agreed with Meralco or any business yet."
+        >
+          <div class="copy">
+            <h2>Go solar. Get rewarded.</h2>
+            <p class="lead">
+              The Solar Passport acts as your proof. Show it to claim vouchers
+              and discounts.
+            </p>
+          </div>
+        </section>
+
+        <section
+          class="slide"
+          data-step="impact"
+          data-time="8:40"
+          data-title="Who it helps"
+          data-say="Sol helps three groups. Customers get an honest range and a Passport that earns vouchers and discounts for going solar. Business owners, the installers and sellers, get a clear layout and a quote that customers can trust, and a way to fund rewards. Meralco gets better-prepared customers who can be pointed to accredited installers and the right grid pathway. The installer and Meralco parts are our pitch. Nothing here is agreed with either yet."
+        >
+          <div class="copy">
+            <h2>Beneficiaries</h2>
+            <p class="lead">Solar for everybody.</p>
+          </div>
+          <div class="impact" aria-label="Who Sol helps">
+            <div class="im-row">
+              <i class="im-dot c"></i>
+              <div>
+                <b>Customers</b>
+                <p>
+                  Alows customers to compare options honestly, understand what
+                  they would get, and earn vouchers and discounts for going
+                  solar.
+                </p>
+              </div>
+            </div>
+            <div class="im-row">
+              <i class="im-dot b"></i>
+              <div>
+                <b>Business owners</b>
+                <p>
+                  Installers and business owners can provide visual
+                  representations and layouts, clear quotes, and a way to fund
+                  rewards for customers who go solar.
+                </p>
+              </div>
+            </div>
+            <div class="im-row">
+              <i class="im-dot m"></i>
+              <div>
+                <b>Meralco</b>
+                <p>
+                  An easier way to point customers to accredited installers and
+                  the right grid pathway, and to prepare customers for solar.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section
+          class="slide"
+          data-step="how"
+          data-time="Q&amp;A"
+          data-title="How Sol works"
+          data-say="The agent calls tools built into this app, one for each step. The model never does the math. The tools do, and the math drawer shows the sources."
+        >
+          <div class="copy">
+            <h2>How Sol works.</h2>
+            <p class="lead">
+              Sol provides a set of tools for each step. Everything is grounded
+              and deterministic.
+            </p>
+          </div>
+          <div class="flow" aria-label="The steps Sol runs">
+            <div class="flow-head">
+              <i class="av"></i><b>Sol</b><span>working</span>
+            </div>
+            <ol>
+              <li data-at="2.5">
+                <i class="n">1</i>
+                <div>
+                  <b>Address</b><code>geocode_address</code>
+                  <p class="d">
+                    <span class="field"
+                      ><span class="typed"
+                        >12 Mabini St, Quezon City</span
+                      ></span
+                    >
+                  </p>
+                </div>
+              </li>
+              <li data-at="5.1">
+                <i class="n">2</i>
+                <div>
+                  <b>Pin</b><code>get_building_outline</code>
+                  <p class="d">
+                    <i class="pinicon"></i>Roof outlined on the map
+                  </p>
+                </div>
+              </li>
+              <li data-at="7.7">
+                <i class="n">3</i>
+                <div>
+                  <b>Loading</b><code>estimate_load</code>
+                  <p class="d">
+                    Bill, roof and weather data<span class="prog"><i></i></span>
+                  </p>
+                </div>
+              </li>
+              <li data-at="10.3">
+                <i class="n">4</i>
+                <div>
+                  <b>Simulate</b><code>simulate_system</code>
+                  <p class="d">Hourly output, many weather years</p>
+                </div>
+              </li>
+              <li data-at="12.9">
+                <i class="n">5</i>
+                <div>
+                  <b>Compare</b><code>compare_net_metering</code>
+                  <p class="d">Grid, solar, solar and battery</p>
+                </div>
+              </li>
+              <li data-at="15.5">
+                <i class="n">6</i>
+                <div>
+                  <b>Optimize</b><code>optimize_system</code>
+                  <p class="d">Best parts for budget and goal</p>
+                </div>
+              </li>
+              <li data-at="18.1">
+                <i class="n">7</i>
+                <div>
+                  <b>Passport</b><code>issue_passport</code>
+                  <p class="d">Plan, install proof and vouchers</p>
+                </div>
+              </li>
+            </ol>
+          </div>
+        </section>
+
+        <section
+          class="slide"
+          data-step="limits"
+          data-time="Q&amp;A"
+          data-title="What Sol does not do"
+          data-say="Be direct about the limits. An installer confirms the design."
+        >
+          <div class="copy">
+            <h2>What Sol does not do.</h2>
+          </div>
+        </section>
+
+        <section
+          class="slide"
+          data-step="thanks"
+          data-time="End"
+          data-title="Thank you"
+          data-say="Thank you. Compare honestly. Understand clearly. Go solar, get rewarded."
+        >
+          <div class="copy">
+            <h2>Thank you.</h2>
+            <p class="lead">Sol. Your clean energy partner.</p>
+            <footer class="source">
+              Team Kosmos, Meralco IDOL Hackathon 2026.
+            </footer>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <aside class="notes-panel" id="notesPanel" hidden aria-live="polite">
+      <div>
+        <div class="when" id="notesWhen"></div>
+        <p class="say" id="notesSay"></p>
+        <p class="next" id="notesNext"></p>
+      </div>
+      <div class="clock" id="notesClock">0:00</div>
+    </aside>
+    <div class="hint" id="hint">
+      Arrow keys move. N notes. Q quality. F full screen.
+    </div>
+
+    <div class="loader" id="loader" role="status">
+      <div class="mark">Sol</div>
+      <div class="bar"><i id="lbar"></i></div>
+      <p id="ltxt">Raising the neighbourhood…</p>
+    </div>
+    <div class="fail" id="fail" hidden></div>
+
+    <noscript
+      ><div class="noscript">
+        This deck needs JavaScript to move between slides.
+      </div></noscript
+    >
+    <script type="module" src="js/main.js"></script>
+  </body>
+</html>
