@@ -186,6 +186,25 @@ export default function App() {
   /* Claude-style right-side Map Canvas state */
   const [canvasOpen, setCanvasOpen] = useState(false);
 
+  /* Auto close sidebar whenever roof map canvas is opened */
+  useEffect(() => {
+    if (canvasOpen) {
+      setCollapsed(true);
+      setMobileNav(false);
+    }
+  }, [canvasOpen]);
+
+  const toggleCanvas = useCallback(() => {
+    setCanvasOpen((prev) => {
+      const next = !prev;
+      if (next) {
+        setCollapsed(true);
+        setMobileNav(false);
+      }
+      return next;
+    });
+  }, []);
+
   const [convos, setConvos] = useState<Conversation[]>([]);
   const [currentId, setCurrentId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -301,6 +320,8 @@ export default function App() {
         }));
         /* Auto-open the Claude-style right Map Canvas when the turn finishes */
         setCanvasOpen(true);
+        setCollapsed(true);
+        setMobileNav(false);
         busyRef.current = false;
         setBusy(false);
       }, 1500);
@@ -533,7 +554,7 @@ export default function App() {
               {/* Toggle Map Canvas button in header */}
               <button
                 type="button"
-                onClick={() => setCanvasOpen((o) => !o)}
+                onClick={toggleCanvas}
                 aria-pressed={canvasOpen}
                 title={canvasOpen ? "Hide roof map canvas" : "Open roof map canvas"}
                 className={`row-btn press flex h-8 items-center gap-1.5 rounded-[8px] px-2.5 text-[13px] font-medium ${
@@ -603,7 +624,7 @@ export default function App() {
                 first={persona.first}
                 subtitle={`${persona.subtitle} · ${persona.location}`}
                 canvasOpen={canvasOpen}
-                onToggleCanvas={() => setCanvasOpen((o) => !o)}
+                onToggleCanvas={toggleCanvas}
                 onAsk={ask}
               />
             )}
