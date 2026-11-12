@@ -205,7 +205,14 @@ export type RoofState = {
   nextSlot: string;
   needsRoof: boolean;
   pin?: { lat: number; lon: number } | null;
-  layout: { count: number; panels_lonlat: [number, number][][] } | null;
+  layout: {
+    count: number;
+    panels_lonlat: [number, number][][];
+    /** Panel positions the roof could still hold beyond the chosen design. */
+    spots_lonlat?: [number, number][][];
+    /** Total panels that fit (count + unused spots). */
+    capacity?: number;
+  } | null;
 };
 
 /** Returns null when the conversation does not exist yet (nothing sent so far). */

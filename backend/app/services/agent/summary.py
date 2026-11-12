@@ -23,7 +23,13 @@ def _scn(variant: dict) -> dict:
     return {s["name"]: s for s in variant["scenarios"]}
 
 
-def summarize_analysis(optimize_res: dict, net_metering: bool = True) -> dict:
+SYSTEM_NAMES = {"on_grid": "Grid-tied (on-grid)", "off_grid": "Off-grid", "hybrid": "Hybrid (solar + storage)"}
+
+
+def summarize_analysis(optimize_res: dict, net_metering: bool = True, system_type: str | None = None) -> dict:
+    if system_type == "off_grid":
+        net_metering = False  # no utility connection, so no export credit
+    capacity = optimize_res.get("roof_capacity_panels", {})
     pkgs = []
     for item in optimize_res["packages"]:
         p, roi = item["package"], item["roi"]
@@ -36,6 +42,8 @@ def summarize_analysis(optimize_res: dict, net_metering: bool = True) -> dict:
             "panel": f"{p['panel']['brand']} {p['panel']['model']} ({p['panel']['watts']:g} W)",
             "inverter": f"{p['inverter']['brand']} {p['inverter']['model']} ({p['inverter']['inverter_ac_kw']:g} kW)",
             "battery": (f"{bat['brand']} {bat['model']} x{p['battery_count']}" if bat and vname == "hybrid" else None),
+            "battery_kwh": (round(bat["battery_kwh"] * p["battery_count"], 1) if bat and vname == "hybrid" else None),
+            "roof_capacity_panels": capacity.get(p["panel"]["id"]),
             "capex_php": variant["capex_php"],
             "grid_only_monthly_bill_php": roi["grid_only"]["monthly_bill_php"],
             "bill_reduction_pct_year1": sc["expected"]["bill_reduction_pct_year1"],
@@ -53,6 +61,7 @@ def summarize_analysis(optimize_res: dict, net_metering: bool = True) -> dict:
     unverified = [k for k in ("export_credit_php_per_kwh", "install_cost_php_per_kw", "tariff_fixed_php_month")
                   if k in used and not used[k].get("verified")]
     return {
+        "system_type": system_type,
         "unverified_drivers": unverified,
         "install_cost_php_per_kw": used.get("install_cost_php_per_kw", {}).get("value"),
         "goal": optimize_res["goal"], "target_met": optimize_res.get("target_met"),
@@ -64,18 +73,69 @@ def summarize_analysis(optimize_res: dict, net_metering: bool = True) -> dict:
 
 
 def analysis_text(s: dict) -> str:
+    """One short lead sentence. The details are in analysis_markdown, which the app appends under it."""
     top = s["packages"][0]
-    bat = f" with a {top['battery']} battery" if top["battery"] else ""
+    kind = SYSTEM_NAMES.get(s.get("system_type") or "", "")
+    kind = f" {kind.lower()}" if kind else ""
+    return (f"Here is what I'd suggest ({top['label']}): a{kind} system with {top['panel_count']} panels ({top['kwp']:g} kWp), "
+            f"about {php(top['capex_php'])} installed.")
+
+
+def _range(lo, hi, fmt) -> str:
+    return f"{fmt(lo)} to {fmt(hi)}"
+
+
+def _pb(v) -> str:
+    return "over 25 years" if v is None else f"{v:g} years"
+
+
+def analysis_markdown(s: dict) -> str:
+    """Customer-facing results block (headline table, comparison table, caveats) built only from tool results."""
+    top = s["packages"][0]
+    off_grid = s.get("system_type") == "off_grid"
     pb, pf = top["payback_years"], top["net_profit_25y_php"]
-    parts = [
-        f"Here's what I'd suggest ({top['label']}): {top['panel_count']} panels, {top['kwp']:g} kWp in total, {top['inverter']}{bat}, about {php(top['capex_php'])} installed.",
-        f"Your bill of roughly {php(top['grid_only_monthly_bill_php'])} a month could drop by about {top['bill_reduction_pct_year1']:g}% in year 1.",
-        f"Payback is {_yrs(pb['expected'])} (best case {_yrs(pb['best_case'])}, bad weather year {_yrs(pb['bad_year'])}), and the 25-year net profit is about {php(pf['expected'])} (range {php(pf['bad_year'])} to {php(pf['best_case'])}).",
+    kind = SYSTEM_NAMES.get(s.get("system_type") or "") or ("Hybrid (solar + storage)" if top["battery"] else "Grid-tied (on-grid)")
+    cap = top.get("roof_capacity_panels")
+    rows = [
+        ("System type", kind),
+        ("Solar panels", f"{top['panel_count']} × {top['panel']} = **{top['kwp']:g} kWp**"),
     ]
+    if cap:
+        rows.append(("Roof use", f"{top['panel_count']} of {cap} panel spots on your roof"))
+    rows.append(("Inverter", top["inverter"]))
+    if top["battery"]:
+        kwh = f" ({top['battery_kwh']:g} kWh)" if top.get("battery_kwh") else ""
+        rows.append(("Battery", f"{top['battery']}{kwh}"))
+    rows += [
+        ("Installed cost", f"**{php(top['capex_php'])}**"),
+        ("Bill today", f"about {php(top['grid_only_monthly_bill_php'])} a month"),
+        ("Grid power replaced, year 1" if off_grid else "Bill cut, year 1", f"**about {top['bill_reduction_pct_year1']:g}%**"),
+        ("Payback compared with grid bills" if off_grid else "Payback",
+         f"**{_pb(pb['expected'])}** (best case {_pb(pb['best_case'])}, bad weather year {_pb(pb['bad_year'])})"),
+        ("25-year net profit", f"**{php(pf['expected'])}** (range {_range(pf['bad_year'], pf['best_case'], php)})"),
+    ]
+    out = [f"### Recommended: {top['label']}", "", "| | |", "|---|---|"]
+    out += [f"| {k} | {v} |" for k, v in rows]
+    if len(s["packages"]) > 1:
+        out += ["", "**Compare the options**", "", "| Option | Panels | Cost | Bill cut | Payback | 25-year profit |", "|---|---|---|---|---|---|"]
+        for p in s["packages"]:
+            extra = f" + {p['battery_kwh']:g} kWh battery" if p.get("battery_kwh") else ""
+            out.append(f"| {p['label']}{extra} | {p['panel_count']} ({p['kwp']:g} kWp) | {php(p['capex_php'])} | "
+                       f"{p['bill_reduction_pct_year1']:g}% | {_pb(p['payback_years']['expected'])} | {php(p['net_profit_25y_php']['expected'])} |")
+    notes = _caveats(s)
+    if notes:
+        out += ["", "**Good to know**", ""] + [f"- {n}" for n in notes]
+    out += ["", f"> {s['caveat']}"]
+    return "\n".join(out)
+
+
+def _caveats(s: dict) -> list[str]:
+    parts: list[str] = []
     if s.get("target_met") is False:
         parts.append("No option within your budget reaches your bill-cut target, so this is the closest one.")
-    if len(s["packages"]) > 1:
-        parts.append("I also have " + ", ".join(p["label"] for p in s["packages"][1:]) + " to compare.")
+    for n in s.get("notes", []):
+        if n.startswith(("Grid-tied", "Hybrid", "Off-grid")):
+            parts.append(n)
     if s.get("weather_is_approximate"):
         parts.append("Sunlight data is an approximate typical year because PVGIS could not be reached.")
     drivers = []
@@ -87,8 +147,7 @@ def analysis_text(s: dict) -> str:
         drivers.append("fixed monthly charges (not modelled, so a bill cut near 100% would be lower on a real bill)")
     if drivers:
         parts.append("These results lean on unverified placeholders: " + "; ".join(drivers) + ".")
-    parts.append(s["caveat"])
-    return " ".join(parts)
+    return parts
 
 
 def compare_nm_text(r: dict) -> str:
@@ -106,8 +165,78 @@ def assumptions_text(r: dict) -> str:
 
 
 def passport_text(r: dict) -> str:
-    return (f"Your Solar Passport is {r['id']} (hash {r['short_hash']}). Anyone can check it at {r['verify_path']}. "
-            "It proves the record is unchanged and signed by Sol, not that your real roof matches the inputs.")
+    if r.get("already_issued"):
+        return f"Your Solar Passport {r['id']} was already created for this option, so I'm showing it again."
+    return f"Your Solar Passport {r['id']} is ready."
+
+
+_CHECK_NAMES = {"sourced_inputs": "Inputs have sources", "reproducible": "Results re-run and matched"}
+_CHECK_STATUS = {"pass": "Passed", "fail": "Failed", "n/a": "Partly: some inputs are unverified placeholders"}
+
+
+def passport_markdown(r: dict) -> str:
+    """Customer-facing Solar Passport card, built only from the tool result."""
+    when = ""
+    if r.get("created_at"):
+        try:
+            from datetime import datetime
+
+            when = datetime.fromisoformat(str(r["created_at"])).strftime("%d %b %Y")
+        except ValueError:
+            when = str(r["created_at"])[:10]
+    rows = [("Passport ID", f"**{r['id']}**")]
+    if when:
+        rows.append(("Issued", when))
+    if r.get("option"):
+        size = f" · {r['panels']} panels, {r['kwp']:g} kWp" if r.get("panels") else ""
+        rows.append(("Option recorded", f"{r['option']}{size}"))
+    rows.append(("Fingerprint", r["short_hash"]))
+    for name, status in (r.get("checks_at_issue") or {}).items():
+        rows.append((_CHECK_NAMES.get(name, name.replace("_", " ").capitalize()), _CHECK_STATUS.get(status, str(status))))
+    rows.append(("Verify it", f"[Open the verify page]({r['verify_path']})"))
+    out = ["### Your Solar Passport", "", "| | |", "|---|---|"] + [f"| {k} | {v} |" for k, v in rows]
+    out += [
+        "", "**What it tells you**", "",
+        "- The results have not been changed since they were created.",
+        "- The record is signed by Sol, and anyone with the link can check it.",
+        "", "**What it does not tell you**", "",
+        "- It does not prove that your real roof matches the details you gave.",
+        "- The figures are still estimates for a licensed installer to confirm.",
+        "", "You can find it again under **Saved records**, where you can also download it.",
+    ]
+    return "\n".join(out)
+
+
+def roof_fill_text(r: dict) -> str:
+    if r.get("mode") == "design":
+        return f"The map is back to your design with {r['panels']} panels."
+    return f"The map now shows panels on the whole roof: {r['panels']} panels, about {r['kwp']:g} kWp."
+
+
+def roof_fill_markdown(r: dict) -> str:
+    """Preview card for the 'fill my whole roof' view."""
+    if r.get("mode") != "full":
+        return ""
+    rows = [
+        ("Panels that fit", f"**{r['panels']}** × {r['panel_model']}"),
+        ("Total size", f"**{r['kwp']:g} kWp**"),
+        ("Panel area", f"about {r['panel_area_m2']:g} m² of your {r['roof_area_m2']:g} m² roof"),
+        ("Rough cost", f"about **{php(r['rough_cost_php'])}** for panels, installation and permits"),
+        ("Your design", f"{r['design_panels']} panels · {r['design_kwp']:g} kWp · {php(r['design_cost_php'])}"),
+    ]
+    if r.get("budget_max_php"):
+        over = r.get("over_budget_php") or 0
+        rows.append(("Your budget", f"{php(r['budget_max_php'])} (**{php(over)} over**)" if over else f"{php(r['budget_max_php'])} (within budget)"))
+    out = ["### Whole-roof preview", "", "| | |", "|---|---|"] + [f"| {k} | {v} |" for k, v in rows]
+    notes = [
+        "This is a layout preview, not a recommendation. Your design is sized to your bill and budget.",
+        f"The inverters are not priced here. The largest inverter in the price list is {r['largest_inverter_kw']:g} kW, so a system this size needs several.",
+    ]
+    if r.get("above_net_metering_cap"):
+        notes.append(f"A system above {r['net_metering_cap_kw']:g} kW is over the residential net-metering limit, so the utility would need to approve it separately.")
+    out += ["", "**Good to know**", ""] + [f"- {n}" for n in notes]
+    out += ["", "Choose **Back to my design** to return to the recommended layout."]
+    return "\n".join(out)
 
 
 def roof_text(roof: dict) -> str:
@@ -130,6 +259,8 @@ def render_tool_result(name: str, result: dict) -> str:
         return assumptions_text(result)
     if name == "issue_passport":
         return passport_text(result)
+    if name == "toggle_roof_fill":
+        return roof_fill_text(result)
     if name == "get_building_outline":
         if result.get("found"):
             return roof_text(result["roof"])
@@ -151,6 +282,8 @@ def render_tool_result(name: str, result: dict) -> str:
             bits.append("Okay, I'll use that usage.")
         if "budget_max_php" in a:
             bits.append(f"Budget noted: up to {php(a['budget_max_php'])}.")
+        if "system_type" in a:
+            bits.append(f"Got it: {SYSTEM_NAMES[a['system_type']]}.")
         if "goal" in a:
             bits.append("Goal noted.")
         if "goal_target_pct" in a:
@@ -165,4 +298,4 @@ def render_tool_result(name: str, result: dict) -> str:
     return ""
 
 
-__all__ = ["summarize_analysis", "render_tool_result", "goal_label", "CAVEAT"]
+__all__ = ["summarize_analysis", "analysis_markdown", "passport_markdown", "roof_fill_markdown", "render_tool_result", "goal_label", "CAVEAT"]

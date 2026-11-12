@@ -13,14 +13,14 @@ from ...config import Settings, get_settings
 from ...errors import ApiError
 from ...models import FinalizeRequest, FromAddressRequest, LatLon, RoofModel, SketchRequest
 from .. import geo, roof as roof_svc
-from . import guard, intake
+from . import guard, intake, summary as summary_svc
 from .providers import Provider, ProviderUnavailable, ScriptedProvider, tool_sentences
 from .session import Session, load_session, save_session
 from .tools import TurnContext, jsonable, layout_for_selected, profile_view, roof_summary
 
 log = logging.getLogger("sol.agent")
 PLACEHOLDER_TEXT = "attached files"  # what the UI sends for a files-only message
-MAX_CHOICES = 4
+MAX_CHOICES = 5
 _DONE = object()
 
 
@@ -198,7 +198,21 @@ def _worker(req: ChatRequest, settings: Settings, out: "queue.Queue", ctx_box: l
                 del session.guard_events[:-20]
                 text = safe_text(ctx)
 
-        reply = _build_reply(ctx, text)
+        # The results table is built from tool results only (so it is exempt from the number guard) and goes above
+        # the model's explanation. History keeps just the explanation, to keep the next prompt short.
+        blocks: list[str] = []
+        for res in ctx.results_of("run_analysis"):
+            if isinstance(res, dict) and res.get("summary"):
+                blocks.append(summary_svc.analysis_markdown(res["summary"]))
+        for res in ctx.results_of("issue_passport")[-1:]:
+            if isinstance(res, dict) and res.get("id"):
+                blocks.append(summary_svc.passport_markdown(res))
+        for res in ctx.results_of("toggle_roof_fill")[-1:]:
+            if isinstance(res, dict) and res.get("mode") == "full":
+                blocks.append(summary_svc.roof_fill_markdown(res))
+        shown = "\n\n".join([*blocks, text])
+
+        reply = _build_reply(ctx, shown)
         session.add_history("user", user_text or f"[attached {len(req.files)} file(s)]")
         session.add_history("model", text)
         session.turn_count += 1

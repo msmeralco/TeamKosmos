@@ -11,6 +11,7 @@ from .personas import Persona, household_from_user, persona_from_household
 
 GOALS = ("cut_bill", "max_savings_10y", "fastest_payback", "backup")
 TEMPLATES = ("night_heavy", "balanced", "day_heavy")
+SYSTEM_TYPES = ("on_grid", "off_grid", "hybrid")
 HISTORY_LIMIT = 40
 
 
@@ -22,6 +23,7 @@ class Profile(BaseModel):
     household_template: str | None = None
     load_source: Literal["persona", "user", "bill_photo"] = "persona"
     load_confirmed: bool = False
+    system_type: Literal["on_grid", "off_grid", "hybrid"] | None = None
     budget_min_php: float | None = None
     budget_max_php: float | None = None
     goal: str | None = None

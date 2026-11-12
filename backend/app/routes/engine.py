@@ -65,6 +65,7 @@ class OptimizeRequest(LoadSpec):
     goal: Literal["cut_bill", "max_savings_10y", "fastest_payback", "backup"]
     goal_target_pct: float | None = Field(None, ge=5, le=100)
     backup_hours: float | None = Field(None, ge=1, le=48)
+    system_type: Literal["on_grid", "off_grid", "hybrid"] | None = None
 
     @model_validator(mode="after")
     def _goal_params(self):
@@ -76,7 +77,8 @@ class OptimizeRequest(LoadSpec):
 @router.post("/optimize")
 def optimize(req: OptimizeRequest):
     return jsonable(optimizer.optimize(req.roof, req.build(), budget_max_php=req.budget_max_php, budget_min_php=req.budget_min_php,
-                                       goal=req.goal, goal_target_pct=req.goal_target_pct, backup_hours=req.backup_hours))
+                                       goal=req.goal, goal_target_pct=req.goal_target_pct, backup_hours=req.backup_hours,
+                                       system_type=req.system_type))
 
 
 class SimulateRequest(LoadSpec):

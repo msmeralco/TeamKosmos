@@ -61,7 +61,7 @@ def ready_session(ctx):
     r = geo.roof_from_address(14.676, 121.0437)  # synthetic demo roof
     s = ctx.session
     s.profile.roof, s.profile.roof_method = r.model_dump(mode="json"), "address"
-    intake.apply_updates(s, confirm_load=True, budget_max_php=450000, goal="cut_bill", goal_target_pct=40, confirm_summary=True)
+    intake.apply_updates(s, confirm_load=True, system_type="on_grid", budget_max_php=450000, goal="cut_bill", goal_target_pct=40, confirm_summary=True)
     assert intake.next_slot(s) == "run"
 
 

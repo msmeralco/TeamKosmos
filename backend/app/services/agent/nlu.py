@@ -152,6 +152,12 @@ def extract(text: str, slot: str, goal: str | None) -> dict:
         out["net_metering"] = False
     elif re.search(r"net[- ]?metering.*\bon\b|with net[- ]?metering", t):
         out["net_metering"] = True
+    if re.search(r"off[- ]?grid", t):
+        out["system_type"] = "off_grid"
+    elif re.search(r"hybrid|solar[- ]?plus[- ]?(?:storage|battery)|with (?:a )?batter", t):
+        out["system_type"] = "hybrid"
+    elif re.search(r"on[- ]?grid|grid[- ]?(?:tied|tie|connected)", t):
+        out["system_type"] = "on_grid"
     if re.search(r"night|gabi", t) and "heavy" in t:
         out["household_template"] = "night_heavy"
     elif re.search(r"work(?:ing)? from home|wfh|day[- ]?heavy|home all day", t):

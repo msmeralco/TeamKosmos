@@ -18,9 +18,12 @@ GOAL_LABELS = {"cut_bill": "Best value", "max_savings_10y": "Max savings", "fast
                "backup": "Backup-ready"}
 
 
-def _objective(goal: str, q: dict, capex: float, target_pct: float | None) -> tuple:
+def _objective(goal: str, q: dict, capex: float, target_pct: float | None, system_type: str | None = None) -> tuple:
     """Smaller tuple is better."""
     pay = q["payback_years"] if q["payback_years"] is not None else 1e9
+    if system_type == "off_grid":
+        # Off-grid: the most independence from the utility the budget buys, then the lowest cost.
+        return (-round(q["bill_reduction_pct"]), capex, -q["net_25y_php"])
     if goal == "cut_bill":
         met = q["bill_reduction_pct"] >= (target_pct or 0.0)
         return (0 if met else 1, capex if met else -q["bill_reduction_pct"], -q["net_25y_php"])
@@ -33,7 +36,7 @@ def _objective(goal: str, q: dict, capex: float, target_pct: float | None) -> tu
 
 def optimize(roof: RoofModel, load: LoadProfile, *, budget_max_php: float, goal: str, goal_target_pct: float | None = None,
              backup_hours: float | None = None, budget_min_php: float | None = None,
-             year_set: irradiance.YearSet | None = None, top: int = 3) -> dict:
+             year_set: irradiance.YearSet | None = None, top: int = 3, system_type: str | None = None) -> dict:
     catalog = products.list_products()
     panels = [p for p in catalog if p["category"] == "panel"]
     batteries = [p for p in catalog if p["category"] == "battery"]
@@ -74,18 +77,21 @@ def optimize(roof: RoofModel, load: LoadProfile, *, budget_max_php: float, goal:
         if goal == "backup" and q["usable_battery_kwh"] + 1e-9 < need_backup_kwh:
             rejected["battery_too_small"] += 1
             return None
-        item = {"pkg": pkg, "q": q, "obj": _objective(goal, q, pkg["capex_php"], goal_target_pct)}
+        item = {"pkg": pkg, "q": q, "obj": _objective(goal, q, pkg["capex_php"], goal_target_pct, system_type)}
         evaluated[key] = item
         return item
 
+    # Grid-tied: never a battery. Hybrid and off-grid: always a battery (so are backup designs).
+    needs_battery = goal == "backup" or system_type in ("hybrid", "off_grid")
     battery_opts: list[tuple[dict | None, int]] = [(None, 0)]
-    battery_opts += [(b, c) for b in batteries for c in (1, 2, 3)]
+    if system_type != "on_grid":
+        battery_opts += [(b, c) for b in batteries for c in (1, 2, 3)]
     for panel in panels:
         cap = caps[panel["id"]]
         if cap == 0:
             continue
         for bat, bn in battery_opts:
-            if goal == "backup" and bat is None:
+            if needs_battery and bat is None:
                 continue
             step = 2 if bat is None else 4
             ns = sorted(set(list(range(2, cap + 1, step)) + [cap]))
@@ -134,10 +140,18 @@ def optimize(roof: RoofModel, load: LoadProfile, *, budget_max_php: float, goal:
     if goal == "cut_bill":
         target_met = best["q"]["bill_reduction_pct"] >= (goal_target_pct or 0.0)
     notes = [f"{len(evaluated)} designs were checked against your budget, roof and goal."]
+    type_notes = {
+        "on_grid": "Grid-tied: no battery, so the system switches off during a blackout.",
+        "hybrid": "Hybrid: a battery stores solar power for the evening and keeps essentials on during a blackout.",
+        "off_grid": ("Off-grid: shown as the design that replaces the most grid power within your budget. A true off-grid system must also "
+                     "be sized for the cloudiest days, often with a generator, so an installer has to confirm it."),
+    }
+    if system_type in type_notes:
+        notes.append(type_notes[system_type])
     if budget_min_php:
         notes.append("The budget minimum is a guide only. The budget maximum is the hard limit.")
     if target_met is False:
         notes.append(f"No design within budget reaches a {goal_target_pct:g}% bill cut. The closest option is shown.")
-    return {"goal": goal, "goal_target_pct": goal_target_pct, "backup_hours": backup_hours, "target_met": target_met,
+    return {"goal": goal, "system_type": system_type, "goal_target_pct": goal_target_pct, "backup_hours": backup_hours, "target_met": target_met,
             "candidates_checked": len(evaluated), "roof_capacity_panels": {pid: c for pid, c in caps.items()},
             "weather_source": ys.source, "packages": packages, "notes": notes}

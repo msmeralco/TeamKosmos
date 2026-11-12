@@ -65,6 +65,10 @@ def test_full_conversation_from_vague_request_to_passport(client):
     assert any(c["type"] == "roof" for c in m["reply"]["cards"])
 
     m = reply(client, "Yes, use 450 kWh per month")
+    assert m["reply"]["slot"] == "system_type" and "Off-grid" in m["reply"]["text"] and "**Hybrid" in m["reply"]["text"]
+    assert [n["label"] for n in m["reply"]["next"]] == ["Grid-tied (on-grid)", "Off-grid", "Hybrid (solar + storage)"]
+
+    m = reply(client, "I want a grid-tied (on-grid) system")
     assert "budget" in m["reply"]["text"].lower() and len(m["reply"]["next"]) == 4
 
     m = reply(client, "My budget is ₱300,000 to ₱500,000")
@@ -110,7 +114,7 @@ def test_several_answers_in_one_message(client):
     m = reply(client, "use 450 kWh a month, my budget is 300k, I want the fastest payback")
     st = client.get(f"/api/agent/sessions/{CID}").json()["profile"]
     assert st["monthly_kwh"] == 450 and st["budget_max_php"] == 300000 and st["goal"] == "fastest_payback"
-    assert m["reply"]["slot"] == "confirm"
+    assert m["reply"]["slot"] == "system_type"  # everything else was understood; only the system type is missing
 
 
 def test_details_given_in_passing_are_saved_and_acknowledged(client):
@@ -145,6 +149,7 @@ def test_unrecognised_input_re_asks_without_losing_state(client):
 def test_invalid_values_are_rejected_with_a_helpful_message(client):
     reply(client, "reyes demo")
     reply(client, "Yes, use 450 kWh per month")
+    reply(client, "I want a grid-tied (on-grid) system")
     m = reply(client, "my budget is 5k")
     assert "too low" in m["reply"]["text"].lower()
     assert client.get(f"/api/agent/sessions/{CID}").json()["profile"]["budget_max_php"] is None
@@ -153,10 +158,11 @@ def test_invalid_values_are_rejected_with_a_helpful_message(client):
 def test_change_something_flow(client):
     reply(client, "reyes demo")
     reply(client, "Yes, use 450 kWh per month")
+    reply(client, "I want a grid-tied (on-grid) system")
     reply(client, "My budget is ₱150,000 to ₱300,000")
     reply(client, "I want the fastest payback")
     m = reply(client, "I want to change something")
-    assert len(m["reply"]["next"]) == 4 and m["reply"]["slot"] == "change"
+    assert len(m["reply"]["next"]) == 5 and m["reply"]["slot"] == "change"
     m = reply(client, "Change my budget")
     assert m["reply"]["slot"] == "budget"
 
@@ -164,6 +170,7 @@ def test_change_something_flow(client):
 def test_infeasible_budget_is_explained_not_crashed(client):
     reply(client, "reyes demo")
     reply(client, "Yes, use 450 kWh per month")
+    reply(client, "I want a grid-tied (on-grid) system")
     reply(client, "my budget is 30000")
     reply(client, "I want to cut my electricity bill")
     reply(client, "Cut my bill by 70%")
@@ -398,3 +405,105 @@ def test_two_conversations_do_not_leak_state(client):
     reply(client, "hello", cid="conv-bbbb-2222-0123456789")
     assert client.get("/api/agent/sessions/conv-aaaa-1111-0123456789").json()["profile"]["roof"] is not None
     assert client.get("/api/agent/sessions/conv-bbbb-2222-0123456789").json()["profile"]["roof"] is None
+
+
+# ---- system type and rich results -------------------------------------------------------------------------------------
+@pytest.mark.parametrize("choice,kind", [
+    ("I want a grid-tied (on-grid) system", "on_grid"),
+    ("I want a hybrid system with a battery", "hybrid"),
+    ("I want an off-grid system", "off_grid"),
+])
+def test_system_type_shapes_the_design_and_the_results_are_rich_text(client, choice, kind):
+    for m in ["reyes demo", "Yes, use 450 kWh per month", choice, "My budget is ₱300,000 to ₱500,000",
+              "I want the fastest payback", "Yes, run the numbers"]:
+        out = reply(client, m)
+    assert client.get(f"/api/agent/sessions/{CID}").json()["profile"]["system_type"] == kind
+    r = out["reply"]
+    assert r["slot"] == "done"
+    assert "| Solar panels |" in r["text"] and "| Installed cost |" in r["text"] and "**Good to know**" in r["text"]
+    top = next(c for c in r["cards"] if c["type"] == "analysis")["data"]["packages"][0]
+    assert (top["battery"] is None) == (kind == "on_grid")
+    if kind == "off_grid":
+        assert "Grid power replaced" in r["text"] and "installer has to confirm" in r["text"]
+
+
+def test_backup_goal_is_not_offered_for_a_grid_tied_system(client):
+    reply(client, "reyes demo")
+    reply(client, "Yes, use 450 kWh per month")
+    reply(client, "I want a grid-tied (on-grid) system")
+    m = reply(client, "My budget is ₱300,000 to ₱500,000")
+    assert m["reply"]["slot"] == "goal" and "Blackout backup" not in [n["label"] for n in m["reply"]["next"]]
+    m = reply(client, "I want blackout backup")
+    assert m["reply"]["slot"] == "goal" and "battery" in m["reply"]["text"].lower()
+
+
+def test_system_type_is_understood_from_free_text(client):
+    reply(client, "reyes demo")
+    reply(client, "Yes, use 450 kWh per month")
+    m = reply(client, "we want solar plus storage, a hybrid please")
+    assert client.get(f"/api/agent/sessions/{CID}").json()["profile"]["system_type"] == "hybrid"
+    assert m["reply"]["slot"] == "budget"
+
+
+def test_roof_layout_returns_the_unused_spots_for_the_map(client):
+    for m in ["reyes demo", "Yes, use 450 kWh per month", "I want a grid-tied (on-grid) system",
+              "My budget is ₱150,000 to ₱300,000", "I want the fastest payback", "Yes, run the numbers"]:
+        reply(client, m)
+    lay = client.get(f"/api/agent/sessions/{CID}/roof").json()["layout"]
+    assert lay["capacity"] == lay["count"] + len(lay["spots_lonlat"]) and lay["capacity"] >= lay["count"] > 0
+
+
+def _run_to_results(client):
+    for m in ["reyes demo", "Yes, use 450 kWh per month", "I want a grid-tied (on-grid) system",
+              "My budget is ₱150,000 to ₱300,000", "I want the fastest payback", "Yes, run the numbers"]:
+        out = reply(client, m)
+    return out
+
+
+def test_passport_reply_is_a_clean_card_and_is_issued_once(client):
+    _run_to_results(client)
+    m = reply(client, "Create my Solar Passport")
+    text = m["reply"]["text"]
+    assert text.count("SOL-") >= 1 and "### Your Solar Passport" in text and "| Passport ID |" in text
+    assert "[Open the verify page](/verify/SOL-" in text and "**What it does not tell you**" in text
+    assert "I have your roof outline" not in text
+    first = next(c for c in m["reply"]["cards"] if c["type"] == "passport")["data"]["id"]
+    m = reply(client, "Create my Solar Passport")  # asking again must not sign a second record
+    assert next(c for c in m["reply"]["cards"] if c["type"] == "passport")["data"]["id"] == first
+    assert "already created" in m["reply"]["text"]
+
+
+def test_fill_whole_roof_preview_and_back(client):
+    _run_to_results(client)
+    design = client.get(f"/api/agent/sessions/{CID}/roof").json()["layout"]
+    m = reply(client, "Show panels on my whole roof")
+    assert "### Whole-roof preview" in m["reply"]["text"] and "Back to my design" in [n["label"] for n in m["reply"]["next"]]
+    full = client.get(f"/api/agent/sessions/{CID}/roof").json()["layout"]
+    assert full["full_roof"] is True and full["count"] == design["capacity"] and full["spots_lonlat"] == []
+    m = reply(client, "Show my design again")
+    back = client.get(f"/api/agent/sessions/{CID}/roof").json()["layout"]
+    assert back["full_roof"] is False and back["count"] == design["count"]
+    assert "Fill my whole roof" in [n["label"] for n in m["reply"]["next"]]
+
+
+def test_after_a_failed_run_changing_the_budget_leaves_the_change_menu(client):
+    for m in ["reyes demo", "Yes, use 450 kWh per month", "I want a grid-tied (on-grid) system", "my budget is 30000",
+              "I want the fastest payback", "Yes, run the numbers"]:
+        out = reply(client, m)
+    assert out["reply"]["slot"] == "change"
+    out = reply(client, "increase and make it 400k")
+    assert out["reply"]["slot"] == "confirm"  # not "What would you like to change?" again
+    out = reply(client, "go")
+    assert out["reply"]["slot"] == "done" and "| Installed cost |" in out["reply"]["text"]
+
+
+def test_saying_nothing_or_go_in_the_change_menu_does_not_loop(client):
+    for m in ["reyes demo", "Yes, use 450 kWh per month", "I want a grid-tied (on-grid) system", "My budget is ₱300,000 to ₱500,000",
+              "I want the fastest payback", "I want to change something"]:
+        out = reply(client, m)
+    assert out["reply"]["slot"] == "change"
+    out = reply(client, "nothing")
+    assert out["reply"]["slot"] == "confirm"
+    reply(client, "I want to change something")
+    out = reply(client, "just run the numbers")
+    assert out["reply"]["slot"] == "done"

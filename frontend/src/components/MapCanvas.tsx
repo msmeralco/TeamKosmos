@@ -13,10 +13,22 @@ import { btn, Spinner } from "./ui";
    a polygon drawing tool, and a blank-canvas sketch tool. Both send the roof to the backend session. */
 
 const MANILA = { lat: 14.5995, lon: 120.9842, zoom: 12 };
-const SAT_URL = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
+const ESRI_KEY = (import.meta.env.VITE_ESRI_API_KEY as string | undefined) ?? "";
+/* Esri now serves a "API KEY REQUIRED" watermark to anonymous requests, so the key is appended as a token. */
+const SAT_URL =
+  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" +
+  (ESRI_KEY ? `?token=${ESRI_KEY}` : "");
 const SAT_ATTR = "Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community";
 const OSM_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 const OSM_ATTR = "&copy; OpenStreetMap contributors";
+/* Esri reference overlays: road lines + street names, and place names. They use the same key as the imagery. */
+const REF_BASE = "https://services.arcgisonline.com/arcgis/rest/services/Reference";
+const REF_TOKEN = ESRI_KEY ? `?token=${ESRI_KEY}` : "";
+const LABEL_URLS = [
+  `${REF_BASE}/World_Transportation/MapServer/tile/{z}/{y}/{x}${REF_TOKEN}`,
+  `${REF_BASE}/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}${REF_TOKEN}`,
+];
+const LABELS_ATTR = "Labels &copy; Esri";
 
 type Tab = "map" | "sketch";
 type Pt = [number, number]; // [lat, lng]
@@ -182,6 +194,7 @@ export function MapCanvas({
   const hostRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const baseRef = useRef<L.TileLayer | null>(null);
+  const labelsRef = useRef<L.LayerGroup | null>(null);
   const overlayRef = useRef<L.LayerGroup | null>(null);
   const shapeRef = useRef<L.LayerGroup | null>(null);
   const handlesRef = useRef<L.LayerGroup | null>(null);
@@ -311,11 +324,31 @@ export function MapCanvas({
     const map = mapRef.current;
     if (!map || tab !== "map") return;
     baseRef.current?.remove();
+    labelsRef.current?.remove();
+    labelsRef.current = null;
     const layer = street
       ? L.tileLayer(OSM_URL, { maxZoom: 19, maxNativeZoom: 19, attribution: OSM_ATTR })
       : L.tileLayer(SAT_URL, { maxZoom: 19, maxNativeZoom: 18, attribution: SAT_ATTR }); // Esri has no tiles past ~z18 in many PH areas; Leaflet upscales instead
     layer.addTo(map).bringToBack();
     baseRef.current = layer;
+    if (!street) {
+      // Street and place names over the satellite imagery (the street map already has its own labels).
+      if (!map.getPane("labels")) {
+        const pane = map.createPane("labels");
+        pane.style.zIndex = "250";
+        pane.style.pointerEvents = "none";
+      }
+      labelsRef.current = L.layerGroup(
+        LABEL_URLS.map((url, i) =>
+          L.tileLayer(url, {
+            pane: "labels",
+            maxZoom: 19,
+            maxNativeZoom: 18,
+            attribution: i === 0 ? LABELS_ATTR : "",
+          }),
+        ),
+      ).addTo(map);
+    }
   }, [street, tab]);
 
   // ---- move the camera ----------------------------------------------------------------------------------------------------
@@ -369,6 +402,12 @@ export function MapCanvas({
         }),
         interactive: false,
         keyboard: false,
+      }).addTo(layer);
+    }
+    // Room left on the roof beyond the chosen design: faint dashed outlines.
+    for (const p of state?.layout?.spots_lonlat ?? []) {
+      L.polygon(p.map(([lon, lat]) => [lat, lon] as Pt), {
+        color: "#1d4ed8", weight: 1, dashArray: "3 3", fillColor: "#1d4ed8", fillOpacity: 0.08, opacity: 0.55, interactive: false,
       }).addTo(layer);
     }
     for (const p of state?.layout?.panels_lonlat ?? []) {
@@ -800,6 +839,25 @@ export function MapCanvas({
                       <p key={w}>{w}</p>
                     ))}
                   </div>
+                )}
+              </div>
+            )}
+            {state?.layout && !drawing && (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[#787774]">
+                <span>
+                  {state.layout.count}
+                  {state.layout.capacity ? ` of ${state.layout.capacity}` : ""} panel spots used
+                </span>
+                {(state.layout.spots_lonlat?.length ?? 0) > 0 && (
+                  <>
+                    <span className="inline-flex items-center gap-1">
+                      <span className="inline-block h-2.5 w-2.5 rounded-[2px] bg-[#1d4ed8]/70" /> in your design
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                      <span className="inline-block h-2.5 w-2.5 rounded-[2px] border border-dashed border-[#1d4ed8]/70" /> room for{" "}
+                      {state.layout.spots_lonlat?.length} more
+                    </span>
+                  </>
                 )}
               </div>
             )}
