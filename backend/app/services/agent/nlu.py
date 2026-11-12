@@ -94,6 +94,24 @@ _DOCS = re.compile(r"permit|\bfees?\b|zero[- ]?export|micro[- ]?solar|\bmss\b|sg
 _QUESTION = re.compile(r"\?|^\s*(?:what|how|why|when|who|where|do|does|can|could|is|are|will|should|paano|ano)\b", re.I)
 
 
+_BRIEF = re.compile(r"\bbrief(?:ing)?\b.*\bsolar|\bsolar\b.*\bbrief|solar 101|solar basics|overview of solar|how does solar (?:work|energy work)", re.I)
+
+# Real, ready-made packages that installers publish (as opposed to "run the numbers" or "compare my options").
+_PACKAGES = re.compile(r"\bpackages?\b", re.I)
+_PACKAGES_WHY = re.compile(r"real|ready[- ]?made|published|actual|market|on the market|installer|price|cost|how much|on-grid|hybrid|grid-tied|\bcompare\b|available|show|any\b", re.I)
+_PACKAGES_NOT = re.compile(r"\b(?:compare|show|run) (?:the |my |all |these )?(?:packages?|options?)\b|my (?:packages?|options?)", re.I)
+
+
+def battery_wish(text: str) -> bool | None:
+    """True for 'with a battery / hybrid', False for 'without a battery / grid-tied', None for no preference."""
+    t = text.lower()
+    if re.search(r"without (?:a )?batter|no batter|grid[- ]?tied|on-?grid only|without storage", t):
+        return False
+    if re.search(r"with (?:a )?batter|hybrid|battery backup|with storage", t):
+        return True
+    return None
+
+
 # Asking for installers (a list), as opposed to asking how to choose one, which goes to the document library.
 _INSTALLER = re.compile(r"installer|contractor|solar compan|who can install|where can i (?:buy|get|find)", re.I)
 _INSTALLER_ASK = re.compile(r"suggest|recommend|list|show|find|which|any\b|who\b|where|contact|near|registered|options?|give me|looking for|\bneed\b|can you", re.I)
@@ -108,6 +126,10 @@ def detect_intent(text: str) -> str | None:
         return "nm_compare"
     if re.search(r"assumption|where do .* come from|\bsources?\b", t):
         return "explain"
+    if _BRIEF.search(t):
+        return "brief"
+    if _PACKAGES.search(t) and _PACKAGES_WHY.search(t) and not _PACKAGES_NOT.search(t) and not _INSTALLER.search(t):
+        return "packages"
     if _INSTALLER.search(t) and _INSTALLER_ASK.search(t) and not _INSTALLER_NOT.search(t):
         return "installers"
     if re.search(r"\bprices?\b|how much (?:is|are|for|does|do) .*(?:panel|inverter|batter|brand)|panel brand|equipment|product", t):
@@ -127,7 +149,7 @@ _ACTION_PATTERNS = {
     "run": re.compile(r"\brun (?:the |my )?(?:numbers?|analysis|simulation)\b|\brun (?:it|this)\b|\banaly[sz]e (?:it|this|my|the)\b|\bsimulate\b|"
                       r"\bcompare (?:the |my |all )?(?:packages?|options?)\b|\bshow (?:me )?(?:the |my )?(?:results?|options)\b|\bi-?run\b|\bpatakbuhin\b", re.I),
     "nm_compare": re.compile(r"net[- ]?metering.*(?:compare|off|without)|(?:compare|without|what if).*net[- ]?metering", re.I),
-    "fill_roof": re.compile(r"\b(?:whole|entire|full) roof\b|\bfill (?:my |the )?roof\b", re.I),
+    "fill_roof": re.compile(r"\b(?:whole|entire|full) (?:installation )?(?:roof|site)\b|\bfill (?:my |the )?(?:installation )?(?:roof|site)\b", re.I),
     "passport": re.compile(r"passport", re.I),
 }
 _HOLD = re.compile(r"\b(?:don'?t|do not|not yet|wait|hold on|hold off|huwag|wag muna)\b", re.I)

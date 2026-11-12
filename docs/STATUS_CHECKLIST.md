@@ -27,6 +27,10 @@
 ## Tier 2: Full product
 
 - [x] Goal- and budget-driven optimizer
+- [x] Real ready-made packages (25 from 6 installers) with photos, published prices and links, shown under every analysis and on request; prices are re-checked against the live pages by `scripts/build_packages.py`
+- [x] Every package has an image: real installer photos where they exist, drawn illustrations otherwise (PTG Solar, Triple30 and the samples)
+- [x] Made-up sample packages fill gaps (grid-tied sizes, off-grid), always labeled *Sample* and shown only where no real package fits
+- [ ] Real photos for PTG Solar and Triple30, and real off-grid packages (none published)
 - [~] Live product price fetch with cache: scraper code exists, no retailer source is enabled, prices come from the seed catalog
 - [x] 2D panel layout on the roof
 - [x] Blank-canvas sketch with scale correction, floating tools, and an uploaded picture to trace by hand
@@ -58,6 +62,11 @@
 ## Other features
 
 - [x] Sign up, login, logout, seeded demo users
+- [x] No goal question: once the budget is set the goal defaults to the biggest 10-year savings and Sol gives a summary with no question (the goal can still be changed)
+- [x] Click a package: "Details & contacts" asks Sol, which shows price, parts, how it fits the budget and size, the installer's published phone, email, website and social links (checked against the installer's page), and questions to ask
+- [x] Packages that fit the budget open in the side panel as soon as the budget and system type are set (before the numbers run), then refresh to the real design after the analysis
+- [x] Installers and packages open in a side panel (like the map): cards with contact buttons and search for installers; photo cards with type filter and sort for packages; a link in the chat reopens them
+- [x] Starter pills: Map my site, Recommend Installers (asks your area, then a DOE-registry table with contacts), Compare packages, Brief on Solar
 - [x] Saved chats: recents list, new chat, delete
 - [x] Suggestion pills only under the latest message; after a rules answer they offer new, answerable follow-up questions, and after an analysis they depend on its warnings
 - [x] Bill photo reading in chat

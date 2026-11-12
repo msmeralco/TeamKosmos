@@ -32,7 +32,7 @@ def test_first_message_greets_and_offers_three_roof_choices(client):
     assert msg["phase"] == "done" and msg["conversationId"] == CID
     assert msg["steps"][0]["id"] == "s0" and all(s["status"] == "done" for s in msg["steps"])
     r = msg["reply"]
-    assert "Sol" in r["text"] and "roof" in r["text"].lower() and "estimate" in r["text"].lower()
+    assert "Sol" in r["text"] and "installation site" in r["text"].lower() and "estimate" in r["text"].lower()
     assert len(r["next"]) == 3 and r["hasMapArtifact"] is False
     assert {"id", "label", "text"} <= set(r["next"][0])
     assert "I'll type my address" in texts(msg)
@@ -56,7 +56,7 @@ def test_full_conversation_from_vague_request_to_passport(client):
     reply(client, "I want to install solar")
     m = reply(client, "I'll type my address")
     assert "address" in m["reply"]["text"].lower()
-    assert "I'll draw my roof on the map" in texts(m) or "I'll draw my roof on the map" in " ".join(texts(m))
+    assert "I'll draw my installation site on the map" in texts(m) or "I'll draw my installation site on the map" in " ".join(texts(m))
 
     m = reply(client, "reyes demo")  # synthetic demo roof: found offline, auto-selected
     assert m["reply"]["hasMapArtifact"] is True
@@ -72,12 +72,15 @@ def test_full_conversation_from_vague_request_to_passport(client):
     assert "budget" in m["reply"]["text"].lower() and len(m["reply"]["next"]) == 4
 
     m = reply(client, "My budget is ₱300,000 to ₱500,000")
-    assert m["reply"]["slot"] == "goal"
+    txt = m["reply"]["text"]
+    assert m["reply"]["slot"] == "confirm" and "Budget: ₱300,000 to ₱500,000." in txt and "biggest 10-year savings" in txt
+    assert "?" not in txt and "What matters most" not in txt  # a summary, not a question
+    assert "Run the numbers" in [n["label"] for n in m["reply"]["next"]]
 
-    m = reply(client, "I want to cut my electricity bill")
+    m = reply(client, "I want to cut my electricity bill")  # choosing a goal is still possible
     assert m["reply"]["slot"] == "goal_param"
     m = reply(client, "Cut my bill by 50%")
-    assert m["reply"]["slot"] == "confirm" and "Shall I run the numbers" in m["reply"]["text"]
+    assert m["reply"]["slot"] == "confirm" and "Goal: cut your bill by 50%." in m["reply"]["text"] and "biggest 10-year savings" not in m["reply"]["text"]
 
     m = reply(client, "Yes, run the numbers")
     r = m["reply"]
@@ -334,19 +337,19 @@ def test_guard_allows_numbers_from_tool_results_and_user(client):
 
 # ---- roof hand-off from the map panel ---------------------------------------------------------------------------------------------
 def test_drawn_roof_handoff_is_acknowledged_next_turn(client):
-    reply(client, "I'll draw my roof on the map")
+    reply(client, "I'll draw my installation site on the map")
     ring = [[121.0437, 14.6760], [121.04379, 14.6760], [121.04379, 14.67606], [121.0437, 14.67606]]
     r = client.post(f"/api/agent/sessions/{CID}/roof", json={"mode": "drawn", "polygon_lonlat": ring, "roof_type": "flat"})
     assert r.status_code == 200, r.text
     assert r.json()["nextSlot"] == "load" and r.json()["roof"]["source"] == "drawn"
-    m = reply(client, "I've finished drawing my roof outline.")  # what the map panel sends by itself
-    assert "roof outline" in m["reply"]["text"].lower() and m["reply"]["slot"] == "load"
+    m = reply(client, "I've finished drawing my installation site outline.")  # what the map panel sends by itself
+    assert "installation site outline" in m["reply"]["text"].lower() and m["reply"]["slot"] == "load"
     assert "didn't catch" not in m["reply"]["text"].lower()
     assert client.get(f"/api/agent/sessions/{CID}/roof").json()["needsRoof"] is False
 
 
 def test_sketch_handoff_uses_geocoded_anchor_or_persona_city(client):
-    reply(client, "I'll sketch my roof on a blank canvas")
+    reply(client, "I'll sketch my installation site on a blank canvas")
     pts = [[0, 0], [220, 0], [220, 160], [0, 160]]
     r = client.post(f"/api/agent/sessions/{CID}/roof", json={"mode": "sketch", "points_px": pts, "px_per_m": 20,
                                                               "scale_source": "user_measured", "north_deg": 15})
@@ -432,9 +435,9 @@ def test_backup_goal_is_not_offered_for_a_grid_tied_system(client):
     reply(client, "Yes, use 450 kWh per month")
     reply(client, "I want a grid-tied (on-grid) system")
     m = reply(client, "My budget is ₱300,000 to ₱500,000")
-    assert m["reply"]["slot"] == "goal" and "Blackout backup" not in [n["label"] for n in m["reply"]["next"]]
+    assert m["reply"]["slot"] == "confirm" and "Blackout backup" not in [n["label"] for n in m["reply"]["next"]]
     m = reply(client, "I want blackout backup")
-    assert m["reply"]["slot"] == "goal" and "battery" in m["reply"]["text"].lower()
+    assert m["reply"]["slot"] == "confirm" and "battery" in m["reply"]["text"].lower()  # refused: it needs a battery
 
 
 def test_system_type_is_understood_from_free_text(client):
@@ -466,7 +469,7 @@ def test_passport_reply_is_a_clean_card_and_is_issued_once(client):
     text = m["reply"]["text"]
     assert text.count("SOL-") >= 1 and "### Your Solar Passport" in text and "| Passport ID |" in text
     assert "[Open the verify page](/verify/SOL-" in text and "**What it does not tell you**" in text
-    assert "I have your roof outline" not in text
+    assert "I have your installation site outline" not in text
     first = next(c for c in m["reply"]["cards"] if c["type"] == "passport")["data"]["id"]
     m = reply(client, "Create my Solar Passport")  # asking again must not sign a second record
     assert next(c for c in m["reply"]["cards"] if c["type"] == "passport")["data"]["id"] == first
@@ -476,14 +479,14 @@ def test_passport_reply_is_a_clean_card_and_is_issued_once(client):
 def test_fill_whole_roof_preview_and_back(client):
     _run_to_results(client)
     design = client.get(f"/api/agent/sessions/{CID}/roof").json()["layout"]
-    m = reply(client, "Show panels on my whole roof")
-    assert "### Whole-roof preview" in m["reply"]["text"] and "Back to my design" in [n["label"] for n in m["reply"]["next"]]
+    m = reply(client, "Show panels on my whole installation site")
+    assert "### Whole-site preview" in m["reply"]["text"] and "Back to my design" in [n["label"] for n in m["reply"]["next"]]
     full = client.get(f"/api/agent/sessions/{CID}/roof").json()["layout"]
     assert full["full_roof"] is True and full["count"] == design["capacity"] and full["spots_lonlat"] == []
     m = reply(client, "Show my design again")
     back = client.get(f"/api/agent/sessions/{CID}/roof").json()["layout"]
     assert back["full_roof"] is False and back["count"] == design["count"]
-    assert "Fill my whole roof" in [n["label"] for n in m["reply"]["next"]]
+    assert "Fill my whole site" in [n["label"] for n in m["reply"]["next"]]
 
 
 def test_after_a_failed_run_changing_the_budget_leaves_the_change_menu(client):
@@ -507,3 +510,64 @@ def test_saying_nothing_or_go_in_the_change_menu_does_not_loop(client):
     reply(client, "I want to change something")
     out = reply(client, "just run the numbers")
     assert out["reply"]["slot"] == "done"
+
+
+def test_results_come_with_real_published_packages_near_the_recommended_size(client):
+    out = _run_to_results(client)["reply"]
+    card = next(c for c in out["cards"] if c["type"] == "packages")["data"]
+    assert card["open"] is False and "| Photo |" not in out["text"]  # a link in the chat only; the side panel opens when asked
+    assert card["wanted_kind"] == "grid-tied" and card["wanted_kwp"] > 0 and len(card["rows"]) >= 20
+    assert card["basis"] == "design" and card["budget_max"] == 300000
+    order = [(not r["within_budget"], r["synthetic"]) for r in card["rows"]]
+    assert order == sorted(order)  # within the budget first, and real before made-up inside each group
+    assert all(r["photo"] for r in card["rows"])
+
+
+# ---- the reply must ask about the step Sol is really on --------------------------------------------------------------------------------
+def test_off_slot_question_detector():
+    from app.services.agent.guard import off_slot_question as off
+    jump = "Great! Since your sketch is ready, how much is your typical monthly electricity bill in pesos, or how many kWh do you use each month?"
+    assert off(jump, "roof_draw") and off(jump, "roof_method")  # the sketch was never received
+    assert not off(jump, "load")  # the same question is fine once the bill is the open step
+    assert not off("Got it, about 450 kWh a month. What is your budget?", "budget")  # a recap before the right question
+    assert not off("Thanks! That helps a lot.", "load")  # no question at all
+    assert not off("Which one is your home?", "roof_pick")  # matches no step words
+    assert not off("Do you want to use 250 kWh a month or type your bill?", "load")
+
+
+def test_model_that_skips_ahead_is_replaced_and_pills_match(client):
+    reply(client, "I'll sketch my installation site on a blank canvas")  # Sol now waits for the sketch (slot roof_draw)
+    runner.set_provider_override(FakeProvider([("text", "Great! Since your sketch is ready, how much is your typical monthly electricity bill in pesos, "
+                                                         "or how many kWh do you use each month?")]))
+    m = reply(client, "my sketch is ready")["reply"]
+    assert m["slot"] == "roof_draw"
+    assert "monthly electricity bill" not in m["text"] and "installation site" in m["text"].lower()
+    assert {"roof_address", "roof_draw"} <= {n["id"] for n in m["next"]}  # the pills now fit what the reply says
+    state = client.get(f"/api/agent/sessions/{CID}").json()
+    assert state["guardEvents"][-1]["off_slot"] == "roof_draw"
+
+
+def test_packages_open_in_the_side_panel_as_soon_as_the_budget_is_set(client):
+    for m in ["reyes demo", "Yes, use 450 kWh per month", "I want a grid-tied (on-grid) system"]:
+        out = reply(client, m)
+        assert not [c for c in out["reply"]["cards"] if c["type"] == "packages"]  # no budget yet, so nothing to match
+    out = reply(client, "My budget is ₱150,000 to ₱300,000")["reply"]
+    card = next(c for c in out["cards"] if c["type"] == "packages")["data"]
+    assert card["open"] is True and card["basis"] == "usage" and card["budget_max"] == 300000 and card["wanted_kind"] == "grid-tied"
+    assert 2 < card["wanted_kwp"] < 6  # roughly 450 kWh a month
+    within = [r for r in card["rows"] if r["within_budget"]]
+    assert within and all(r["price_php"] <= 300000 for r in within)
+    assert [r["within_budget"] for r in card["rows"]] == sorted((r["within_budget"] for r in card["rows"]), reverse=True)
+    again = reply(client, "I want the fastest payback")["reply"]
+    assert not [c for c in again["cards"] if c["type"] == "packages"]  # offered once, not on every turn
+    final = reply(client, "Yes, run the numbers")["reply"]
+    fresh = next(c for c in final["cards"] if c["type"] == "packages")["data"]
+    assert fresh["basis"] == "design" and fresh["open"] is False  # refreshed to the real design, offered as a link
+
+
+def test_a_new_budget_offers_packages_again(client):
+    for m in ["reyes demo", "Yes, use 450 kWh per month", "I want a grid-tied (on-grid) system", "My budget is ₱150,000 to ₱300,000"]:
+        reply(client, m)
+    out = reply(client, "My budget is ₱500,000 or more")["reply"]
+    card = next(c for c in out["cards"] if c["type"] == "packages")["data"]
+    assert card["open"] is True and card["budget_min"] == 500000

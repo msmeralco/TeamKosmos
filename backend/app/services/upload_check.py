@@ -140,11 +140,11 @@ def _decide(raw: dict, mime: str) -> UploadVerdict:
     reason = str(raw.get("reason") or "").strip()[:200]
     if category == "electricity_bill":
         return UploadVerdict(allowed=False, category=category, verified=True, mime=mime,
-                             reason="This looks like an electricity bill. Attach bills in the chat, and upload a roof photo or plan here.")
+                             reason="This looks like an electricity bill. Attach bills in the chat, and upload a photo or plan of your installation site here.")
     if category in ALLOWED and relevant and confidence >= MIN_CONFIDENCE:
-        return UploadVerdict(allowed=True, category=category, verified=True, mime=mime, reason=reason or "Looks like a roof or building plan.")
+        return UploadVerdict(allowed=True, category=category, verified=True, mime=mime, reason=reason or "Looks like a photo or plan of an installation site.")
     return UploadVerdict(allowed=False, category=category, verified=True, mime=mime,
-                         reason=(reason + " " if reason else "") + "Upload a roof photo, site plan, blueprint or satellite view of your roof.")
+                         reason=(reason + " " if reason else "") + "Upload a photo, site plan, blueprint or satellite view of your installation site.")
 
 
 def check_upload(filename: str, fh: BinaryIO, settings: Settings, *, user_id: str = "anon") -> UploadVerdict:
@@ -152,9 +152,9 @@ def check_upload(filename: str, fh: BinaryIO, settings: Settings, *, user_id: st
     att = read_attachment(filename, fh, settings.max_upload_bytes)  # raises 413 / 415 / 422: never skipped
     classify = _override or _gemini_classify
     if _override is None and not settings.llm_configured:
-        return UploadVerdict(allowed=True, verified=False, mime=att.mime, reason="Could not verify this file, so check that it shows your roof.")
+        return UploadVerdict(allowed=True, verified=False, mime=att.mime, reason="Could not verify this file, so check that it shows your installation site.")
     try:
         return _decide(classify(att, settings), att.mime)
     except Exception as exc:  # noqa: BLE001 - fail open: the sketch tool must keep working
         log.warning("upload check failed open (%s)", exc.__class__.__name__)
-        return UploadVerdict(allowed=True, verified=False, mime=att.mime, reason="Could not verify this file, so check that it shows your roof.")
+        return UploadVerdict(allowed=True, verified=False, mime=att.mime, reason="Could not verify this file, so check that it shows your installation site.")

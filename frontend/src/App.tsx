@@ -16,8 +16,8 @@ import { Icon } from "./components/icons";
 import { LoginView } from "./components/LoginView";
 import { MapCanvas } from "./components/MapCanvas";
 import { OverviewView, SavedView } from "./components/ResultsViews";
+import { ListingPanel } from "./components/ListingPanel";
 import { RichText } from "./components/RichText";
-import { SolLogo } from "./components/SolLogo";
 import { AnimatedSol } from "./components/SolMascotLazy";
 import {
   ApiError,
@@ -27,8 +27,10 @@ import {
   listSessions,
   logout,
   onUnauthorized,
+  listingsOf,
   streamChat,
   type Language,
+  type Listing,
   type StepEvent,
   type User,
 } from "./lib/api";
@@ -88,6 +90,8 @@ type AgentMsg = {
     text: string;
     hasMapArtifact?: boolean;
     next?: Suggestion[];
+    /** Lists (installers, packages) that open in the side panel */
+    listings?: Listing[];
   };
 };
 
@@ -197,6 +201,9 @@ export default function App() {
 
   /* Roof Map view state: true = side-by-side view; false = centered 100% workspace */
   const [canvasOpen, setCanvasOpen] = useState(false);
+  /* What the right-hand panel shows when it is open: the map, or a list (installers, packages) */
+  const [panelView, setPanelView] = useState<"map" | "listing">("map");
+  const [listing, setListing] = useState<Listing | null>(null);
   const [roofTick, setRoofTick] = useState(0);
 
   /* Adjustable split state: default 40% chat / 60% map */
@@ -241,6 +248,8 @@ export default function App() {
     setConvos([]);
     setCurrentId(null);
     setCanvasOpen(false);
+    setListing(null);
+    setPanelView("map");
     setView("chat");
   }, []);
 
@@ -370,9 +379,21 @@ export default function App() {
             ...m,
             phase: "done",
             steps: allDone(m.steps),
-            reply: { text: reply.text, hasMapArtifact: reply.hasMapArtifact, next: reply.next },
+            reply: { text: reply.text, hasMapArtifact: reply.hasMapArtifact, next: reply.next, listings: listingsOf(reply.cards) },
           }));
-          if (reply.hasMapArtifact) setCanvasOpen(true);
+          // A list the user asked for opens in the side panel. Lists the app only offers stay as a link in the chat.
+          const asked = listingsOf(reply.cards).find((l) => l.data.open);
+          // New packages (say, after the numbers have run) replace the ones already in the panel, so it never shows stale matches.
+          const fresh = listingsOf(reply.cards).find((l) => l.type === "packages");
+          if (fresh && !asked) setListing((prev) => (prev?.type === "packages" ? fresh : prev));
+          if (asked) {
+            setListing(asked);
+            setPanelView("listing");
+            setCanvasOpen(true);
+          } else if (reply.hasMapArtifact) {
+            setPanelView("map");
+            setCanvasOpen(true);
+          }
           setRoofTick((t) => t + 1);
         })
         .catch((err: unknown) => {
@@ -417,19 +438,47 @@ export default function App() {
   );
 
   const onRoofSubmitted = useCallback(
-    (what: "drawn" | "sketch") => ask(what === "sketch" ? "I've finished sketching my roof." : "I've finished drawing my roof outline."),
+    (what: "drawn" | "sketch") => ask(what === "sketch" ? "I've finished sketching my installation site." : "I've finished drawing my installation site outline."),
     [ask],
   );
 
+  /* Map: opens the map, or closes the panel if the map is already showing */
   const toggleCanvas = useCallback(() => {
-    setCanvasOpen((prev) => !prev);
-  }, []);
+    if (canvasOpen && panelView === "map") {
+      setCanvasOpen(false);
+    setListing(null);
+    setPanelView("map");
+      return;
+    }
+    setPanelView("map");
+    setCanvasOpen(true);
+  }, [canvasOpen, panelView]);
+
+  /* List: shows the given list (or the last one), or closes the panel if that list is already showing */
+  const openListing = useCallback(
+    (l?: Listing) => {
+      const next = l ?? listing;
+      if (!next) return;
+      if (canvasOpen && panelView === "listing" && listing?.data === next.data) {
+        setCanvasOpen(false);
+    setListing(null);
+    setPanelView("map");
+        return;
+      }
+      setListing(next);
+      setPanelView("listing");
+      setCanvasOpen(true);
+    },
+    [canvasOpen, panelView, listing],
+  );
 
   const newChat = () => {
     stopTurn();
     setCurrentId(null);
     setView("chat");
     setCanvasOpen(false);
+    setListing(null);
+    setPanelView("map");
   };
 
   /* Open a chat; saved ones fetch their messages the first time. */
@@ -461,6 +510,8 @@ export default function App() {
       stopTurn();
       setCurrentId(null);
       setCanvasOpen(false);
+    setListing(null);
+    setPanelView("map");
     }
     setConvos((cs) => cs.filter((c) => c.id !== id));
   };
@@ -522,10 +573,14 @@ export default function App() {
             <button
               type="button"
               onClick={newChat}
-              className="flex h-10 w-full items-center justify-center rounded-[10px] transition-colors hover:bg-[#fafaf9]"
+              className="flex h-10 w-full items-center rounded-[10px] transition-colors hover:bg-[#fafaf9]"
               title="Sol Clean Energy"
             >
-              <SolLogo height={20} />
+              {/* same 40px icon box as the items below, so the mascot stays put when the rail expands.
+                  Animated: rays drift, it blinks and looks at the cursor when it is near. Static mark while loading or without WebGL. */}
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center">
+                <AnimatedSol size={34} followRadius={320} />
+              </span>
             </button>
 
             <div className="my-1 h-px w-full bg-[#f0f0ee]" />
@@ -687,17 +742,35 @@ export default function App() {
                 <button
                   type="button"
                   onClick={toggleCanvas}
-                  aria-pressed={canvasOpen}
+                  aria-pressed={canvasOpen && panelView === "map"}
                   className={`row-btn press flex h-7 w-7 items-center justify-center rounded-[7px] transition-colors ${
-                    canvasOpen
+                    canvasOpen && panelView === "map"
                       ? "bg-[#fafaf9] text-[#ea580c]"
                       : "text-[#787774] hover:bg-[#fafaf9] hover:text-[#111111]"
                   }`}
-                  title={canvasOpen ? "Close roof map" : "Open roof map"}
-                  aria-label={canvasOpen ? "Close roof map" : "Open roof map"}
+                  title={canvasOpen && panelView === "map" ? "Close site map" : "Open site map"}
+                  aria-label={canvasOpen && panelView === "map" ? "Close site map" : "Open site map"}
                 >
                   {Icon.map}
                 </button>
+
+                {/* Reopen the last list (installers or packages) once there is one */}
+                {listing && (
+                  <button
+                    type="button"
+                    onClick={() => openListing()}
+                    aria-pressed={canvasOpen && panelView === "listing"}
+                    className={`row-btn press flex h-7 w-7 items-center justify-center rounded-[7px] transition-colors ${
+                      canvasOpen && panelView === "listing"
+                        ? "bg-[#fafaf9] text-[#ea580c]"
+                        : "text-[#787774] hover:bg-[#fafaf9] hover:text-[#111111]"
+                    }`}
+                    title={canvasOpen && panelView === "listing" ? "Close the list" : listing.type === "installers" ? "Open the installer list" : "Open the packages"}
+                    aria-label={canvasOpen && panelView === "listing" ? "Close the list" : "Open the list"}
+                  >
+                    {Icon.list}
+                  </button>
+                )}
 
                 {/* Notifications Bell in Top Workspace Header */}
                 <Popover
@@ -753,7 +826,10 @@ export default function App() {
                   busy={busy}
                   persona={persona}
                   canvasOpen={canvasOpen}
+                  mapOpen={canvasOpen && panelView === "map"}
+                  openListingData={canvasOpen && panelView === "listing" ? listing?.data : undefined}
                   onToggleCanvas={toggleCanvas}
+                  onOpenListing={openListing}
                   onAsk={ask}
                   onStop={stopTurn}
                   lang={lang}
@@ -776,7 +852,7 @@ export default function App() {
               onDoubleClick={() => setSplitPercent(40)}
               role="separator"
               aria-orientation="vertical"
-              aria-label="Resize chat and map panes"
+              aria-label="Resize chat and side panel"
               title="Drag to resize · Double-click to reset (40/60)"
               className="group relative z-30 flex h-full w-3 shrink-0 -mx-1.5 cursor-col-resize items-center justify-center select-none"
             >
@@ -816,7 +892,11 @@ export default function App() {
                 className="relative flex h-full shrink-0 overflow-hidden bg-white border-l border-[#f0f0ee] will-change-transform"
               >
                 <div className="relative flex h-full w-full min-w-0 flex-col overflow-hidden">
-                  <MapCanvas conversationId={currentId} refreshKey={roofTick} onSubmitted={onRoofSubmitted} onClose={toggleCanvas} />
+                  {panelView === "listing" && listing ? (
+                    <ListingPanel listing={listing} onClose={() => setCanvasOpen(false)} onAsk={(t) => ask(t)} />
+                  ) : (
+                    <MapCanvas conversationId={currentId} refreshKey={roofTick} onSubmitted={onRoofSubmitted} onClose={toggleCanvas} />
+                  )}
                 </div>
               </m.div>
             )}
@@ -862,7 +942,7 @@ function MapArtifactCard({
       </span>
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[13px] font-semibold text-[#111111]">
-          Roof Map Analysis
+          Site Map Analysis
         </span>
         <span className="block truncate text-[11px] text-[#787774]">
           {open ? "Active on right map canvas" : "Click to view map"}
@@ -873,17 +953,49 @@ function MapArtifactCard({
   );
 }
 
+function ListingArtifactCard({ listing, open, onOpen }: { listing: Listing; open: boolean; onOpen: () => void }) {
+  const installers = listing.type === "installers";
+  const title = installers ? `Registered installers · ${listing.data.region_name}` : "Ready-made packages";
+  const real = installers ? 0 : listing.data.rows.filter((r) => !r.synthetic).length;
+  const fit = installers ? 0 : listing.data.rows.filter((r) => r.within_budget !== false).length;
+  const budget = !installers && listing.data.budget_max != null;
+  const sub = installers
+    ? `${listing.data.total} DOE-registered firms with contacts`
+    : budget
+      ? `${fit} fit your budget of up to ₱${Math.round(listing.data.budget_max as number).toLocaleString("en-PH")}`
+      : `${real} from installers${listing.data.rows.length > real ? ` · ${listing.data.rows.length - real} made-up samples` : ""}`;
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-expanded={open}
+      className={`row-btn press flex w-full max-w-[380px] items-center gap-3 rounded-[12px] bg-white p-3 text-left shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-[#f0f0ee] transition-all ${
+        open ? "ring-1.5 ring-[#ea580c] border-transparent" : "hover:bg-[#fafaf9]"
+      }`}
+    >
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[9px] bg-[#fff7ed] text-[#ea580c]">
+        {installers ? Icon.pin : Icon.panel}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[13px] font-semibold text-[#111111]">{title}</span>
+        <span className="block truncate text-[11px] text-[#787774]">{open ? "Showing in the side panel" : `${sub} · click to view`}</span>
+      </span>
+      <span className="text-[#a3a3a3]">{Icon.chevronRight}</span>
+    </button>
+  );
+}
+
 /* ------------------------------------------------------------------ */
 /* Chat View                                                           */
 /* ------------------------------------------------------------------ */
 
-type PillId = "roof" | "bill" | "packages" | "upload";
+type PillId = "roof" | "installers" | "packages" | "brief";
 
 const PILLS: { id: PillId; label: string; icon: ReactNode; prompt: string }[] = [
-  { id: "roof", label: "Check roof size", icon: Icon.map, prompt: "Help me estimate my roof size and solar capacity" },
-  { id: "bill", label: "Analyze monthly bill", icon: Icon.doc, prompt: "Analyze a ₱6,780 monthly electricity bill" },
+  { id: "roof", label: "Map my site", icon: Icon.map, prompt: "Help me map my installation site and estimate how many panels fit" },
+  { id: "installers", label: "Recommend Installers", icon: Icon.pin, prompt: "Can you suggest me some installers?" },
   { id: "packages", label: "Compare packages", icon: Icon.search, prompt: "Compare on-grid and hybrid solar packages" },
-  { id: "upload", label: "Attach bill or photo", icon: Icon.upload, prompt: "" },
+  { id: "brief", label: "Brief on Solar", icon: Icon.help, prompt: "Give me a brief on solar" },
 ];
 
 function ChatView({
@@ -891,7 +1003,10 @@ function ChatView({
   busy,
   persona,
   canvasOpen,
+  mapOpen,
+  openListingData,
   onToggleCanvas,
+  onOpenListing,
   onAsk,
   onStop,
   lang,
@@ -901,7 +1016,12 @@ function ChatView({
   busy: boolean;
   persona: Persona;
   canvasOpen: boolean;
+  /** true when the right-hand panel is open and showing the map */
+  mapOpen: boolean;
+  /** the list currently showing in the right-hand panel, if any */
+  openListingData?: unknown;
   onToggleCanvas: () => void;
+  onOpenListing: (l: Listing) => void;
   onAsk: (text: string, files?: string[], previews?: (string | null)[], rawFiles?: File[]) => void;
   onStop: () => void;
   lang: LangLabel;
@@ -1057,10 +1177,6 @@ function ChatView({
   };
 
   const onPill = (p: (typeof PILLS)[number]) => {
-    if (p.id === "upload") {
-      fileRef.current?.click();
-      return;
-    }
     if (p.id === "roof") {
       onToggleCanvas();
     }
@@ -1186,11 +1302,18 @@ function ChatView({
                       {m.reply.hasMapArtifact && (
                         <div className="mt-3.5">
                           <MapArtifactCard
-                            open={canvasOpen}
+                            open={mapOpen}
                             onToggle={onToggleCanvas}
                           />
                         </div>
                       )}
+
+                      {/* Lists shown in the side panel: a link back to each one */}
+                      {m.reply.listings?.map((l, i) => (
+                        <div key={i} className="mt-3.5">
+                          <ListingArtifactCard listing={l} open={openListingData === l.data} onOpen={() => onOpenListing(l)} />
+                        </div>
+                      ))}
 
                     </div>
                   )}
@@ -1262,7 +1385,7 @@ function ChatView({
               addressMode
                 ? "Type your address, e.g. 123 Rizal St, Pasig…"
                 : empty
-                  ? "Ask about your roof, monthly bill, or solar options…"
+                  ? "Ask about your installation site, monthly bill, or solar options…"
                   : "Reply to Sol…"
             }
             className="w-full resize-none bg-transparent px-1 py-1 text-[14px] leading-relaxed text-[#111111] placeholder-[#a3a3a3] outline-none"

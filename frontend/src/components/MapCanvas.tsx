@@ -268,7 +268,7 @@ export function MapCanvas({
         setLoadError(null);
       })
       .catch((err: unknown) => {
-        if ((err as { name?: string })?.name !== "AbortError") setLoadError("Could not load the roof from the server.");
+        if ((err as { name?: string })?.name !== "AbortError") setLoadError("Could not load the installation site from the server.");
       });
     return () => ctrl.abort();
   }, [conversationId, refreshKey]);
@@ -516,7 +516,7 @@ export function MapCanvas({
 
   const submit = useCallback(
     async (body: RoofSubmission) => {
-      if (!conversationId) throw new Error("Send Sol a message first, then draw your roof.");
+      if (!conversationId) throw new Error("Send Sol a message first, then draw your installation site.");
       await submitRoof(conversationId, body);
       setPoints([]);
       setDrawing(false);
@@ -585,7 +585,7 @@ export function MapCanvas({
 
   // What the map legend shows: only things that are actually on the map right now.
   const legend: { key: string; label: string; swatch: ReactNode }[] = [];
-  if (roof) legend.push({ key: "roof", label: "Roof", swatch: <span className="h-2.5 w-4 rounded-[3px] border-2 border-[#ea580c] bg-[#ea580c]/15" /> });
+  if (roof) legend.push({ key: "roof", label: "Site", swatch: <span className="h-2.5 w-4 rounded-[3px] border-2 border-[#ea580c] bg-[#ea580c]/15" /> });
   if (state?.layout && state.layout.count > 0)
     legend.push({
       key: "panels",
@@ -676,7 +676,7 @@ export function MapCanvas({
                   {step === 1
                     ? "Zoom in on your house first"
                     : step === 2
-                      ? "Click the corners of your roof"
+                      ? "Click the corners of your installation site"
                       : "Drag corners to adjust, then confirm"}
                 </span>
                 {step === 3 && drawnArea > 0 && (
@@ -755,7 +755,7 @@ export function MapCanvas({
                     <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#f4f4f2] text-[#787774]">{Icon.chat}</span>
                     <div className="min-w-0">
                       <p className="text-[13px] font-semibold text-[#111111]">Start with a message</p>
-                      <p className="mt-0.5 text-[12px] leading-relaxed text-[#787774]">Tell Sol about your home in the chat, then trace your roof here.</p>
+                      <p className="mt-0.5 text-[12px] leading-relaxed text-[#787774]">Tell Sol about your home in the chat, then trace your installation site here.</p>
                     </div>
                   </div>
                   {onClose && (
@@ -808,13 +808,13 @@ export function MapCanvas({
             {roof && stats && !drawing && (
               <div className="flex flex-col gap-2">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-[12px] font-semibold text-[#111111]">Your roof</span>
+                  <span className="text-[12px] font-semibold text-[#111111]">Your installation site</span>
                   <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${CONFIDENCE_STYLE[roof.confidence]}`}>
                     {roof.confidence.charAt(0).toUpperCase() + roof.confidence.slice(1)} confidence
                   </span>
                 </div>
                 <div className="grid grid-cols-2 gap-2 @md:grid-cols-4">
-                  <StatTile label="Roof area">{stats.area}</StatTile>
+                  <StatTile label="Site area">{stats.area}</StatTile>
                   <StatTile label="Usable">{stats.usable}</StatTile>
                   <StatTile label="Facing">
                     <svg
@@ -884,7 +884,7 @@ export function MapCanvas({
                   <circle cx="17" cy="18" r="1.4" fill="currentColor" />
                   <circle cx="7" cy="18" r="1.4" fill="currentColor" />
                 </svg>
-                {roof ? "Redraw roof outline" : "Draw roof outline"}
+                {roof ? "Redraw site outline" : "Draw site outline"}
               </button>
             ) : (
               <div className="flex flex-col gap-2">

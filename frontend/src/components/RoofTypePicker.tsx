@@ -4,16 +4,16 @@ import { MenuItem, Popover } from "./ui";
 
 /* Custom menus used by the roof map and the sketch canvas (instead of the browser's native <select>). */
 
-/* ---- Roof type ---- */
+/* ---- Site type (the shape of the surface the panels go on) ---- */
 
 export const ROOF_TYPES = [
-  { id: "flat", label: "Flat roof", hint: "Level surface" },
+  { id: "flat", label: "Flat surface", hint: "No slope" },
   { id: "single_slope", label: "Single slope", hint: "One tilted side" },
   { id: "gable", label: "Gable", hint: "Two sloping sides" },
 ] as const;
 export type RoofType = (typeof ROOF_TYPES)[number]["id"];
 
-/** Tiny side-view drawing of each roof shape. */
+/** Tiny side-view drawing of each surface shape. */
 export function RoofGlyph({ type }: { type: RoofType }) {
   const roof = type === "flat" ? "M3 9h18" : type === "single_slope" ? "M3 12l18-5" : "M3 11l9-6 9 6";
   const walls = type === "flat" ? "M5.5 9v9M18.5 9v9" : type === "single_slope" ? "M5.5 11.3V18M18.5 7.7V18" : "M5.5 10v8M18.5 10v8";
@@ -39,7 +39,7 @@ export function RoofTypePicker({
   return (
     <div className={className}>
       <Popover
-        label="Roof type"
+        label="Site type"
         placement="top-start"
         className="w-[230px] max-w-[calc(100vw-40px)]"
         trigger={({ open, toggle }) => (
@@ -48,7 +48,7 @@ export function RoofTypePicker({
             onClick={toggle}
             aria-haspopup="menu"
             aria-expanded={open}
-            aria-label={`Roof type: ${current.label}`}
+            aria-label={`Site type: ${current.label}`}
             className={`flex h-10 w-full items-center justify-between gap-2 rounded-[10px] bg-white px-3 text-left text-[13px] text-[#111111] transition-colors hover:bg-[#fafaf9] ${
               open ? "shadow-[0_0_0_2px_#ea580c]" : "shadow-[0_0_0_1px_#d4d4d2]"
             }`}
@@ -64,7 +64,7 @@ export function RoofTypePicker({
         )}
       >
         {(close) => (
-          <div role="menu" aria-label="Roof type">
+          <div role="menu" aria-label="Site type">
             {ROOF_TYPES.map((t) => (
               <MenuItem
                 key={t.id}

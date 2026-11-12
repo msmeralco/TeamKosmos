@@ -33,9 +33,9 @@ def norm(text: str) -> str:
 
 # ---- static choice texts ---------------------------------------------------------------
 ROOF_CHOICES = {
-    "address": ("Type my address", "I'll find the roof outline from OpenStreetMap", "I'll type my address"),
-    "draw": ("Draw on the map", "Trace the roof on the satellite map", "I'll draw my roof on the map"),
-    "sketch": ("Sketch on a canvas", "Draw with a metre scale on a blank canvas", "I'll sketch my roof on a blank canvas"),
+    "address": ("Type my address", "I'll find the building outline from OpenStreetMap", "I'll type my address"),
+    "draw": ("Draw on the map", "Trace your installation site on the satellite map", "I'll draw my installation site on the map"),
+    "sketch": ("Sketch on a canvas", "Draw with a metre scale on a blank canvas", "I'll sketch my installation site on a blank canvas"),
 }
 SYSTEM_CHOICES = {
     "on_grid": ("Grid-tied (on-grid)", "Panels plus the grid, no battery. Lowest cost", "I want a grid-tied (on-grid) system"),
@@ -58,7 +58,7 @@ GOAL_CHOICES = {
 CUT_TARGETS = (50, 70, 90)
 BACKUP_OPTIONS = (4, 8)
 CHANGE_CHOICES = {
-    "roof": ("Change my roof", "Pick a different address or drawing", "Change my roof"),
+    "roof": ("Change my installation site", "Pick a different address or drawing", "Change my installation site"),
     "load": ("Change my bill", "Use a different usage or bill", "Change my bill"),
     "system": ("Change system type", "Grid-tied, off-grid or hybrid", "Change my system type"),
     "budget": ("Change my budget", "Pick another budget range", "Change my budget"),
@@ -68,9 +68,10 @@ FOLLOW_UPS = {
     "net_metering_off": ("net metering off", "See results without net metering", "What if net metering is off?", "compare_net_metering"),
     "assumptions": ("Show the assumptions", "Every number with its source", "Show me the assumptions", "explain_assumptions"),
     "passport": ("Create my Solar Passport", "A signed record anyone can verify", "Create my Solar Passport", "issue_passport"),
-    "fill_roof": ("Fill my whole roof", "Preview panels on the entire roof", "Show panels on my whole roof", "toggle_roof_fill"),
+    "fill_roof": ("Fill my whole site", "Preview panels on the entire installation site", "Show panels on my whole installation site", "toggle_roof_fill"),
     "my_design": ("Back to my design", "Show only the panels in my design", "Show my design again", "toggle_roof_fill"),
 }
+DEFAULT_GOAL = "max_savings_10y"
 RUN_TEXT = "Yes, run the numbers"
 CHANGE_TEXT = "I want to change something"
 OTHER_ADDRESS_TEXT = "None of these, I'll draw it instead"
@@ -215,6 +216,7 @@ def apply_updates(session: Session, **fields: Any) -> tuple[dict, list[str]]:
                 p.backup_hours = None
             p.goal = goal
             applied["goal"] = goal
+            session.pending.pop("goal_default", None)  # the user chose, so it is no longer a default
         else:
             errors.append(f"goal must be one of {', '.join(GOALS)}")
     target = num("goal_target_pct", TARGET_RANGE, "Bill reduction target")
@@ -247,6 +249,11 @@ def apply_updates(session: Session, **fields: Any) -> tuple[dict, list[str]]:
             applied["roof_method"] = method
         else:
             errors.append("roof_method must be address, draw or sketch")
+
+    if p.budget_max_php is not None and p.goal is None:
+        # No goal question: aim for the biggest 10-year savings unless the user picks another one (Change something > goal).
+        p.goal = DEFAULT_GOAL
+        session.pending["goal_default"] = True
 
     changed = p.model_dump() != before
     if changed:
@@ -285,7 +292,7 @@ def choices_for(slot: str, session: Session) -> list[Suggestion]:
         out = []
         for i, c in enumerate((session.pending.get("candidates") or [])[:3]):
             out.append(_s(f"cand_{i}", str(c["label"])[:48], "Use this address", f"Use {str(c['label'])[:120]}"))
-        out.append(_s("cand_none", "None of these", "Draw the roof instead", OTHER_ADDRESS_TEXT))
+        out.append(_s("cand_none", "None of these", "Draw the installation site instead", OTHER_ADDRESS_TEXT))
         return out
     if slot == "roof_draw":
         if p.roof_method == "draw":
@@ -318,7 +325,7 @@ def choices_for(slot: str, session: Session) -> list[Suggestion]:
         return [_s(f"backup_{h}", f"{h} hours", "Essential loads only", f"I need {h} hours of backup") for h in BACKUP_OPTIONS]
     if slot == "confirm":
         return [_s("run", "Run the numbers", "Simulate and compare options", RUN_TEXT),
-                _s("change", "Change something", "Roof, bill, budget or goal", CHANGE_TEXT)]
+                _s("change", "Change something", "Installation site, bill, budget or goal", CHANGE_TEXT)]
     if slot == "change":
         return [_s(f"chg_{k}", *v) for k, v in CHANGE_CHOICES.items()]
     if slot == "run":
@@ -332,7 +339,7 @@ def choices_for(slot: str, session: Session) -> list[Suggestion]:
             if (k == "fill_roof" and filled) or (k == "my_design" and not filled):
                 continue
             out.append(_s(f"fu_{k}", label.capitalize() if k == "net_metering_off" else label, hint, text))
-        out.append(_s("change", "Change something", "Roof, bill, budget or goal", CHANGE_TEXT))
+        out.append(_s("change", "Change something", "Installation site, bill, budget or goal", CHANGE_TEXT))
         return out
     return []
 
@@ -428,7 +435,7 @@ def goal_label(p) -> str:
 
 def roof_label(roof: dict | None) -> str:
     if not roof:
-        return "no roof yet"
+        return "no installation site yet"
     src = {"osm": "from OpenStreetMap", "drawn": "drawn on the map", "sketch": "from your sketch"}.get(roof.get("source", ""), "")
     return f"about {roof.get('area_m2', 0):.0f} m² {src}".strip()
 
@@ -436,13 +443,13 @@ def roof_label(roof: dict | None) -> str:
 def summary_line(session: Session) -> str:
     p = session.profile
     load = f"about {p.monthly_kwh:g} kWh a month" if p.monthly_kwh else (f"a {php(p.monthly_bill_php)} monthly bill" if p.monthly_bill_php else "no usage yet")
-    parts = [f"Roof: {roof_label(p.roof)}.", f"Usage: {load}."]
+    parts = [f"Installation site: {roof_label(p.roof)}.", f"Usage: {load}."]
     if p.system_type:
         parts.append(f"System: {SYSTEM_LABELS[p.system_type]}.")
     if p.budget_max_php is not None:
         parts.append(f"Budget: up to {php(p.budget_max_php)}." if not p.budget_min_php
                      else f"Budget: {php(p.budget_min_php)} to {php(p.budget_max_php)}.")
-    if p.goal:
+    if p.goal and not session.pending.get("goal_default"):
         parts.append(f"Goal: {goal_label(p)}.")
     return " ".join(parts)
 
@@ -452,9 +459,9 @@ def question_for(slot: str, session: Session, lang: str = "english") -> str:
     persona = session.persona
     tag = lang == "taglish"
     if slot == "roof_method":
-        return ("Paano mo gustong ipakita ang bubong mo? Puwede mong i-type ang address, i-drawing sa satellite map, o mag-sketch sa blank canvas."
+        return ("Paano mo gustong ipakita ang installation site mo? Puwede mong i-type ang address, i-drawing sa satellite map, o mag-sketch sa blank canvas."
                 if tag else
-                "How would you like to show me your roof? You can type your address and I'll look up the outline, draw it on the satellite map, or sketch it on a blank canvas.")
+                "How would you like to show me your installation site? You can type your address and I'll look up the outline, draw it on the satellite map, or sketch it on a blank canvas.")
     if slot == "roof_address":
         return ("Ano ang address ng bahay? Mas maganda kung may kalye, barangay at lungsod."
                 if tag else "What's the address of the house? A street, barangay and city works best.")
@@ -463,9 +470,9 @@ def question_for(slot: str, session: Session, lang: str = "english") -> str:
     if slot == "roof_draw":
         if p.roof_method == "sketch":
             return ("Mag-sketch sa canvas sa kanan at maglagay ng isang totoong sukat para sa scale. Sabihin mo sa akin kapag tapos na."
-                    if tag else "Sketch your roof on the canvas panel on the right and enter one real measurement for the scale. Tell me when you're done.")
-        return ("I-drawing ang bubong sa mapa sa kanan. Sabihin mo sa akin kapag tapos na."
-                if tag else "Draw your roof outline on the map panel on the right. Tell me when you're done.")
+                    if tag else "Sketch your installation site on the canvas panel on the right and enter one real measurement for the scale. Tell me when you're done.")
+        return ("I-drawing ang installation site sa mapa sa kanan. Sabihin mo sa akin kapag tapos na."
+                if tag else "Draw your installation site outline on the map panel on the right. Tell me when you're done.")
     if slot == "load":
         if p.monthly_kwh:
             est = p.monthly_kwh * A("tariff_php_per_kwh")
@@ -498,7 +505,11 @@ def question_for(slot: str, session: Session, lang: str = "english") -> str:
             return "Gaano kalaki ang gusto mong ibawas sa bill?" if tag else "By how much do you want to cut your bill?"
         return "Ilang oras na backup ang kailangan mo kapag brownout?" if tag else "How many hours of backup do you want during a blackout?"
     if slot == "confirm":
-        return (summary_line(session) + (" Tama ba ito? Patakbuhin ko na ba ang mga numero?" if tag else " Shall I run the numbers?"))
+        # A summary, not a question: the buttons below carry the next step.
+        goal_en = "I'll aim for the biggest 10-year savings unless you pick another goal. " if session.pending.get("goal_default") else ""
+        goal_tl = "Ang target ko ay ang pinakamalaking matitipid sa 10 taon maliban kung pumili ka ng ibang goal. " if session.pending.get("goal_default") else ""
+        return (summary_line(session) + (f" {goal_tl}Pindutin ang Run the numbers kapag handa ka na, o ang Change something para baguhin ang anuman sa itaas."
+                                         if tag else f" {goal_en}Tap Run the numbers when you're ready, or Change something to edit anything above."))
     if slot == "change":
         return "Ano ang gusto mong baguhin?" if tag else "What would you like to change?"
     if slot == "run":
@@ -509,9 +520,9 @@ def question_for(slot: str, session: Session, lang: str = "english") -> str:
 
 
 INTRO = {
-    "english": ("Hi {first}! I'm Sol. I'll help you compare solar options for your home: I'll look at your roof, your bill and your goal, "
+    "english": ("Hi {first}! I'm Sol. I'll help you compare solar options for your home: I'll look at your installation site, your bill and your goal, "
                 "then show sized options with a 25-year payback range. Every result is an estimate for a licensed installer to confirm."),
-    "taglish": ("Hi {first}! Ako si Sol. Tutulungan kitang ihambing ang mga solar option para sa bahay mo: titingnan ko ang bubong, ang bill at ang goal mo, "
+    "taglish": ("Hi {first}! Ako si Sol. Tutulungan kitang ihambing ang mga solar option para sa bahay mo: titingnan ko ang installation site, ang bill at ang goal mo, "
                 "tapos magpapakita ako ng mga option na may 25-year payback range. Tantiya lang ang lahat ng resulta, kaya kailangan pa ring i-confirm ng licensed installer."),
 }
 

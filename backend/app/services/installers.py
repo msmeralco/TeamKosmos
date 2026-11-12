@@ -65,6 +65,16 @@ def _rank(f: dict) -> tuple:
     return (-(len(lists) == 2), -("Jul 13, 2026" in lists), -bool(f["website"]), f["name"].lower())
 
 
+def registry_status(name: str) -> str:
+    """Whether a firm appears on the DOE registry lists. Absence is not a verdict: the registry is built for government buyers."""
+    n = re.sub(r"[^a-z0-9]", "", name.lower())
+    for f in _data()["firms"]:
+        fn = re.sub(r"[^a-z0-9]", "", f["name"].lower())
+        if n and (n in fn or fn in n):
+            return "listed (" + " and ".join(f["lists"]) + ")"
+    return "not listed in the Jan or Jul 2026 lists, which are made for government buyers, so that is not a verdict on quality"
+
+
 def near_term(text: str) -> str:
     """The city the user named ("I'm in Pasig City" -> "pasig"), or "" when they only gave a region or province."""
     t = re.sub(r"^\W*(?:i'?m|i am|we'?re|we are|my home is|located)?\s*(?:in|at|near|around|from)?\s+", "", (text or "").strip(), flags=re.I)
@@ -96,6 +106,7 @@ def _name(n: str) -> str:
 def _row(f: dict) -> dict:
     return {"name": _name(f["name"]), "esco": f.get("esco", False), "area": _area(f["address"]), "address": f["address"],
             "phone": f["phones"][0] if f["phones"] else "", "email": f["emails"][0] if f["emails"] else "",
+            "phones": f["phones"], "emails": f["emails"],
             "website": f["website"], "lists": f["lists"]}
 
 

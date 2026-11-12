@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 300" width="440" height="300" role="img" aria-label="Drawing of Home 5 kWp">
+<defs>
+<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#cfe6ff"/><stop offset="1" stop-color="#fff4dc"/></linearGradient>
+<linearGradient id="pv" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2c4f8f"/><stop offset="1" stop-color="#16294f"/></linearGradient>
+</defs>
+<rect width="440" height="300" fill="url(#sky)"/>
+<circle cx="378" cy="48" r="26" fill="#ffd34d"/>
+<g stroke="#ffd34d" stroke-width="3" stroke-linecap="round"><path d="M378 48 L416.0 48.0" transform="translate(0 0)" stroke-opacity="0.55"/><path d="M378 48 L404.9 74.9" transform="translate(0 0)" stroke-opacity="0.55"/><path d="M378 48 L378.0 86.0" transform="translate(0 0)" stroke-opacity="0.55"/><path d="M378 48 L351.1 74.9" transform="translate(0 0)" stroke-opacity="0.55"/><path d="M378 48 L340.0 48.0" transform="translate(0 0)" stroke-opacity="0.55"/><path d="M378 48 L351.1 21.1" transform="translate(0 0)" stroke-opacity="0.55"/><path d="M378 48 L378.0 10.0" transform="translate(0 0)" stroke-opacity="0.55"/><path d="M378 48 L404.9 21.1" transform="translate(0 0)" stroke-opacity="0.55"/></g>
+<rect x="0" y="262" width="440" height="38" fill="#d9e6cf"/>
+<path d="M30 214 L160 96 L290 214 Z" fill="#c9553d" opacity="0"/>
+<rect x="40" y="108" width="240" height="100" rx="4" fill="#e9d9c3"/>
+<rect x="40" y="108" width="240" height="100" rx="4" fill="none" stroke="#b79d7c" stroke-width="2"/>
+<rect x="40" y="208" width="240" height="54" fill="#f6efe4" stroke="#b79d7c" stroke-width="2"/>
+<rect x="64" y="226" width="30" height="36" fill="#9bb7d4"/><rect x="226" y="226" width="30" height="36" fill="#9bb7d4"/>
+<rect x="150" y="230" width="20" height="32" fill="#8c6a47"/>
+<rect x="61.5" y="134.7" width="37.0" height="21.8" rx="2" fill="url(#pv)" stroke="#dbe6f5" stroke-width="1"/><rect x="101.5" y="134.7" width="37.0" height="21.8" rx="2" fill="url(#pv)" stroke="#dbe6f5" stroke-width="1"/><rect x="141.5" y="134.7" width="37.0" height="21.8" rx="2" fill="url(#pv)" stroke="#dbe6f5" stroke-width="1"/><rect x="181.5" y="134.7" width="37.0" height="21.8" rx="2" fill="url(#pv)" stroke="#dbe6f5" stroke-width="1"/><rect x="221.5" y="134.7" width="37.0" height="21.8" rx="2" fill="url(#pv)" stroke="#dbe6f5" stroke-width="1"/><rect x="61.5" y="159.5" width="37.0" height="21.8" rx="2" fill="url(#pv)" stroke="#dbe6f5" stroke-width="1"/><rect x="101.5" y="159.5" width="37.0" height="21.8" rx="2" fill="url(#pv)" stroke="#dbe6f5" stroke-width="1"/><rect x="141.5" y="159.5" width="37.0" height="21.8" rx="2" fill="url(#pv)" stroke="#dbe6f5" stroke-width="1"/><rect x="181.5" y="159.5" width="37.0" height="21.8" rx="2" fill="url(#pv)" stroke="#dbe6f5" stroke-width="1"/>
+<path d="M280 160 L320 160" stroke="#f0b323" stroke-width="2.5" stroke-dasharray="5 4"/>
+<rect x="300" y="132" width="32" height="46" rx="6" fill="#dfe4ea" stroke="#8a93a0" stroke-width="2"/>
+<rect x="306" y="139" width="20" height="12" rx="2" fill="#2d3b4d"/><circle cx="312" cy="164" r="2.6" fill="#7bd389"/><circle cx="320" cy="164" r="2.6" fill="#f0b323"/>
+<text x="316" y="196" text-anchor="middle" font-size="11" font-weight="600" fill="#3b4656">5 kW</text>
+<path d="M414 150 L414 70 M402 82 L426 82 M405 94 L423 94" stroke="#8a93a0" stroke-width="3" fill="none"/><path d="M316 132 C 330 92, 392 96, 414 108" stroke="#f0b323" stroke-width="2.5" fill="none" stroke-dasharray="5 4"/>
+<rect x="334" y="266" width="92" height="24" rx="12" fill="#ffffff" opacity="0.92"/>
+<text x="380.0" y="282" text-anchor="middle" font-size="12" font-weight="700" fill="#b45309">Illustration</text>
+<rect x="14" y="266" width="92" height="24" rx="12" fill="#16294f"/>
+<text x="60.0" y="282" text-anchor="middle" font-size="12" font-weight="700" fill="#ffffff">5 kWp</text>
+</svg>

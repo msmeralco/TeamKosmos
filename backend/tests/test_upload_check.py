@@ -44,7 +44,7 @@ def test_pdf_is_accepted(client):
 def test_off_topic_file_is_rejected(client):
     upload_check.set_classifier_override(_verdict("other", relevant=False, reason="A plate of food."))
     body = _post(client).json()
-    assert body["allowed"] is False and body["verified"] is True and "roof photo" in body["reason"]
+    assert body["allowed"] is False and body["verified"] is True and "installation site" in body["reason"]
 
 
 def test_bill_points_to_chat(client):

@@ -118,6 +118,11 @@ def search(query: str, k: int = 4, kinds: list[str] | None = None) -> list[dict]
     return out
 
 
+def document(doc_id: str) -> str:
+    """Full text of one library file, without its front matter."""
+    return (CORPUS_DIR / f"{doc_id}.md").read_text(encoding="utf-8").split("---", 2)[2].strip()
+
+
 def library() -> list[dict]:
     """One row per source file, for health checks and the docs."""
     seen: dict[str, dict] = {}

@@ -5,7 +5,70 @@ const BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? "";
 
 export type Language = "auto" | "english" | "taglish";
 export type StepEvent = { id: string; label: string; status: "running" | "done" };
-export type Card = { type: "roof" | "analysis" | "passport"; data: unknown };
+export type Card = { type: "roof" | "analysis" | "passport" | "installers" | "packages"; data: unknown };
+
+/* ---- lists shown in the side panel ---------------------------------- */
+export type InstallerRow = {
+  name: string;
+  esco: boolean;
+  area: string;
+  address: string;
+  phone: string;
+  email: string;
+  phones: string[];
+  emails: string[];
+  website: string;
+  lists: string[];
+};
+export type InstallerList = {
+  open?: boolean;
+  region: string;
+  region_name: string;
+  total: number;
+  near: string;
+  nearby: number;
+  rows: InstallerRow[];
+  lists: string[];
+  disclaimer: string;
+  source_url: string;
+};
+export type PackageRow = {
+  id: string;
+  installer: string;
+  name: string;
+  kwp: number;
+  panels: string;
+  inverter: string;
+  battery_kwh: number | null;
+  type: "hybrid" | "grid-tied" | "off-grid";
+  price_php: number;
+  price_note: string;
+  area: string;
+  link: string | null;
+  photo: string | null;
+  synthetic: boolean;
+  /** false when the price is above the budget maximum; absent when no budget is set */
+  within_budget?: boolean;
+};
+export type PackageList = {
+  open?: boolean;
+  wanted_kwp: number | null;
+  wanted_kind: string | null;
+  /** where wanted_kwp came from: the recommended design, or a rough guess from the household's usage */
+  basis?: "design" | "usage";
+  budget_min?: number | null;
+  budget_max?: number | null;
+  in_your_area: boolean;
+  checked_on: string;
+  note: string;
+  rows: PackageRow[];
+};
+export type Listing = { type: "installers"; data: InstallerList } | { type: "packages"; data: PackageList };
+
+/** Pick the list cards out of a reply. */
+export function listingsOf(cards: Card[] | undefined): Listing[] {
+  return (cards ?? []).filter((c) => c.type === "installers" || c.type === "packages") as Listing[];
+}
 export type Reply = {
   text: string;
   hasMapArtifact: boolean;

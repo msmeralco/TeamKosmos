@@ -5,13 +5,28 @@ import { Fragment, type ReactNode } from "react";
 
 function inline(text: string, keyBase: string): ReactNode[] {
   const out: ReactNode[] = [];
-  const re = /(\[[^\]]+\]\([^)\s]+\)|\*\*[^*]+\*\*|\*[^*\s][^*]*\*)/g;
+  const re = /(!\[[^\]]*\]\([^)\s]+\)|\[[^\]]+\]\([^)\s]+\)|\*\*[^*]+\*\*|\*[^*\s][^*]*\*)/g;
   let last = 0;
   let i = 0;
   for (const m of text.matchAll(re)) {
     const at = m.index ?? 0;
     if (at > last) out.push(text.slice(last, at));
     const tok = m[0];
+    const img = tok.startsWith("![") ? /^!\[([^\]]*)\]\(([^)\s]+)\)$/.exec(tok) : null;
+    if (img) {
+      // Photos come from the installer's own site (https only) and drawings from this site's /packages folder. No referrer is sent, and a broken image is hidden.
+      if (/^(https:\/\/|\/(?!\/))/.test(img[2])) {
+        out.push(
+          <img key={`${keyBase}-${i++}`} src={img[2]} alt={img[1]} loading="lazy" referrerPolicy="no-referrer"
+            onError={(e) => { e.currentTarget.style.display = "none"; }}
+            className="h-14 w-20 max-w-none rounded-[8px] border border-[#ecebe8] object-cover" />,
+        );
+      } else {
+        out.push(img[1]);
+      }
+      last = at + tok.length;
+      continue;
+    }
     const link = tok.startsWith("[") ? /^\[([^\]]+)\]\(([^)\s]+)\)$/.exec(tok) : null;
     if (link) {
       // Only same-site paths and http(s) URLs become links; anything else stays as plain text.

@@ -478,8 +478,8 @@ export function SketchPad({
     ? "Start a chat with Sol first"
     : step === 1
       ? bg
-        ? "Click the corners of your roof on the picture"
-        : "Click the corners of your roof"
+        ? "Click the corners of your installation site on the picture"
+        : "Click the corners of your installation site"
       : step === 2
         ? "Click the first orange corner to close the shape"
         : measured
@@ -559,7 +559,7 @@ export function SketchPad({
               onPointerUp={onPointerUp}
               onPointerCancel={onPointerUp}
               className="block h-full w-full cursor-crosshair touch-none"
-              aria-label="Roof sketch canvas. Click to add corners; click the first corner to close the shape. Drag a corner to resize."
+              aria-label="Installation site sketch canvas. Click to add corners; click the first corner to close the shape. Drag a corner to resize."
             />
 
             <div
@@ -586,7 +586,7 @@ export function SketchPad({
                 }`}
                 role={error ? "alert" : "status"}
               >
-                {error ?? "Roof sent to Sol. Change the sketch to send it again."}
+                {error ?? "Installation site sent to Sol. Change the sketch to send it again."}
               </div>
             )}
 
@@ -710,13 +710,13 @@ export function SketchPad({
           </SettingChip>
 
           <SettingChip
-            label="Roof faces"
+            label="Site faces"
             placement="top-start"
             value={facing === "auto" ? "Not sure" : FACING_NAME[facing]}
             icon={Icon.sun}
           >
             {(close) => (
-              <div role="menu" aria-label="Roof faces" className="max-h-[280px] overflow-y-auto">
+              <div role="menu" aria-label="Site faces" className="max-h-[280px] overflow-y-auto">
                 {FACINGS.map((f) => (
                   <MenuItem
                     key={f}
@@ -734,9 +734,9 @@ export function SketchPad({
             )}
           </SettingChip>
 
-          <SettingChip label="Roof type" placement="top-end" value={currentType.label} icon={<RoofGlyph type={currentType.id} />}>
+          <SettingChip label="Site type" placement="top-end" value={currentType.label} icon={<RoofGlyph type={currentType.id} />}>
             {(close) => (
-              <div role="menu" aria-label="Roof type">
+              <div role="menu" aria-label="Site type">
                 {ROOF_TYPES.map((t) => (
                   <MenuItem
                     key={t.id}

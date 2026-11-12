@@ -52,7 +52,7 @@ def optimize(roof: RoofModel, load: LoadProfile, *, budget_max_php: float, goal:
 
     caps = {p["id"]: layout.panel_capacity(roof, *p["dims_m"]) for p in panels}
     if max(caps.values()) == 0:
-        raise ApiError("roof_too_small", "No solar panel fits on the usable part of this roof.",
+        raise ApiError("roof_too_small", "No solar panel fits on the usable part of this installation site.",
                        hint="Check the outline and scale, or reduce the edge setback.", status=422)
 
     evaluated: dict[tuple, dict] = {}
@@ -107,7 +107,7 @@ def optimize(roof: RoofModel, load: LoadProfile, *, budget_max_php: float, goal:
         if rejected["no_inverter"]:
             reasons.append("no catalog inverter fits")
         raise ApiError("no_feasible_design", "I could not find a design that fits: " + ("; ".join(reasons) or "nothing fits the limits") + ".",
-                       hint="Try a higher budget, a smaller backup need, or check the roof size.", status=422)
+                       hint="Try a higher budget, a smaller backup need, or check the installation site size.", status=422)
 
     # Refine around the best few: try n +/- 1 on the same parts.
     best5 = sorted(evaluated.values(), key=lambda it: it["obj"])[:5]
@@ -139,7 +139,7 @@ def optimize(roof: RoofModel, load: LoadProfile, *, budget_max_php: float, goal:
     target_met = None
     if goal == "cut_bill":
         target_met = best["q"]["bill_reduction_pct"] >= (goal_target_pct or 0.0)
-    notes = [f"{len(evaluated)} designs were checked against your budget, roof and goal."]
+    notes = [f"{len(evaluated)} designs were checked against your budget, installation site and goal."]
     type_notes = {
         "on_grid": "Grid-tied: no battery, so the system switches off during a blackout.",
         "hybrid": "Hybrid: a battery stores solar power for the evening and keeps essentials on during a blackout.",

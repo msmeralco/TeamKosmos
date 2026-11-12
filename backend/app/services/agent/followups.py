@@ -9,6 +9,8 @@ from . import intake
 
 # source file id -> (pill label, question sent when tapped). Every question must route to search_docs (see tests).
 FOLLOW: dict[str, list[tuple[str, str]]] = {
+    "solar-brief": [("Cost to apply", "How much does it cost to apply for net metering?"), ("Micro solar permit", "Do I need a building permit for a micro solar system?"),
+                    ("During a blackout", "What happens to my solar during a blackout?")],
     "meralco-solar-hub": [("Who can apply?", "Who can apply for net metering?"), ("What is zero export?", "What is a zero export solar system?")],
     "meralco-net-metering": [("Cost to apply", "How much does it cost to apply for net metering?"), ("Do credits expire?", "Do net metering credits expire?"),
                              ("During a blackout", "What happens to my solar during a blackout?")],
@@ -84,6 +86,20 @@ def suggestions(ctx, base: list[dict], limit: int) -> list[dict]:
     for res in ctx.results_of("run_analysis")[-1:]:
         if isinstance(res, dict):
             cands += after_analysis(res.get("summary"))
+    if ctx.results_of("solar_brief"):
+        cands += FOLLOW["solar-brief"]
+    info = [r for r in ctx.results_of("package_details") if isinstance(r, dict) and r.get("found")]
+    if info:
+        cands += [("What to ask them", "What should I ask an installer?"), ("Back to the packages", "Show me real ready-made packages")]
+        if not info[-1].get("synthetic"):
+            cands.append(("Find other installers", "Can you suggest me some installers?"))
+    pk = [r for r in ctx.results_of("find_packages") if isinstance(r, dict) and r.get("found")]
+    if pk:
+        cands += [("Without a battery" if pk[-1].get("kind") != "grid-tied" else "With a battery",
+                   "Show real packages without a battery" if pk[-1].get("kind") != "grid-tied" else "Show real packages with a battery"),
+                  ("Find installers", "Can you suggest me some installers?")]
+    if ctx.results_of("run_analysis") and not pk:
+        cands.append(("Real packages", "Show me real ready-made packages"))
     inst = [r for r in ctx.results_of("find_installers") if isinstance(r, dict) and r.get("found")]
     if inst:  # after the table: show-all first, then how to compare, then another area
         r = inst[-1]

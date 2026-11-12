@@ -15,7 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from ...config import Settings
 from ...errors import ApiError
 from ...models import PanelSpec, RoofModel
-from .. import geo, installers, layout, load as load_svc, optimizer, passport, products, rag, simulate
+from .. import geo, installers, layout, market_packages, load as load_svc, optimizer, passport, products, rag, simulate
 from ..assumptions import A, all_assumptions
 from ..scraper import search as product_search
 from . import intake, nlu, summary
@@ -263,8 +263,8 @@ class RoofModeArgs(BaseModel):
     mode: Literal["address", "draw", "sketch"] = Field(description="address = look up by address; draw = trace on the satellite map; sketch = blank canvas with a metre scale.")
 
 
-@tool("request_roof_input", "Switch how the user provides their roof. draw/sketch opens the map panel for the user.",
-      RoofModeArgs, "Setting up the roof input")
+@tool("request_roof_input", "Switch how the user provides their installation site. draw/sketch opens the map panel for the user.",
+      RoofModeArgs, "Setting up your installation site")
 def _request_roof_input(ctx: TurnContext, a: RoofModeArgs) -> dict:
     applied, errors = intake.apply_updates(ctx.session, roof_method=a.mode)
     if a.mode in ("draw", "sketch"):
@@ -298,7 +298,7 @@ def _select_candidate(ctx: TurnContext, idx: int | None, lat: float | None = Non
     return {"found": True, "roof": roof_summary(roof), **snapshot(ctx)}
 
 
-@tool("geocode_address", "Search an address in the Philippines. Returns candidates; if exactly one, its roof outline is looked up automatically.",
+@tool("geocode_address", "Search an address in the Philippines. Returns candidates; if exactly one, its site outline is looked up automatically.",
       GeocodeArgs, "Searching the address")
 def _geocode(ctx: TurnContext, a: GeocodeArgs) -> dict:
     s = ctx.session
@@ -308,8 +308,8 @@ def _geocode(ctx: TurnContext, a: GeocodeArgs) -> dict:
     if not cands:
         s.pending.pop("candidates", None)
         s.pending.pop("candidate_texts", None)
-        msg = ("The address search is not available right now, so please draw the roof on the map instead."
-               if res["degraded"] else "I found no match for that address. Try adding the barangay and city, or draw the roof on the map.")
+        msg = ("The address search is not available right now, so please draw your installation site on the map instead."
+               if res["degraded"] else "I found no match for that address. Try adding the barangay and city, or draw your installation site on the map.")
         return {"candidates": [], "degraded": res["degraded"], "message": msg, **snapshot(ctx)}
     s.pending["candidates"] = cands
     s.pending["candidate_texts"] = {f"Use {str(c['label'])[:120]}": i for i, c in enumerate(cands)}
@@ -329,8 +329,8 @@ class OutlineArgs(BaseModel):
     lon: float | None = None
 
 
-@tool("get_building_outline", "Look up the building outline for a chosen address candidate (or lat/lon) and set it as the roof.",
-      OutlineArgs, "Finding your roof outline")
+@tool("get_building_outline", "Look up the building outline for a chosen address candidate (or lat/lon) and set it as the installation site.",
+      OutlineArgs, "Finding your installation site outline")
 def _outline(ctx: TurnContext, a: OutlineArgs) -> dict:
     return _select_candidate(ctx, a.candidate_index, a.lat, a.lon)
 
@@ -340,7 +340,7 @@ class NoArgs(BaseModel):
 
 
 @tool("run_analysis", "Run the full analysis: household load, equipment search, optimizer and the 25-year simulation. "
-      "Only works once the roof, usage, budget and goal are set and the user confirmed the summary.", NoArgs, "Running the numbers")
+      "Only works once the installation site, usage, budget and goal are set and the user confirmed the summary.", NoArgs, "Running the numbers")
 def _run_analysis(ctx: TurnContext, _a: NoArgs) -> dict:
     s = ctx.session
     slot = intake.next_slot(s)
@@ -479,6 +479,99 @@ def _search_docs(ctx: TurnContext, a: DocsArgs) -> dict:
                                          "prefer Meralco and policy sources, and say when something is a US example."}
 
 
+@tool("solar_brief", "Show a short brief on going solar at home with Meralco: how it works, the three ways to connect, costs, blackouts and what to check. "
+      "Call it when the user asks for a brief, overview or basics of solar. The app shows the brief itself, so do not repeat it.", NoArgs, "Preparing your solar brief")
+def _solar_brief(ctx: TurnContext, _a: NoArgs) -> dict:
+    return {"found": True, "markdown": rag.document("solar-brief"),
+            "message": "The app is showing the brief. Write one short sentence offering to size a system once they share their installation site, bill and budget. Do not repeat the brief."}
+
+
+class PackageArgs(BaseModel):
+    kwp: float | None = Field(None, gt=0, le=60, description="Wanted system size in kWp. Omit to use the size of the recommended option.")
+    battery: bool | None = Field(None, description="True for packages with a battery, False for grid-tied without one. Omit for either.")
+    location: str | None = Field(None, max_length=120, description="Where the home is, if the user said.")
+
+
+def market_region(s) -> str | None:
+    return s.pending.get("installer_region") or installers.region_for(getattr(s.persona, "city", "") or "")
+
+
+SYSTEM_KIND = {"on_grid": "grid-tied", "hybrid": "hybrid", "off_grid": "off-grid"}
+
+
+def rough_kwp(s) -> float | None:
+    """A rough system size from the household's usage, only to pick which packages to show before the numbers have run."""
+    p = s.profile
+    kwh = p.monthly_kwh or (load_svc.bill_to_kwh(p.monthly_bill_php) if p.monthly_bill_php else None)
+    return round(kwh / A("rough_kwh_per_kwp_month"), 1) if kwh else None
+
+
+def budget_packages_card(ctx: "TurnContext") -> dict | None:
+    """Ready-made packages that fit the budget, offered as soon as the budget and system type are both known (once per change)."""
+    s = ctx.session
+    p = s.profile
+    if p.budget_max_php is None or not p.system_type:
+        return None
+    region = market_region(s)
+    key = [p.budget_min_php, p.budget_max_php, p.system_type, region]
+    if s.pending.get("packages_key") == key:
+        return None
+    s.pending["packages_key"] = key
+    if "analysis" in s.results or ctx.results_of("find_packages"):
+        return None  # those bring their own list
+    return {"type": "packages", "data": {**market_packages.panel(rough_kwp(s), SYSTEM_KIND[p.system_type], region, p.budget_min_php, p.budget_max_php, "usage"), "open": True}}
+
+
+def top_option(s) -> tuple[float | None, str | None]:
+    """Size and type of the recommended option, if the numbers have been run."""
+    summ = s.results.get("summary")
+    if not summ or not summ.get("packages"):
+        return None, None
+    top = summ["packages"][0]
+    return top["kwp"], ("hybrid" if top.get("battery") else "grid-tied")
+
+
+@tool("find_packages", "Show real, ready-made home solar packages that installers publish on their own websites, with photos, what is included, the "
+      "published price and a link, nearest to the user's recommended system. Call it when the user asks for real packages, package prices or "
+      "wants to compare packages. The app shows them in a side panel itself, so do not list packages in your text.", PackageArgs, "Finding real packages")
+def _find_packages(ctx: TurnContext, a: PackageArgs) -> dict:
+    s = ctx.session
+    kwp, kind = top_option(s)
+    kwp = a.kwp or kwp
+    kind = {True: "hybrid", False: "grid-tied"}.get(a.battery, kind)
+    if s.profile.system_type == "off_grid" and a.battery is None:
+        kind = "off-grid"
+    region = installers.region_for(a.location or "") or market_region(s)
+    r = market_packages.match(kwp, kind, region)
+    ctx.cards.append({"type": "packages", "data": {**market_packages.panel(kwp, kind, region, s.profile.budget_min_php, s.profile.budget_max_php), "open": True}})
+    return {**r, "message": "The app opened these in a side panel. In one or two sentences say that real packages show prices installers published, not quotes, that packages marked "
+                            "Sample are made-up (say so plainly if any appear), and that Sol has not vetted the installers. Do not list packages."}
+
+
+class PackageInfoArgs(BaseModel):
+    name: str = Field(..., min_length=2, max_length=120, description="The package name exactly as the user said it, such as '6kW System' or 'Starter 3 kWp'.")
+    installer: str | None = Field(None, max_length=120, description="The installer named with it, such as 'PTG Solar'.")
+
+
+@tool("package_details", "Give full details of ONE ready-made package the user picked: price, parts, how it fits their budget and size, the installer's published "
+      "contact details and questions to ask. Call it when the user asks more about a specific package. The app shows the details itself.",
+      PackageInfoArgs, "Looking up that package")
+def _package_details(ctx: TurnContext, a: PackageInfoArgs) -> dict:
+    s = ctx.session
+    p = market_packages.find(f"{a.name} {a.installer or ''}")
+    if p is None:
+        return {"found": False, "message": "I don't have a package with that name. Ask which one they mean, or offer to show the packages again."}
+    kwp, _kind = top_option(s)
+    basis = "design" if kwp else "usage"
+    kwp = kwp or rough_kwp(s)
+    md = market_packages.details_markdown(p, budget_max=s.profile.budget_max_php, wanted_kwp=kwp, basis=basis,
+                                          system_kind=SYSTEM_KIND.get(s.profile.system_type or ""),
+                                          registry=None if p["synthetic"] else installers.registry_status(p["installer"]))
+    return {"found": True, "markdown": md, "id": p["id"], "name": p["name"], "installer": p["installer"], "synthetic": p["synthetic"],
+            "price_php": p["price_php"], "kwp": p["kwp"],
+            "message": "The app shows the full details and the installer's contacts. Write one short sentence: the price is what they published, not a quote. Do not repeat the details."}
+
+
 class InstallerArgs(BaseModel):
     location: str | None = Field(None, max_length=120, description="Where the home is: a city, province or region, exactly as the user said it. Omit if they have not said.")
     show_all: bool = Field(False, description="True when the user asks to see every installer in the area, not just the first few.")
@@ -490,7 +583,7 @@ ASK_WHERE = ("I haven't vetted any installer, but I can show the ones registered
 
 @tool("find_installers", "Show solar installers registered with the DOE, as a table with contacts and links, for the area where the user lives. "
       "Call it whenever the user asks for, or about, installers. If the result says needs_location, ask where their home is. "
-      "The app shows the table itself, so do not list installers in your text. Registered is not recommended.", InstallerArgs, "Finding registered installers")
+      "The app shows the list in a side panel itself, so do not list installers in your text. Registered is not recommended.", InstallerArgs, "Finding registered installers")
 def _find_installers(ctx: TurnContext, a: InstallerArgs) -> dict:
     s = ctx.session
     asked = (a.location or "").strip()
@@ -507,8 +600,10 @@ def _find_installers(ctx: TurnContext, a: InstallerArgs) -> dict:
     if asked:
         s.pending["installer_near"] = asked
     s.pending.pop("await_installer_location", None)
-    return {"found": True, **installers.find(region, a.show_all, asked or s.pending.get("installer_near", "")),
-            "message": "The app is showing the table. In one or two sentences say how many are registered in this area, that the DOE does not endorse them and "
+    near = asked or s.pending.get("installer_near", "")
+    ctx.cards.append({"type": "installers", "data": {**installers.find(region, True, near), "open": True}})
+    return {"found": True, **installers.find(region, a.show_all, near),
+            "message": "The app opened the full list in a side panel. In one or two sentences say how many are registered in this area, that the DOE does not endorse them and "
                        "Sol has not vetted them, and suggest comparing at least two written quotes. Do not list installers."}
 
 
@@ -542,8 +637,8 @@ def _issue_passport(ctx: TurnContext, a: PassportArgs) -> dict:
     return out
 
 
-@tool("toggle_roof_fill", "Switch the map between the chosen design and a preview with panels on the whole roof. "
-      "Use when the user wants to see the roof fully covered. The preview is a layout, not a recommendation.", NoArgs, "Laying panels on the roof")
+@tool("toggle_roof_fill", "Switch the map between the chosen design and a preview with panels on the whole installation site. "
+      "Use when the user wants to see the site fully covered. The preview is a layout, not a recommendation.", NoArgs, "Laying panels on your installation site")
 def _toggle_roof_fill(ctx: TurnContext, _a: NoArgs) -> dict:
     s = ctx.session
     item, _i = _analysis_item(s, None)
@@ -556,7 +651,7 @@ def _toggle_roof_fill(ctx: TurnContext, _a: NoArgs) -> dict:
     panel = pkg["panel"]
     n = layout.panel_capacity(roof, *panel["dims_m"])
     if n <= 0:
-        return {"error": "no_space", "message": "No more panels fit on this roof."}
+        return {"error": "no_space", "message": "No more panels fit on this installation site."}
     kwp = n * panel["watts"] / 1000.0
     cost = n * panel["price_php"] + A("install_cost_php_per_kw") * kwp + A("permits_misc_php")
     s.pending["full_roof"] = True

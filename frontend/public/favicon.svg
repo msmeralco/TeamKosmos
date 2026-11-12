@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="256" height="256">
+<defs>
+<radialGradient id="body" cx="46%" cy="42%" r="62%"><stop offset="0" stop-color="#ffec8f"/><stop offset="0.6" stop-color="#fbd554"/><stop offset="1" stop-color="#f4b92f"/></radialGradient>
+<radialGradient id="ray" cx="42%" cy="38%" r="70%"><stop offset="0" stop-color="#fff3a8"/><stop offset="1" stop-color="#f8cf4e"/></radialGradient>
+<radialGradient id="cheek"><stop offset="0" stop-color="#f0657c" stop-opacity="0.85"/><stop offset="1" stop-color="#f0657c" stop-opacity="0"/></radialGradient>
+</defs>
+<circle cx="50.00" cy="5.50" r="4.6" fill="url(#ray)"/><circle cx="72.25" cy="11.46" r="4.6" fill="url(#ray)"/><circle cx="88.54" cy="27.75" r="4.6" fill="url(#ray)"/><circle cx="94.50" cy="50.00" r="4.6" fill="url(#ray)"/><circle cx="88.54" cy="72.25" r="4.6" fill="url(#ray)"/><circle cx="72.25" cy="88.54" r="4.6" fill="url(#ray)"/><circle cx="50.00" cy="94.50" r="4.6" fill="url(#ray)"/><circle cx="27.75" cy="88.54" r="4.6" fill="url(#ray)"/><circle cx="11.46" cy="72.25" r="4.6" fill="url(#ray)"/><circle cx="5.50" cy="50.00" r="4.6" fill="url(#ray)"/><circle cx="11.46" cy="27.75" r="4.6" fill="url(#ray)"/><circle cx="27.75" cy="11.46" r="4.6" fill="url(#ray)"/>
+<circle cx="50" cy="50" r="35.7" fill="url(#body)"/>
+<ellipse cx="33" cy="56" rx="7" ry="4.6" fill="url(#cheek)"/><ellipse cx="67" cy="56" rx="7" ry="4.6" fill="url(#cheek)"/>
+<ellipse cx="34" cy="47" rx="5.2" ry="5.9" fill="#2b0e0a"/><ellipse cx="66" cy="47" rx="5.2" ry="5.9" fill="#2b0e0a"/>
+<circle cx="32.4" cy="44.8" r="1.7" fill="#fff"/><circle cx="64.4" cy="44.8" r="1.7" fill="#fff"/><circle cx="35.8" cy="49.6" r="0.8" fill="#fff"/><circle cx="67.8" cy="49.6" r="0.8" fill="#fff"/>
+<path d="M43 55.5 Q50 57 57 55.5 C56.5 62.5 53.5 65 50 65 C46.5 65 43.5 62.5 43 55.5 Z" fill="#4a1414"/>
+<path d="M45.6 61.6 C47 59.6 53 59.6 54.4 61.6 C53.4 63.6 46.6 63.6 45.6 61.6 Z" fill="#ef6b7b"/>
+</svg>

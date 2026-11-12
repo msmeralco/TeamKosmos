@@ -104,7 +104,7 @@ def analysis_markdown(s: dict) -> str:
         ("Solar panels", f"{top['panel_count']} × {top['panel']} = **{top['kwp']:g} kWp**"),
     ]
     if cap:
-        rows.append(("Roof use", f"{top['panel_count']} of {cap} panel spots on your roof"))
+        rows.append(("Site use", f"{top['panel_count']} of {cap} panel spots on your installation site"))
     rows.append(("Inverter", top["inverter"]))
     if top["battery"]:
         kwh = f" ({top['battery_kwh']:g} kWh)" if top.get("battery_kwh") else ""
@@ -207,7 +207,7 @@ def passport_markdown(r: dict) -> str:
         "- The results have not been changed since they were created.",
         "- The record is signed by Sol, and anyone with the link can check it.",
         "", "**What it does not tell you**", "",
-        "- It does not prove that your real roof matches the details you gave.",
+        "- It does not prove that your real installation site matches the details you gave.",
         "- The figures are still estimates for a licensed installer to confirm.",
         "", "You can find it again under **Saved records**, where you can also download it.",
     ]
@@ -217,7 +217,7 @@ def passport_markdown(r: dict) -> str:
 def roof_fill_text(r: dict) -> str:
     if r.get("mode") == "design":
         return f"The map is back to your design with {r['panels']} panels."
-    return f"The map now shows panels on the whole roof: {r['panels']} panels, about {r['kwp']:g} kWp."
+    return f"The map now shows panels on the whole installation site: {r['panels']} panels, about {r['kwp']:g} kWp."
 
 
 def roof_fill_markdown(r: dict) -> str:
@@ -227,14 +227,14 @@ def roof_fill_markdown(r: dict) -> str:
     rows = [
         ("Panels that fit", f"**{r['panels']}** × {r['panel_model']}"),
         ("Total size", f"**{r['kwp']:g} kWp**"),
-        ("Panel area", f"about {r['panel_area_m2']:g} m² of your {r['roof_area_m2']:g} m² roof"),
+        ("Panel area", f"about {r['panel_area_m2']:g} m² of your {r['roof_area_m2']:g} m² installation site"),
         ("Rough cost", f"about **{php(r['rough_cost_php'])}** for panels, installation and permits"),
         ("Your design", f"{r['design_panels']} panels · {r['design_kwp']:g} kWp · {php(r['design_cost_php'])}"),
     ]
     if r.get("budget_max_php"):
         over = r.get("over_budget_php") or 0
         rows.append(("Your budget", f"{php(r['budget_max_php'])} (**{php(over)} over**)" if over else f"{php(r['budget_max_php'])} (within budget)"))
-    out = ["### Whole-roof preview", "", "| | |", "|---|---|"] + [f"| {k} | {v} |" for k, v in rows]
+    out = ["### Whole-site preview", "", "| | |", "|---|---|"] + [f"| {k} | {v} |" for k, v in rows]
     notes = [
         "This is a layout preview, not a recommendation. Your design is sized to your bill and budget.",
         f"The inverters are not priced here. The largest inverter in the price list is {r['largest_inverter_kw']:g} kW, so a system this size needs several.",
@@ -248,7 +248,7 @@ def roof_fill_markdown(r: dict) -> str:
 
 def roof_text(roof: dict) -> str:
     extra = " Please check the facing direction." if any("confirm" in n for n in roof.get("notes", [])) else ""
-    return (f"I have your roof outline: about {roof['area_m2']:g} m², facing {roof['azimuth_deg']:g}° (180° is south), "
+    return (f"I have your installation site outline: about {roof['area_m2']:g} m², facing {roof['azimuth_deg']:g}° (180° is south), "
             f"with {roof['usable_area_m2']:g} m² usable after the edge setback.{extra}")
 
 
@@ -269,8 +269,18 @@ def installers_text(r: dict) -> str:
         return r["message"]
     if not r.get("total"):
         return f"The DOE registry has no solar installers listed for {r['region_name']}. Tell me another area and I'll check it."
-    return (f"Here are the solar installers registered with the DOE in {r['region_name']} ({r['shown']} of {r['total']}). The DOE does not endorse them and "
+    return (f"I've opened the {r['total']} solar installers registered with the DOE in {r['region_name']} in the side panel. The DOE does not endorse them and "
             "I haven't vetted them, so compare at least two written quotes.")
+
+
+def packages_text(r: dict) -> str:
+    if not r.get("found"):
+        return r.get("message", "I don't have a published package near that size.")
+    area = "" if r.get("in_your_area") else " None of the installers I have serve your area yet, so these are from elsewhere."
+    if r.get("all_sample"):
+        return "I don't have a real published package for this, so the table shows made-up samples. They are not offers."
+    sample = " Packages marked Sample are made-up." if r.get("has_sample") else ""
+    return f"I've opened ready-made packages near that size in the side panel. Real ones show the prices installers publish on their own sites, not quotes.{sample}{area}"
 
 
 def render_tool_result(name: str, result: dict) -> str:
@@ -287,6 +297,16 @@ def render_tool_result(name: str, result: dict) -> str:
         return docs_text(result)
     if name == "find_installers":
         return installers_text(result)
+    if name == "package_details":
+        if not result.get("found"):
+            return result.get("message", "I don't have a package with that name.")
+        if result.get("synthetic"):
+            return f"{result['name']} is a made-up sample, so there is nobody to contact. Here is what it shows."
+        return f"Here are the details for {result['name']} from {result['installer']}, with how to contact them. The price is what they published, not a quote."
+    if name == "find_packages":
+        return packages_text(result)
+    if name == "solar_brief":
+        return "Here's a quick brief on going solar with Meralco."
     if name == "explain_assumptions":
         return assumptions_text(result)
     if name == "issue_passport":
