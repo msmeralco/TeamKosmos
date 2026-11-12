@@ -12,6 +12,7 @@ import {
 } from "react";
 import { AnimatePresence, domAnimation, LazyMotion, m } from "framer-motion";
 import { Icon } from "./components/icons";
+import { LoginView } from "./components/LoginView";
 import { MapCanvas, type SolarZone } from "./components/MapCanvas";
 import {
   ConfirmDialog,
@@ -156,6 +157,7 @@ function FileThumb({ file }: { file: File }) {
 /* ------------------------------------------------------------------ */
 
 export default function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [personaId, setPersonaId] = useState<PersonaId>("reyes");
   const [view, setView] = useState<View>("chat");
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -473,6 +475,23 @@ export default function App() {
     setNotices((list) => list.map((n) => ({ ...n, read: true })));
   };
 
+  if (!isAuthenticated) {
+    return (
+      <LazyMotion features={domAnimation} strict>
+        <m.div
+          key="login-view"
+          initial={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.99 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.99 }}
+          transition={{ duration: 0.28, ease: [0.32, 0.72, 0, 1] }}
+          className="h-dvh w-screen overflow-hidden"
+        >
+          <LoginView onLogin={() => setIsAuthenticated(true)} />
+        </m.div>
+      </LazyMotion>
+    );
+  }
+
   return (
     <LazyMotion features={domAnimation} strict>
       <div className="relative flex h-dvh w-screen overflow-hidden bg-white text-[#111111]">
@@ -629,6 +648,16 @@ export default function App() {
                       </MenuItem>
                     );
                   })}
+                  <div className="my-1 h-px bg-[#f0f0ee]" />
+                  <MenuItem
+                    onSelect={() => {
+                      close();
+                      setIsAuthenticated(false);
+                    }}
+                  >
+                    <span className="block font-medium text-[#dc2626]">Sign Out</span>
+                    <span className="block text-[11px] text-[#787774]">Return to login screen</span>
+                  </MenuItem>
                 </div>
               )}
             </Popover>
