@@ -344,7 +344,7 @@ export function Popover({
 }: {
   trigger: (p: { open: boolean; toggle: () => void }) => ReactNode;
   children: (close: () => void) => ReactNode;
-  placement?: "bottom-end" | "bottom-start" | "top-start" | "top-end";
+  placement?: "bottom-end" | "bottom-start" | "top-start" | "top-end" | "right-start" | "right-end";
   label: string;
   className?: string;
 }) {
@@ -358,6 +358,8 @@ export function Popover({
     "bottom-start": "top-full left-0 mt-2",
     "top-start": "bottom-full left-0 mb-2",
     "top-end": "bottom-full right-0 mb-2",
+    "right-start": "left-full top-0 ml-3",
+    "right-end": "left-full bottom-0 ml-3",
   }[placement];
 
   return (
