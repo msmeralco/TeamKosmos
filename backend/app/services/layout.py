@@ -87,7 +87,7 @@ def pack_panels(roof: RoofModel, panel: PanelSpec) -> dict:
         ll = [from_utm(x + ox, y + oy, roof.utm_epsg) for x, y in pts]
         result["panels_lonlat"].append([(lon, lat) for lon, lat in ll])
     if roof.roof_type == "flat":
-        result["notes"].append("Flat roof: row spacing uses a fixed 0.3 m gap between tilted rows (simplified, not a shading study).")
+        result["notes"].append("Flat surface: row spacing uses a fixed 0.3 m gap between tilted rows (simplified, not a shading study).")
     result["notes"].append(f"Panel count is capped at {roof.obstruction_factor:.0%} of what fits, to leave room for vents and tanks.")
     return result
 

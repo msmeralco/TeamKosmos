@@ -1,0 +1,897 @@
+{
+ "checked_on": "2026-11-12",
+ "note": "Prices are what each installer publishes on its own website on the date above. They are not quotes. Sol has not vetted these installers. Rows marked synthetic are made-up samples.",
+ "packages": [
+  {
+   "id": "ptg-lowest-we-install",
+   "synthetic": false,
+   "installer": "PTG Solar",
+   "installer_site": "https://ptgsolarph.com/",
+   "name": "Lowest We Install",
+   "kwp": 5.0,
+   "kwp_basis": "stated",
+   "panels": "8 panels",
+   "inverter": "Top One 5.6 kW inverter",
+   "battery_kwh": null,
+   "type": "grid-tied",
+   "price_php": 177700,
+   "price_note": "Example price, full install",
+   "area": "Quezon City and Metro Manila",
+   "regions": [
+    "NCR"
+   ],
+   "link": "https://ptgsolarph.com/",
+   "photo": "/packages/ptg-lowest-we-install.svg",
+   "contact": {
+    "phones": [
+     "+63 966 552 5258",
+     "+63 998 810 6084"
+    ],
+    "emails": [
+     "quotes@ptgsolarph.com"
+    ],
+    "facebook": "https://www.facebook.com/profile.php?id=61590637263615",
+    "messenger": "https://m.me/61590637263615",
+    "whatsapp": "https://wa.me/639988106084"
+   }
+  },
+  {
+   "id": "ptg-6kw-system",
+   "synthetic": false,
+   "installer": "PTG Solar",
+   "installer_site": "https://ptgsolarph.com/",
+   "name": "6kW System",
+   "kwp": 6.2,
+   "kwp_basis": "stated",
+   "panels": "10 panels",
+   "inverter": "Top One 6.2 kW inverter",
+   "battery_kwh": 5,
+   "type": "hybrid",
+   "price_php": 237912,
+   "price_note": "Example price, full install",
+   "area": "Quezon City and Metro Manila",
+   "regions": [
+    "NCR"
+   ],
+   "link": "https://ptgsolarph.com/",
+   "photo": "/packages/ptg-6kw-system.svg",
+   "contact": {
+    "phones": [
+     "+63 966 552 5258",
+     "+63 998 810 6084"
+    ],
+    "emails": [
+     "quotes@ptgsolarph.com"
+    ],
+    "facebook": "https://www.facebook.com/profile.php?id=61590637263615",
+    "messenger": "https://m.me/61590637263615",
+    "whatsapp": "https://wa.me/639988106084"
+   }
+  },
+  {
+   "id": "ptg-most-popular",
+   "synthetic": false,
+   "installer": "PTG Solar",
+   "installer_site": "https://ptgsolarph.com/",
+   "name": "Most Popular",
+   "kwp": 8.1,
+   "kwp_basis": "stated",
+   "panels": "13 panels",
+   "inverter": "Solis 8 kW inverter",
+   "battery_kwh": 5,
+   "type": "hybrid",
+   "price_php": 313924,
+   "price_note": "Example price, full install",
+   "area": "Quezon City and Metro Manila",
+   "regions": [
+    "NCR"
+   ],
+   "link": "https://ptgsolarph.com/",
+   "photo": "/packages/ptg-most-popular.svg",
+   "contact": {
+    "phones": [
+     "+63 966 552 5258",
+     "+63 998 810 6084"
+    ],
+    "emails": [
+     "quotes@ptgsolarph.com"
+    ],
+    "facebook": "https://www.facebook.com/profile.php?id=61590637263615",
+    "messenger": "https://m.me/61590637263615",
+    "whatsapp": "https://wa.me/639988106084"
+   }
+  },
+  {
+   "id": "ptg-10kw-system",
+   "synthetic": false,
+   "installer": "PTG Solar",
+   "installer_site": "https://ptgsolarph.com/",
+   "name": "10kW System",
+   "kwp": 9.9,
+   "kwp_basis": "stated",
+   "panels": "16 panels",
+   "inverter": "Solis 10 kW inverter",
+   "battery_kwh": 10,
+   "type": "hybrid",
+   "price_php": 398795,
+   "price_note": "Example price, full install",
+   "area": "Quezon City and Metro Manila",
+   "regions": [
+    "NCR"
+   ],
+   "link": "https://ptgsolarph.com/",
+   "photo": "/packages/ptg-10kw-system.svg",
+   "contact": {
+    "phones": [
+     "+63 966 552 5258",
+     "+63 998 810 6084"
+    ],
+    "emails": [
+     "quotes@ptgsolarph.com"
+    ],
+    "facebook": "https://www.facebook.com/profile.php?id=61590637263615",
+    "messenger": "https://m.me/61590637263615",
+    "whatsapp": "https://wa.me/639988106084"
+   }
+  },
+  {
+   "id": "ptg-whole-home",
+   "synthetic": false,
+   "installer": "PTG Solar",
+   "installer_site": "https://ptgsolarph.com/",
+   "name": "Whole-Home",
+   "kwp": 9.9,
+   "kwp_basis": "stated",
+   "panels": "16 panels",
+   "inverter": "GoodWe 10 kW inverter",
+   "battery_kwh": 14.3,
+   "type": "hybrid",
+   "price_php": 458295,
+   "price_note": "Example price, full install",
+   "area": "Quezon City and Metro Manila",
+   "regions": [
+    "NCR"
+   ],
+   "link": "https://ptgsolarph.com/",
+   "photo": "/packages/ptg-whole-home.svg",
+   "contact": {
+    "phones": [
+     "+63 966 552 5258",
+     "+63 998 810 6084"
+    ],
+    "emails": [
+     "quotes@ptgsolarph.com"
+    ],
+    "facebook": "https://www.facebook.com/profile.php?id=61590637263615",
+    "messenger": "https://m.me/61590637263615",
+    "whatsapp": "https://wa.me/639988106084"
+   }
+  },
+  {
+   "id": "devsolutions-5kw-hybrid-system",
+   "synthetic": false,
+   "installer": "DevSolutions Solar",
+   "installer_site": "https://www.devsolutions.com.ph/",
+   "name": "5KW Hybrid System",
+   "kwp": 4.96,
+   "kwp_basis": "stated",
+   "panels": "8 × 620 W bifacial",
+   "inverter": "Hybrid inverter",
+   "battery_kwh": 16,
+   "type": "hybrid",
+   "price_php": 337000,
+   "price_note": "Starts at, all-in",
+   "area": "Cavite, Luzon and Palawan",
+   "regions": [
+    "IV-A",
+    "NCR",
+    "III"
+   ],
+   "link": "https://www.devsolutions.com.ph/",
+   "photo": "https://www.devsolutions.com.ph/og/home.jpg",
+   "contact": {
+    "phones": [
+     "+63 997 399 4613"
+    ],
+    "facebook": "https://www.facebook.com/devsolutions.palawan",
+    "office": "Silang, Cavite (Monday to Saturday, 9:00 AM to 6:00 PM)"
+   }
+  },
+  {
+   "id": "devsolutions-6kw-hybrid-system",
+   "synthetic": false,
+   "installer": "DevSolutions Solar",
+   "installer_site": "https://www.devsolutions.com.ph/",
+   "name": "6KW Hybrid System",
+   "kwp": 6.2,
+   "kwp_basis": "stated",
+   "panels": "10 × 620 W bifacial",
+   "inverter": "Hybrid inverter",
+   "battery_kwh": 16,
+   "type": "hybrid",
+   "price_php": 378000,
+   "price_note": "Starts at, all-in",
+   "area": "Cavite, Luzon and Palawan",
+   "regions": [
+    "IV-A",
+    "NCR",
+    "III"
+   ],
+   "link": "https://www.devsolutions.com.ph/",
+   "photo": "https://www.devsolutions.com.ph/og/home.jpg",
+   "contact": {
+    "phones": [
+     "+63 997 399 4613"
+    ],
+    "facebook": "https://www.facebook.com/devsolutions.palawan",
+    "office": "Silang, Cavite (Monday to Saturday, 9:00 AM to 6:00 PM)"
+   }
+  },
+  {
+   "id": "devsolutions-8kw-hybrid-system",
+   "synthetic": false,
+   "installer": "DevSolutions Solar",
+   "installer_site": "https://www.devsolutions.com.ph/",
+   "name": "8KW Hybrid System",
+   "kwp": 8.68,
+   "kwp_basis": "stated",
+   "panels": "14 × 620 W bifacial",
+   "inverter": "Hybrid inverter",
+   "battery_kwh": 16,
+   "type": "hybrid",
+   "price_php": 467000,
+   "price_note": "Starts at, all-in",
+   "area": "Cavite, Luzon and Palawan",
+   "regions": [
+    "IV-A",
+    "NCR",
+    "III"
+   ],
+   "link": "https://www.devsolutions.com.ph/",
+   "photo": "https://www.devsolutions.com.ph/og/home.jpg",
+   "contact": {
+    "phones": [
+     "+63 997 399 4613"
+    ],
+    "facebook": "https://www.facebook.com/devsolutions.palawan",
+    "office": "Silang, Cavite (Monday to Saturday, 9:00 AM to 6:00 PM)"
+   }
+  },
+  {
+   "id": "devsolutions-10kw-hybrid-system",
+   "synthetic": false,
+   "installer": "DevSolutions Solar",
+   "installer_site": "https://www.devsolutions.com.ph/",
+   "name": "10KW Hybrid System",
+   "kwp": 9.92,
+   "kwp_basis": "stated",
+   "panels": "16 × 620 W bifacial",
+   "inverter": "Hybrid inverter",
+   "battery_kwh": 16,
+   "type": "hybrid",
+   "price_php": 533000,
+   "price_note": "Starts at, all-in",
+   "area": "Cavite, Luzon and Palawan",
+   "regions": [
+    "IV-A",
+    "NCR",
+    "III"
+   ],
+   "link": "https://www.devsolutions.com.ph/",
+   "photo": "https://www.devsolutions.com.ph/og/home.jpg",
+   "contact": {
+    "phones": [
+     "+63 997 399 4613"
+    ],
+    "facebook": "https://www.facebook.com/devsolutions.palawan",
+    "office": "Silang, Cavite (Monday to Saturday, 9:00 AM to 6:00 PM)"
+   }
+  },
+  {
+   "id": "devsolutions-12kw-hybrid-system",
+   "synthetic": false,
+   "installer": "DevSolutions Solar",
+   "installer_site": "https://www.devsolutions.com.ph/",
+   "name": "12KW Hybrid System",
+   "kwp": 12.4,
+   "kwp_basis": "stated",
+   "panels": "20 × 620 W bifacial",
+   "inverter": "Hybrid inverter",
+   "battery_kwh": 16,
+   "type": "hybrid",
+   "price_php": 614000,
+   "price_note": "Starts at, all-in",
+   "area": "Cavite, Luzon and Palawan",
+   "regions": [
+    "IV-A",
+    "NCR",
+    "III"
+   ],
+   "link": "https://www.devsolutions.com.ph/",
+   "photo": "https://www.devsolutions.com.ph/og/home.jpg",
+   "contact": {
+    "phones": [
+     "+63 997 399 4613"
+    ],
+    "facebook": "https://www.facebook.com/devsolutions.palawan",
+    "office": "Silang, Cavite (Monday to Saturday, 9:00 AM to 6:00 PM)"
+   }
+  },
+  {
+   "id": "devsolutions-16kw-hybrid-system",
+   "synthetic": false,
+   "installer": "DevSolutions Solar",
+   "installer_site": "https://www.devsolutions.com.ph/",
+   "name": "16KW Hybrid System",
+   "kwp": 16.12,
+   "kwp_basis": "stated",
+   "panels": "26 × 620 W bifacial",
+   "inverter": "Hybrid inverter",
+   "battery_kwh": 16,
+   "type": "hybrid",
+   "price_php": 760000,
+   "price_note": "Starts at, all-in",
+   "area": "Cavite, Luzon and Palawan",
+   "regions": [
+    "IV-A",
+    "NCR",
+    "III"
+   ],
+   "link": "https://www.devsolutions.com.ph/",
+   "photo": "https://www.devsolutions.com.ph/og/home.jpg",
+   "contact": {
+    "phones": [
+     "+63 997 399 4613"
+    ],
+    "facebook": "https://www.facebook.com/devsolutions.palawan",
+    "office": "Silang, Cavite (Monday to Saturday, 9:00 AM to 6:00 PM)"
+   }
+  },
+  {
+   "id": "skyelight-5-kw-hybrid-option-1",
+   "synthetic": false,
+   "installer": "Skyelight Solar",
+   "installer_site": "https://skyelightsolar.com/",
+   "name": "5 KW Hybrid (Option 1)",
+   "kwp": 2.5,
+   "kwp_basis": "stated",
+   "panels": "4 × 620 W bifacial",
+   "inverter": "5 kW hybrid inverter",
+   "battery_kwh": 5.12,
+   "type": "hybrid",
+   "price_php": 245000,
+   "price_note": "All-in package with installation",
+   "area": "Bulacan and Metro Manila",
+   "regions": [
+    "III",
+    "NCR"
+   ],
+   "link": "https://skyelightsolar.com/",
+   "photo": "https://skyelightsolar.com/images/hero-solar-1600.jpg",
+   "contact": {
+    "phones": [
+     "0917 631 6749",
+     "0945 210 9890",
+     "0952 459 4387"
+    ],
+    "emails": [
+     "business.skyelight.solar@gmail.com"
+    ],
+    "facebook": "https://www.facebook.com/skyelightsolar"
+   }
+  },
+  {
+   "id": "skyelight-6-kw-hybrid",
+   "synthetic": false,
+   "installer": "Skyelight Solar",
+   "installer_site": "https://skyelightsolar.com/",
+   "name": "6 KW Hybrid",
+   "kwp": 6.2,
+   "kwp_basis": "stated",
+   "panels": "10 × 620 W bifacial",
+   "inverter": "6 kW hybrid inverter",
+   "battery_kwh": 16.09,
+   "type": "hybrid",
+   "price_php": 355000,
+   "price_note": "All-in package with installation",
+   "area": "Bulacan and Metro Manila",
+   "regions": [
+    "III",
+    "NCR"
+   ],
+   "link": "https://skyelightsolar.com/",
+   "photo": "https://skyelightsolar.com/images/hero-solar-1600.jpg",
+   "contact": {
+    "phones": [
+     "0917 631 6749",
+     "0945 210 9890",
+     "0952 459 4387"
+    ],
+    "emails": [
+     "business.skyelight.solar@gmail.com"
+    ],
+    "facebook": "https://www.facebook.com/skyelightsolar"
+   }
+  },
+  {
+   "id": "skyelight-18-kw-hybrid",
+   "synthetic": false,
+   "installer": "Skyelight Solar",
+   "installer_site": "https://skyelightsolar.com/",
+   "name": "18 KW Hybrid",
+   "kwp": 18.6,
+   "kwp_basis": "stated",
+   "panels": "30 × 620 W bifacial",
+   "inverter": "18 kW hybrid inverter",
+   "battery_kwh": 16.09,
+   "type": "hybrid",
+   "price_php": 815000,
+   "price_note": "All-in package with installation",
+   "area": "Bulacan and Metro Manila",
+   "regions": [
+    "III",
+    "NCR"
+   ],
+   "link": "https://skyelightsolar.com/",
+   "photo": "https://skyelightsolar.com/images/hero-solar-1600.jpg",
+   "contact": {
+    "phones": [
+     "0917 631 6749",
+     "0945 210 9890",
+     "0952 459 4387"
+    ],
+    "emails": [
+     "business.skyelight.solar@gmail.com"
+    ],
+    "facebook": "https://www.facebook.com/skyelightsolar"
+   }
+  },
+  {
+   "id": "achiv-starter-hybrid-5-kw",
+   "synthetic": false,
+   "installer": "Achiv Solar",
+   "installer_site": "https://achivsolar.com/",
+   "name": "Starter (Hybrid 5 kW)",
+   "kwp": 4.96,
+   "kwp_basis": "panels × watts",
+   "panels": "8 × 620 W",
+   "inverter": "5 kW inverter",
+   "battery_kwh": 5.12,
+   "type": "hybrid",
+   "price_php": 290000,
+   "price_note": "All-in, non-VAT",
+   "area": "Metro Manila, Bulacan and Cebu",
+   "regions": [
+    "NCR",
+    "III"
+   ],
+   "link": "https://achivsolar.com/",
+   "photo": "https://achivsolar.com/metro-manila-hybrid-roof-array-aerial-2026.jpg",
+   "contact": {
+    "phones": [
+     "+63 945 850 7938"
+    ],
+    "viber": "+63 945 850 7938"
+   }
+  },
+  {
+   "id": "achiv-lite-hybrid-6-kw",
+   "synthetic": false,
+   "installer": "Achiv Solar",
+   "installer_site": "https://achivsolar.com/",
+   "name": "Lite (Hybrid 6 kW)",
+   "kwp": 6.2,
+   "kwp_basis": "panels × watts",
+   "panels": "10 × 620 W",
+   "inverter": "6 kW inverter",
+   "battery_kwh": 5.12,
+   "type": "hybrid",
+   "price_php": 340000,
+   "price_note": "All-in, non-VAT",
+   "area": "Metro Manila, Bulacan and Cebu",
+   "regions": [
+    "NCR",
+    "III"
+   ],
+   "link": "https://achivsolar.com/",
+   "photo": "https://achivsolar.com/metro-manila-hybrid-roof-array-aerial-2026.jpg",
+   "contact": {
+    "phones": [
+     "+63 945 850 7938"
+    ],
+    "viber": "+63 945 850 7938"
+   }
+  },
+  {
+   "id": "achiv-home-hybrid-8-kw",
+   "synthetic": false,
+   "installer": "Achiv Solar",
+   "installer_site": "https://achivsolar.com/",
+   "name": "Home (Hybrid 8 kW)",
+   "kwp": 9.92,
+   "kwp_basis": "panels × watts",
+   "panels": "16 × 620 W",
+   "inverter": "8 kW inverter",
+   "battery_kwh": 10.24,
+   "type": "hybrid",
+   "price_php": 410000,
+   "price_note": "All-in, non-VAT",
+   "area": "Metro Manila, Bulacan and Cebu",
+   "regions": [
+    "NCR",
+    "III"
+   ],
+   "link": "https://achivsolar.com/",
+   "photo": "https://achivsolar.com/metro-manila-hybrid-roof-array-aerial-2026.jpg",
+   "contact": {
+    "phones": [
+     "+63 945 850 7938"
+    ],
+    "viber": "+63 945 850 7938"
+   }
+  },
+  {
+   "id": "achiv-max-hybrid-12-kw",
+   "synthetic": false,
+   "installer": "Achiv Solar",
+   "installer_site": "https://achivsolar.com/",
+   "name": "Max (Hybrid 12 kW)",
+   "kwp": 14.88,
+   "kwp_basis": "panels × watts",
+   "panels": "24 × 620 W",
+   "inverter": "12 kW inverter",
+   "battery_kwh": 16,
+   "type": "hybrid",
+   "price_php": 600000,
+   "price_note": "All-in, non-VAT",
+   "area": "Metro Manila, Bulacan and Cebu",
+   "regions": [
+    "NCR",
+    "III"
+   ],
+   "link": "https://achivsolar.com/",
+   "photo": "https://achivsolar.com/metro-manila-hybrid-roof-array-aerial-2026.jpg",
+   "contact": {
+    "phones": [
+     "+63 945 850 7938"
+    ],
+    "viber": "+63 945 850 7938"
+   }
+  },
+  {
+   "id": "beyondpower-6kw-hybrid-package",
+   "synthetic": false,
+   "installer": "Beyond Power Asia",
+   "installer_site": "https://beyondpower.asia/",
+   "name": "6kW Hybrid Package",
+   "kwp": 6.25,
+   "kwp_basis": "panels × watts",
+   "panels": "10 × Trina 625 W",
+   "inverter": "Deye 6 kW hybrid",
+   "battery_kwh": 16,
+   "type": "hybrid",
+   "price_php": 374000,
+   "price_note": "Fixed price installed, 50% down",
+   "area": "Metro Manila",
+   "regions": [
+    "NCR"
+   ],
+   "link": "https://beyondpower.asia/",
+   "photo": "https://beyondpower.asia/wp-content/themes/beyondpower-child/assets/img/img-02.jpg",
+   "contact": {
+    "phones": [
+     "0927-433-4555"
+    ]
+   }
+  },
+  {
+   "id": "beyondpower-8kw-hybrid-package",
+   "synthetic": false,
+   "installer": "Beyond Power Asia",
+   "installer_site": "https://beyondpower.asia/",
+   "name": "8kW Hybrid Package",
+   "kwp": 8.75,
+   "kwp_basis": "panels × watts",
+   "panels": "14 × Trina 625 W",
+   "inverter": "Deye 8 kW hybrid",
+   "battery_kwh": 16,
+   "type": "hybrid",
+   "price_php": 441400,
+   "price_note": "Fixed price installed, 50% down",
+   "area": "Metro Manila",
+   "regions": [
+    "NCR"
+   ],
+   "link": "https://beyondpower.asia/",
+   "photo": "https://beyondpower.asia/wp-content/themes/beyondpower-child/assets/img/img-02.jpg",
+   "contact": {
+    "phones": [
+     "0927-433-4555"
+    ]
+   }
+  },
+  {
+   "id": "beyondpower-12kw-hybrid-package",
+   "synthetic": false,
+   "installer": "Beyond Power Asia",
+   "installer_site": "https://beyondpower.asia/",
+   "name": "12kW Hybrid Package",
+   "kwp": 12.5,
+   "kwp_basis": "panels × watts",
+   "panels": "20 × Trina 625 W",
+   "inverter": "Deye 12 kW hybrid",
+   "battery_kwh": 16,
+   "type": "hybrid",
+   "price_php": 596900,
+   "price_note": "Fixed price installed, 50% down",
+   "area": "Metro Manila",
+   "regions": [
+    "NCR"
+   ],
+   "link": "https://beyondpower.asia/",
+   "photo": "https://beyondpower.asia/wp-content/themes/beyondpower-child/assets/img/img-02.jpg",
+   "contact": {
+    "phones": [
+     "0927-433-4555"
+    ]
+   }
+  },
+  {
+   "id": "beyondpower-16kw-hybrid-package",
+   "synthetic": false,
+   "installer": "Beyond Power Asia",
+   "installer_site": "https://beyondpower.asia/",
+   "name": "16kW Hybrid Package",
+   "kwp": 16.88,
+   "kwp_basis": "panels × watts",
+   "panels": "27 × Trina 625 W",
+   "inverter": "Deye 16 kW hybrid",
+   "battery_kwh": 16,
+   "type": "hybrid",
+   "price_php": 731300,
+   "price_note": "Fixed price installed, 50% down",
+   "area": "Metro Manila",
+   "regions": [
+    "NCR"
+   ],
+   "link": "https://beyondpower.asia/",
+   "photo": "https://beyondpower.asia/wp-content/themes/beyondpower-child/assets/img/img-02.jpg",
+   "contact": {
+    "phones": [
+     "0927-433-4555"
+    ]
+   }
+  },
+  {
+   "id": "triple30-starter-3-kwp",
+   "synthetic": false,
+   "installer": "Triple30 Renewables",
+   "installer_site": "https://triple30renewables.com/",
+   "name": "Starter 3 kWp",
+   "kwp": 3.0,
+   "kwp_basis": "stated",
+   "panels": "6 × 550 W Tier-1",
+   "inverter": "3 kW hybrid-ready inverter",
+   "battery_kwh": null,
+   "type": "grid-tied",
+   "price_php": 180000,
+   "price_note": "From, final price after a site survey",
+   "area": "Metro Manila and beyond",
+   "regions": [
+    "NCR"
+   ],
+   "link": "https://triple30renewables.com/",
+   "photo": "/packages/triple30-starter-3-kwp.svg",
+   "contact": {
+    "phones": [
+     "09955490515"
+    ],
+    "emails": [
+     "account@twinqophil.com"
+    ]
+   }
+  },
+  {
+   "id": "triple30-home-5-kwp",
+   "synthetic": false,
+   "installer": "Triple30 Renewables",
+   "installer_site": "https://triple30renewables.com/",
+   "name": "Home 5 kWp",
+   "kwp": 5.0,
+   "kwp_basis": "stated",
+   "panels": "9 × 550 W Tier-1",
+   "inverter": "5 kW hybrid inverter",
+   "battery_kwh": null,
+   "type": "grid-tied",
+   "price_php": 285000,
+   "price_note": "From, final price after a site survey",
+   "area": "Metro Manila and beyond",
+   "regions": [
+    "NCR"
+   ],
+   "link": "https://triple30renewables.com/",
+   "photo": "/packages/triple30-home-5-kwp.svg",
+   "contact": {
+    "phones": [
+     "09955490515"
+    ],
+    "emails": [
+     "account@twinqophil.com"
+    ]
+   }
+  },
+  {
+   "id": "triple30-premium-10-kwp",
+   "synthetic": false,
+   "installer": "Triple30 Renewables",
+   "installer_site": "https://triple30renewables.com/",
+   "name": "Premium 10 kWp",
+   "kwp": 10.0,
+   "kwp_basis": "stated",
+   "panels": "18 × 550 W Tier-1",
+   "inverter": "10 kW three-phase inverter (battery-ready)",
+   "battery_kwh": null,
+   "type": "grid-tied",
+   "price_php": 520000,
+   "price_note": "From, final price after a site survey",
+   "area": "Metro Manila and beyond",
+   "regions": [
+    "NCR"
+   ],
+   "link": "https://triple30renewables.com/",
+   "photo": "/packages/triple30-premium-10-kwp.svg",
+   "contact": {
+    "phones": [
+     "09955490515"
+    ],
+    "emails": [
+     "account@twinqophil.com"
+    ]
+   }
+  },
+  {
+   "id": "sample-sample-grid-tied-4-kwp",
+   "synthetic": true,
+   "installer": "Sample installer (made-up)",
+   "installer_site": null,
+   "name": "Sample grid-tied 4 kWp",
+   "kwp": 4.0,
+   "kwp_basis": "stated",
+   "panels": "7 × 580 W",
+   "inverter": "4 kW grid-tied inverter",
+   "battery_kwh": null,
+   "type": "grid-tied",
+   "price_php": 215000,
+   "price_note": "Made-up example price",
+   "area": "Metro Manila, Central Luzon and CALABARZON",
+   "regions": [
+    "NCR",
+    "III",
+    "IV-A"
+   ],
+   "link": null,
+   "photo": "/packages/sample-sample-grid-tied-4-kwp.svg",
+   "contact": null
+  },
+  {
+   "id": "sample-sample-grid-tied-6-6-kwp",
+   "synthetic": true,
+   "installer": "Sample installer (made-up)",
+   "installer_site": null,
+   "name": "Sample grid-tied 6.6 kWp",
+   "kwp": 6.6,
+   "kwp_basis": "stated",
+   "panels": "11 × 600 W",
+   "inverter": "6 kW grid-tied inverter",
+   "battery_kwh": null,
+   "type": "grid-tied",
+   "price_php": 335000,
+   "price_note": "Made-up example price",
+   "area": "Metro Manila, Central Luzon and CALABARZON",
+   "regions": [
+    "NCR",
+    "III",
+    "IV-A"
+   ],
+   "link": null,
+   "photo": "/packages/sample-sample-grid-tied-6-6-kwp.svg",
+   "contact": null
+  },
+  {
+   "id": "sample-sample-grid-tied-8-4-kwp",
+   "synthetic": true,
+   "installer": "Sample installer (made-up)",
+   "installer_site": null,
+   "name": "Sample grid-tied 8.4 kWp",
+   "kwp": 8.4,
+   "kwp_basis": "stated",
+   "panels": "14 × 600 W",
+   "inverter": "8 kW grid-tied inverter",
+   "battery_kwh": null,
+   "type": "grid-tied",
+   "price_php": 425000,
+   "price_note": "Made-up example price",
+   "area": "Metro Manila, Central Luzon and CALABARZON",
+   "regions": [
+    "NCR",
+    "III",
+    "IV-A"
+   ],
+   "link": null,
+   "photo": "/packages/sample-sample-grid-tied-8-4-kwp.svg",
+   "contact": null
+  },
+  {
+   "id": "sample-sample-off-grid-3-kwp",
+   "synthetic": true,
+   "installer": "Sample installer (made-up)",
+   "installer_site": null,
+   "name": "Sample off-grid 3 kWp",
+   "kwp": 3.0,
+   "kwp_basis": "stated",
+   "panels": "5 × 600 W",
+   "inverter": "3 kW off-grid inverter",
+   "battery_kwh": 10,
+   "type": "off-grid",
+   "price_php": 330000,
+   "price_note": "Made-up example price",
+   "area": "Metro Manila, Central Luzon and CALABARZON",
+   "regions": [
+    "NCR",
+    "III",
+    "IV-A"
+   ],
+   "link": null,
+   "photo": "/packages/sample-sample-off-grid-3-kwp.svg",
+   "contact": null
+  },
+  {
+   "id": "sample-sample-off-grid-5-kwp",
+   "synthetic": true,
+   "installer": "Sample installer (made-up)",
+   "installer_site": null,
+   "name": "Sample off-grid 5 kWp",
+   "kwp": 5.0,
+   "kwp_basis": "stated",
+   "panels": "8 × 620 W",
+   "inverter": "5 kW off-grid inverter",
+   "battery_kwh": 15,
+   "type": "off-grid",
+   "price_php": 470000,
+   "price_note": "Made-up example price",
+   "area": "Metro Manila, Central Luzon and CALABARZON",
+   "regions": [
+    "NCR",
+    "III",
+    "IV-A"
+   ],
+   "link": null,
+   "photo": "/packages/sample-sample-off-grid-5-kwp.svg",
+   "contact": null
+  },
+  {
+   "id": "sample-sample-off-grid-8-kwp",
+   "synthetic": true,
+   "installer": "Sample installer (made-up)",
+   "installer_site": null,
+   "name": "Sample off-grid 8 kWp",
+   "kwp": 8.0,
+   "kwp_basis": "stated",
+   "panels": "13 × 620 W",
+   "inverter": "8 kW off-grid inverter",
+   "battery_kwh": 20,
+   "type": "off-grid",
+   "price_php": 680000,
+   "price_note": "Made-up example price",
+   "area": "Metro Manila, Central Luzon and CALABARZON",
+   "regions": [
+    "NCR",
+    "III",
+    "IV-A"
+   ],
+   "link": null,
+   "photo": "/packages/sample-sample-off-grid-8-kwp.svg",
+   "contact": null
+  }
+ ]
+}

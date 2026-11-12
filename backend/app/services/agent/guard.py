@@ -89,3 +89,34 @@ def check_text(text: str, allowed: Allowed) -> list[str]:
         if not allowed.matches(x, unit):
             bad.append(m.group(0).strip())
     return bad
+
+
+# ---- the model must ask about the step Sol is actually on ---------------------------------------------------------
+_SLOT_WORDS = {
+    "site": r"\b(?:roof|installation site|site|address|sketch|draw|outline|canvas|map)\b",
+    "load": r"\b(?:bill|kwh|usage|electricity|consumption)\b",
+    "system": r"\b(?:grid-tied|on-grid|off-grid|hybrid|system type)\b",
+    "budget": r"\b(?:budget|afford|spend)\b|₱",
+    "goal": r"\b(?:goal|savings|payback|backup|cut)\b",
+}
+_SLOT_FAMILY = {"roof_method": "site", "roof_address": "site", "roof_pick": "site", "roof_draw": "site", "load": "load",
+                "system_type": "system", "budget": "budget", "goal": "goal", "goal_param": "goal"}
+
+
+def off_slot_question(text: str, slot: str) -> bool:
+    """True when the last question in the reply is about a different step than the one Sol is on.
+
+    Example: Sol still needs the sketch, but the model says "Since your sketch is ready, what is your monthly bill?".
+    Only the final question, and within it the clause that does the asking, counts, so a recap like "Got 450 kWh. What is your budget?" passes. Replies with no
+    question, or a question matching no step, pass too.
+    """
+    family = _SLOT_FAMILY.get(slot)
+    questions = re.findall(r"[^.!?\n]*\?", text)
+    if not family or not questions:
+        return False
+    def topics(part: str) -> set[str]:
+        return {name for name, pattern in _SLOT_WORDS.items() if re.search(pattern, part, re.I)}
+
+    # "Since your sketch is ready, what is your bill?" asks about the bill: judge the clause after the last comma first.
+    hits = topics(questions[-1].rsplit(",", 1)[-1]) or topics(questions[-1])
+    return bool(hits) and family not in hits

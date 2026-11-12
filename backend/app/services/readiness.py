@@ -39,13 +39,13 @@ def _location(roof: RoofModel) -> dict:
     issues = []
     off = abs((roof.azimuth_deg - 180 + 180) % 360 - 180)
     if off > A("azimuth_watch_deg"):
-        issues.append(f"The roof faces {roof.azimuth_deg:g}° (180° is south), {off:g}° off south, which cuts output.")
+        issues.append(f"The installation site faces {roof.azimuth_deg:g}° (180° is south), {off:g}° off south, which cuts output.")
     if roof.confidence == "low":
-        issues.append("The roof outline is low confidence.")
+        issues.append("The site outline is low confidence.")
     if roof.scale_source == "default_grid":
-        issues.append("The sketch scale was not measured, so the roof size is a guess.")
+        issues.append("The sketch scale was not measured, so the site size is a guess.")
     checked = f"Sol checked the outline ({roof.usable_area_m2:g} m² usable), direction and tilt."
-    tail = "It cannot see structure, roof condition or shading from a map. Your installer must check those before install."
+    tail = "It cannot see structure, surface condition or shading from a map. Your installer must check those before install."
     return {"id": "location", "title": "Right location", "status": "watch" if issues else "confirm",
             "text": " ".join([*issues, checked, tail]), "source": SRC_NM}
 

@@ -78,12 +78,12 @@ def guess_azimuth(poly: Polygon) -> tuple[float, list[str]]:
     """Roof plane faces perpendicular to the long axis, whichever side is closest to south."""
     bearing, long_len, short_len = ring_bearing_axis(poly)
     if short_len <= 0 or long_len / short_len < 1.15:
-        return 180.0, ["Roof is nearly square, so the facing direction was assumed to be south. Please confirm it."]
+        return 180.0, ["The installation site is nearly square, so the facing direction was assumed to be south. Please confirm it."]
     cands = [(bearing + 90.0) % 360.0, (bearing + 270.0) % 360.0]
     d = [_ang_dist(c, 180.0) for c in cands]
     if abs(d[0] - d[1]) < 1e-6:
         west = min(cands, key=lambda c: _ang_dist(c, 270.0))
-        return west, ["The long axis runs north-south, so the roof faces east or west. West was assumed. Please confirm it."]
+        return west, ["The long axis runs north-south, so the panels face east or west. West was assumed. Please confirm it."]
     return cands[d.index(min(d))], []
 
 
@@ -129,7 +129,7 @@ def build_roof(
                        hint="Redraw it without crossing edges.", status=422)
     area = poly_utm.area
     if area < HARD_MIN_AREA_M2 or area > HARD_MAX_AREA_M2:
-        raise ApiError("invalid_area", f"The outline covers {area:.1f} m², which is not a plausible roof.",
+        raise ApiError("invalid_area", f"The outline covers {area:.1f} m², which is not a plausible installation site.",
                        hint="Check the scale or redraw the outline.", status=422)
     confidence = {"osm": "high", "drawn": "medium", "sketch": "medium", "photo": "low"}[source]
     if source == "sketch" and scale_source != "user_measured":
@@ -137,7 +137,7 @@ def build_roof(
         warnings.append("The scale was not measured. Enter one real measurement to improve accuracy.")
     if area < MIN_AREA_M2 or area > MAX_AREA_M2:
         confidence = "low"
-        warnings.append(f"A roof area of {area:.0f} m² looks unusual. Please check the outline and scale.")
+        warnings.append(f"An installation site area of {area:.0f} m² looks unusual. Please check the outline and scale.")
     if force_low:
         confidence = "low"
 
@@ -156,7 +156,7 @@ def build_roof(
         az, extra = guess_azimuth(local)
         notes.extend(extra)
     if roof_type == "flat" and azimuth_deg is None and facing == "auto":
-        notes.append("Flat roof: panels are assumed to face south on tilted racks.")
+        notes.append("Flat surface: panels are assumed to face south on tilted racks.")
 
     tilt = float(tilt_deg) if tilt_deg is not None else (A("default_tilt_flat_deg") if roof_type == "flat" else A("default_tilt_pitched_deg"))
     setback = float(setback_m) if setback_m is not None else A("setback_m")
@@ -168,13 +168,13 @@ def build_roof(
         if half is None:
             half = local
         plane = half
-        notes.append("Gable roof: modelled as one plane using the half of the footprint that faces the chosen direction.")
+        notes.append("Gable: modelled as one plane using the half of the footprint that faces the chosen direction.")
     elif roof_type == "single_slope":
-        notes.append("Single-slope roof: one plane over the whole footprint.")
+        notes.append("Single slope: one plane over the whole footprint.")
 
     usable = _largest(plane.buffer(-setback, join_style=2)) if setback > 0 else plane
     if usable is None or usable.is_empty:
-        warnings.append("The roof is too small after the edge setback, so no panels fit.")
+        warnings.append("The installation site is too small after the edge setback, so no panels fit.")
         usable = Polygon()
     usable_ring = _closed(list(usable.exterior.coords)) if not usable.is_empty else []
     usable_area = usable.area if not usable.is_empty else 0.0

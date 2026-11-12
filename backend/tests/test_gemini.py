@@ -181,7 +181,7 @@ def test_numbers_not_from_tools_are_blocked(client):
 def test_empty_model_response_falls_back_to_template(client):
     use([types.GenerateContentResponse(candidates=[])])
     msg = chat(client, "hi")
-    assert "roof" in msg["reply"]["text"].lower()
+    assert "installation site" in msg["reply"]["text"].lower()
 
 
 def test_history_is_sent_with_alternating_roles_starting_with_user(client):

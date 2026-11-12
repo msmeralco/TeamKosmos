@@ -33,12 +33,21 @@ def test_chat_asks_where_first_then_shows_the_table(client):
     cid = "inst-conv-0001-0123456789"
     reply(client, "I want to install solar", cid=cid)
     ask = reply(client, "can you suggest me some installer?", cid=cid)["reply"]
-    assert "Where is your home" in ask["text"] and "| Installer |" not in ask["text"]
+    assert "Where is your home" in ask["text"] and not [c for c in ask["cards"] if c["type"] == "installers"]
     assert "I'm in Metro Manila" in [n["text"] for n in ask["next"]]
     shown = reply(client, "I'm in Metro Manila", cid=cid)["reply"]
-    assert "| Installer | Area | Phone | Email | Website | DOE lists |" in shown["text"] and "does not endorse" in shown["text"]
+    card = next(c for c in shown["cards"] if c["type"] == "installers")["data"]
+    assert card["open"] is True and card["total"] == len(card["rows"]) >= 40 and "does not endorse" in card["disclaimer"]
+    assert "| Installer |" not in shown["text"] and "side panel" in shown["text"] and "does not endorse" in shown["text"]
+    assert all(r["name"] and isinstance(r["phones"], list) and isinstance(r["emails"], list) for r in card["rows"])
     assert any(n["text"].startswith("Show all solar installers in Metro Manila") for n in shown["next"])
-    every = reply(client, "Show all solar installers in Metro Manila", cid=cid)["reply"]
-    assert every["text"].count("\n| ") > shown["text"].count("\n| ")
     unknown = reply(client, "Show solar installers somewhere else", cid=cid)["reply"]
     assert "Where is your home" in unknown["text"]
+
+
+def test_starter_pill_prompts_reach_their_features(client):
+    assert nlu.detect_intent("Can you suggest me some installers?") == "installers"
+    assert nlu.detect_intent("Give me a brief on solar") == "brief"
+    brief = reply(client, "Give me a brief on solar", cid="brief-conv-0001-0123456789")["reply"]
+    assert "Three ways to connect" in brief["text"] and "Net Metering" in brief["text"] and "](https://www.meralco.com.ph" in brief["text"]
+    assert any(n["text"].startswith("How much does it cost to apply") for n in brief["next"])

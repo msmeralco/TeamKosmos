@@ -6,7 +6,7 @@ import re
 import time
 from typing import Protocol
 
-from .. import geo, installers, rag
+from .. import geo, installers, market_packages, rag
 from . import intake, nlu
 from .summary import render_tool_result
 from .tools import TurnContext
@@ -37,7 +37,9 @@ def tool_sentences(ctx: TurnContext) -> list[str]:
 def question_text(ctx: TurnContext) -> str:
     s = ctx.session
     if any(isinstance(r, dict) and r.get("needs_location") for r in ctx.results_of("find_installers")):
-        return ""  # we just asked where the home is; a second question about the roof would bury it
+        return ""  # we just asked where the home is; a second question about the site would bury it
+    if any(isinstance(r, dict) and r.get("found") for r in ctx.results_of("package_details")):
+        return ""  # the user is reading one package; repeating the whole summary would only bury it
     return intake.question_for(intake.next_slot(s), s, ctx.lang)
 
 
@@ -85,7 +87,7 @@ class ScriptedProvider:
     # details, (2) run the numbers, (3) the follow-ups that need the numbers. A step only starts when the one before
     # it worked. When one cannot be done yet, the rest are kept in pending["queued"] and finished automatically.
     FOLLOW_UP_TOOLS = {"nm_compare": "compare_net_metering", "fill_roof": "toggle_roof_fill", "passport": "issue_passport"}
-    ACTION_LABELS = {"run": "run the numbers", "nm_compare": "compare net metering", "fill_roof": "preview your whole roof",
+    ACTION_LABELS = {"run": "run the numbers", "nm_compare": "compare net metering", "fill_roof": "preview your whole installation site",
                      "passport": "create your Solar Passport"}
 
     @classmethod
@@ -169,6 +171,17 @@ class ScriptedProvider:
         if intent == "nm_compare" and analysed:
             ctx.call_tool("compare_net_metering", {})
             return True
+        if re.search(r"tell me more about|more (?:info|details?) (?:on|about)|details? (?:on|about|of)", text, re.I):
+            pk = market_packages.find(text)
+            if pk:
+                ctx.call_tool("package_details", {"name": pk["name"], "installer": None if pk["synthetic"] else pk["installer"]})
+                return True
+        if intent == "packages":
+            ctx.call_tool("find_packages", {"battery": nlu.battery_wish(text), "location": text if installers.region_for(text) else None})
+            return True
+        if intent == "brief":
+            ctx.call_tool("solar_brief", {})
+            return True
         if intent == "installers" or (s.pending.get("await_installer_location") and nlu.detect_intent(text) is None and slot not in ("roof_address", "roof_pick")
                                       and (installers.region_for(text) or len(text.split()) <= 4)):
             place = text if installers.region_for(text) or installers.RESET.search(text) or intent != "installers" else ""  # "suggest installers" names no place yet
@@ -230,7 +243,7 @@ class ScriptedProvider:
                 ctx.call_tool("request_roof_input", {"mode": method})
                 return True
             ctx.flags["open_map"] = True
-            notes.append("I don't see a roof outline yet. Please finish it in the map panel, then tell me.")
+            notes.append("I don't see an installation site outline yet. Please finish it in the map panel, then tell me.")
             return True
         if slot == "change":
             low = text.lower().strip()
@@ -248,8 +261,8 @@ class ScriptedProvider:
             if fields:  # "make it 250k": apply the new value directly instead of asking again
                 ctx.call_tool("update_profile", fields)
                 return True
-            for key, label in (("roof", "roof"), ("load", "bill"), ("budget", "budget"), ("goal", "goal"), ("system", "system")):
-                if label in text.lower():
+            for key, labels in (("roof", ("site", "roof")), ("load", ("bill",)), ("budget", ("budget",)), ("goal", ("goal",)), ("system", ("system",))):
+                if any(label in text.lower() for label in labels):
                     act = intake.match_choice(s, intake.CHANGE_CHOICES[key][2])
                     intake.run_action(s, act)  # type: ignore[arg-type]
                     return True

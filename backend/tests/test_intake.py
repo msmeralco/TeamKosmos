@@ -33,9 +33,11 @@ def test_slot_order_walks_to_done():
     intake.apply_updates(s, system_type="hybrid")
     assert intake.next_slot(s) == "budget"
     intake.apply_updates(s, budget_min_php=150000, budget_max_php=300000)
-    assert intake.next_slot(s) == "goal"
-    intake.apply_updates(s, goal="cut_bill")
-    assert intake.next_slot(s) == "goal_param"
+    assert intake.next_slot(s) == "confirm"  # no goal question: it defaults to the biggest 10-year savings
+    assert s.profile.goal == "max_savings_10y" and s.pending["goal_default"] is True
+    assert "Goal:" not in intake.summary_line(s) and "?" not in intake.question_for("confirm", s)
+    intake.apply_updates(s, goal="cut_bill")  # the user can still choose one
+    assert intake.next_slot(s) == "goal_param" and "goal_default" not in s.pending
     intake.apply_updates(s, goal_target_pct=70)
     assert intake.next_slot(s) == "confirm"
     intake.apply_updates(s, confirm_summary=True)

@@ -73,7 +73,7 @@ def load_demo() -> list[dict]:
             continue
         props = f.get("properties") or {}
         out.append({
-            "name": props.get("name", "Demo roof"),
+            "name": props.get("name", "Demo site"),
             "aliases": props.get("aliases", []),
             "synthetic": bool(props.get("synthetic", False)),
             "roof_shape": props.get("roof_shape"),
@@ -100,7 +100,7 @@ def _demo_matches(query: str) -> list[dict]:
         names = [_norm(e["name"])] + [_norm(a) for a in e["aliases"]]
         if any(n and (n in q or q in n) for n in names):
             lon, lat = _demo_centroid(e)
-            hits.append({"label": e["name"] + (" (synthetic demo roof)" if e["synthetic"] else ""),
+            hits.append({"label": e["name"] + (" (synthetic demo site)" if e["synthetic"] else ""),
                          "lat": lat, "lon": lon, "source": "demo"})
     return hits
 
@@ -257,13 +257,13 @@ def roof_from_address(lat: float, lon: float) -> RoofModel:
                 ways = _fetch_overpass(lat, lon)
             except LookupUnavailable:
                 raise ApiError("lookup_unavailable", "The map data service did not answer in time.",
-                               hint="Draw the roof on the map instead.", status=503)
+                               hint="Draw your installation site on the map instead.", status=503)
             cache.cache_set(key, ways, ttl_s=OUTLINE_TTL_S)
         way = _pick_way([{**w, "ring": [tuple(p) for p in w["ring"]]} for w in ways], lat, lon)
         source_note = "Outline from OpenStreetMap contributors (ODbL)."
     if way is None:
         raise ApiError("no_building", "I could not find a building outline at that spot.",
-                       hint="Draw the roof on the map instead.", status=404)
+                       hint="Draw your installation site on the map instead.", status=404)
     shape = _ROOF_SHAPE.get(str((way.get("tags") or {}).get("roof:shape", "")).lower(), "flat")
     from ..models import FinalizeRequest, LatLon
 

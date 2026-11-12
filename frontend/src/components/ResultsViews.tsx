@@ -172,7 +172,7 @@ export function OverviewView({ conversationId, onNewChat }: { conversationId: st
   if (loading) return <div className={shell}><p className="text-[13px] text-[#787774]">Loading your results…</p></div>;
   if (err) return <Empty title="Overview & Analytics" text={err} onNewChat={onNewChat} />;
   if (!summary) {
-    return <Empty title="Overview & Analytics" text="No results yet. Tell Sol about your roof, usage, budget and goal in the chat, then ask it to run the numbers." onNewChat={onNewChat} />;
+    return <Empty title="Overview & Analytics" text="No results yet. Tell Sol about your installation site, usage, budget and goal in the chat, then ask it to run the numbers." onNewChat={onNewChat} />;
   }
   return (
     <div className={shell}>

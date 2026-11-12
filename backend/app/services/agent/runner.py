@@ -12,11 +12,11 @@ from typing import Iterator
 from ...config import Settings, get_settings
 from ...errors import ApiError
 from ...models import FinalizeRequest, FromAddressRequest, LatLon, RoofModel, SketchRequest
-from .. import geo, installers as installers_svc, roof as roof_svc
+from .. import geo, installers as installers_svc, market_packages, roof as roof_svc
 from . import followups, guard, intake, summary as summary_svc
 from .providers import Provider, ProviderUnavailable, ScriptedProvider, question_text, tool_sentences
 from .session import Session, load_session, save_session
-from .tools import TurnContext, jsonable, layout_for_selected, profile_view, roof_summary
+from .tools import TurnContext, budget_packages_card, jsonable, layout_for_selected, market_region as tools_market_region, profile_view, roof_summary
 
 log = logging.getLogger("sol.agent")
 PLACEHOLDER_TEXT = "attached files"  # what the UI sends for a files-only message
@@ -197,6 +197,15 @@ def _worker(req: ChatRequest, settings: Settings, out: "queue.Queue", ctx_box: l
                 session.guard_events.append({"at": time.time(), "untraced": bad[:10], "original": text[:400]})
                 del session.guard_events[:-20]
                 text = safe_text(ctx)
+            elif guard.off_slot_question(text, intake.next_slot(session)):
+                # The model skipped ahead (for example it says the sketch is ready, but Sol has not received one), so its
+                # question would not match the suggestion pills. Ask the question for the step Sol is really on.
+                slot_now = intake.next_slot(session)
+                log.warning("off-script reply replaced; slot=%s", slot_now)
+                session.guard_events.append({"at": time.time(), "untraced": [], "off_slot": slot_now, "original": text[:400]})
+                del session.guard_events[:-20]
+                lead = "I don't see your installation site outline yet." if slot_now == "roof_draw" else ""
+                text = " ".join(p for p in (lead, safe_text(ctx)) if p)
 
         # The results table is built from tool results only (so it is exempt from the number guard) and goes above
         # the model's explanation. History keeps just the explanation, to keep the next prompt short.
@@ -204,17 +213,28 @@ def _worker(req: ChatRequest, settings: Settings, out: "queue.Queue", ctx_box: l
         for res in ctx.results_of("run_analysis"):
             if isinstance(res, dict) and res.get("summary"):
                 blocks.append(summary_svc.analysis_markdown(res["summary"]))
+                top = res["summary"]["packages"][0]
+                kind = "off-grid" if res["summary"].get("system_type") == "off_grid" else "hybrid" if top.get("battery") else "grid-tied"
+                # A card the panel can show; "open": False means it only appears as a link in the chat until the user asks.
+                ctx.cards.append({"type": "packages", "data": {**market_packages.panel(top["kwp"], kind, tools_market_region(session), session.profile.budget_min_php,
+                                                                                         session.profile.budget_max_php), "open": False}})
         for res in ctx.results_of("issue_passport")[-1:]:
             if isinstance(res, dict) and res.get("id"):
                 blocks.append(summary_svc.passport_markdown(res))
-        for res in ctx.results_of("find_installers")[-1:]:
-            if isinstance(res, dict) and res.get("found"):
-                blocks.append(installers_svc.table_markdown(res))
+        for res in ctx.results_of("package_details")[-1:]:
+            if isinstance(res, dict) and res.get("markdown"):
+                blocks.append(res["markdown"])
+        for res in ctx.results_of("solar_brief")[-1:]:
+            if isinstance(res, dict) and res.get("markdown"):
+                blocks.append(res["markdown"])
         for res in ctx.results_of("toggle_roof_fill")[-1:]:
             if isinstance(res, dict) and res.get("mode") == "full":
                 blocks.append(summary_svc.roof_fill_markdown(res))
         shown = "\n\n".join([*blocks, text])
 
+        offered = budget_packages_card(ctx)  # the budget just landed: show what fits it, in the side panel
+        if offered:
+            ctx.cards.append(offered)
         reply = _build_reply(ctx, shown)
         session.add_history("user", user_text or f"[attached {len(req.files)} file(s)]")
         session.add_history("model", text)
