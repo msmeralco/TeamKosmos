@@ -1,0 +1,27 @@
+# Retailer sources for live price search. NO source is enabled by default.
+#
+# Before enabling a source, a human must check by hand:
+#   1. the site's robots.txt allows the listing URLs,
+#   2. the site's terms of service allow automated reading,
+#   3. the page is static HTML (JSON-LD Product data, or stable CSS selectors).
+# Then fill checked_on / robots_ok / terms_ok and set enabled: true.
+# The fetcher also re-checks robots.txt at run time and skips disallowed URLs.
+#
+# Example (disabled, not a real shop):
+sources:
+  - name: example-shop
+    enabled: false
+    base_url: https://shop.example.invalid
+    checked_on: ""
+    robots_ok: false
+    terms_ok: false
+    listings:
+      panel: /collections/solar-panels
+      inverter: /collections/inverters
+      battery: /collections/batteries
+    selectors:            # optional; JSON-LD Product data is tried first
+      item: ".product-card"
+      name: ".product-title"
+      price: ".price"
+      link: "a"
+    notes: "Replace with a real, hand-checked retailer."

@@ -2,6 +2,7 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
@@ -12,8 +13,13 @@ import {
 } from "react";
 import { AnimatePresence, domAnimation, LazyMotion, m } from "framer-motion";
 import { Icon } from "./components/icons";
+<<<<<<< HEAD
 import { LoginView } from "./components/LoginView";
 import { MapCanvas, type SolarZone } from "./components/MapCanvas";
+=======
+import { MapCanvas } from "./components/MapCanvas";
+import { ApiError, deleteSession, streamChat, type StepEvent } from "./lib/api";
+>>>>>>> 38d8bce71fe8a3faa1a19755de7acdd5950cc071
 import {
   ConfirmDialog,
   MenuItem,
@@ -83,7 +89,6 @@ type AgentMsg = {
   reply?: {
     text: string;
     hasMapArtifact?: boolean;
-    selectedZone?: SolarZone;
     next?: Suggestion[];
   };
 };
@@ -152,6 +157,30 @@ function FileThumb({ file }: { file: File }) {
   return <img src={url} alt={file.name} className="h-5 w-5 rounded-[4px] object-cover" />;
 }
 
+/** Add a step, or update the one with the same id (ids are stable per turn). */
+function upsertStep(steps: AgentStep[], s: StepEvent): AgentStep[] {
+  const i = steps.findIndex((x) => x.id === s.id);
+  if (i < 0) return [...steps, s];
+  const next = steps.slice();
+  next[i] = s;
+  return next;
+}
+
+/** Reveals a reply word by word so it reads like someone answering. Plays once per message. */
+const typed = new Set<number>();
+function TypedText({ id, text, animate }: { id: number; text: string; animate: boolean }) {
+  const words = useMemo(() => text.split(/(\s+)/), [text]);
+  const [play] = useState(() => animate && !typed.has(id)); // decided once: later renders must not cancel the animation
+  const [shown, setShown] = useState(play ? 0 : words.length);
+  useEffect(() => {
+    if (!play) return;
+    typed.add(id);
+    const t = setInterval(() => setShown((n) => (n >= words.length ? n : n + 2)), 28);
+    return () => clearInterval(t);
+  }, [play, id, words.length]);
+  return <p className="text-[15px] leading-relaxed">{words.slice(0, shown).join("")}</p>;
+}
+
 /* ------------------------------------------------------------------ */
 /* Main App Component                                                  */
 /* ------------------------------------------------------------------ */
@@ -164,7 +193,7 @@ export default function App() {
 
   /* Roof Map view state: true = side-by-side view; false = centered 100% workspace */
   const [canvasOpen, setCanvasOpen] = useState(false);
-  const [selectedZone, setSelectedZone] = useState<SolarZone | null>(null);
+  const [roofTick, setRoofTick] = useState(0);
 
   /* Adjustable split state: default 40% chat / 60% map */
   const [splitPercent, setSplitPercent] = useState(40);
@@ -248,18 +277,13 @@ export default function App() {
     setConvos((cs) => cs.map((c) => (c.id === cid ? { ...c, messages: [...c.messages, msg] } : c)));
   }, []);
 
-  /* Pure UI-only local turn simulation with contextual map triggers */
-  const runUiTurn = useCallback(
-    (cid: string, promptText: string, isNew: boolean, zone?: SolarZone) => {
+  /* One real turn: stream the backend agent's steps and reply into the chat. */
+  const runTurn = useCallback(
+    (cid: string, text: string, isNew: boolean, rawFiles: File[]) => {
       if (busyRef.current) return;
       busyRef.current = true;
       setBusy(true);
       const mid = nextMsg.current++;
-
-      const isRoofQuery = Boolean(
-        zone ||
-        /roof|map|satellite|cluster|area|rooftop|orientation|tilt|kwp|panel/i.test(promptText)
-      );
 
       const patch = (fn: (m: AgentMsg) => AgentMsg) =>
         setConvos((cs) =>
@@ -267,146 +291,62 @@ export default function App() {
             c.id !== cid ? c : { ...c, messages: c.messages.map((m) => (m.id === mid && m.from === "agent" ? fn(m) : m)) },
           ),
         );
+      const allDone = (steps: AgentStep[]): AgentStep[] => steps.map((s) => ({ ...s, status: "done" as const }));
 
-      const stepLabels = [
-        "Reading household parameters",
-        isRoofQuery ? "Preparing roof map canvas" : "Analyzing consumption profile",
-        isRoofQuery ? "Calculating rooftop solar yield" : "Calculating Meralco solar ROI",
-      ];
+      appendMsg(cid, { id: mid, from: "agent", phase: isNew ? "booting" : "working", steps: [] });
 
-      appendMsg(cid, {
-        id: mid,
-        from: "agent",
-        phase: isNew ? "booting" : "working",
-        steps: [],
-      });
-
-      const t1 = setTimeout(() => {
-        patch((m) => ({
-          ...m,
-          phase: "working",
-          steps: [{ id: "s1", label: stepLabels[0], status: "running" }],
-        }));
-      }, 260);
-
-      const t2 = setTimeout(() => {
-        patch((m) => ({
-          ...m,
-          phase: "working",
-          steps: [
-            { id: "s1", label: stepLabels[0], status: "done" },
-            { id: "s2", label: stepLabels[1], status: "running" },
-          ],
-        }));
-      }, 680);
-
-      const t3 = setTimeout(() => {
-        patch((m) => ({
-          ...m,
-          phase: "working",
-          steps: [
-            { id: "s1", label: stepLabels[0], status: "done" },
-            { id: "s2", label: stepLabels[1], status: "done" },
-            { id: "s3", label: stepLabels[2], status: "running" },
-          ],
-        }));
-      }, 1080);
-
-      const t4 = setTimeout(() => {
-        let replyText = "";
-        let nextSuggestions: Suggestion[] = [];
-
-        if (zone) {
-          replyText = `Inspecting ${zone.name}. Usable roof area is estimated at ${zone.area} with a peak solar capacity of ${zone.capacity}. Projected bill reduction is ${zone.savings}.`;
-          nextSuggestions = [
-            { id: "quote", label: "Request installer quote", text: "Request installer quote for this zone" },
-            { id: "tilt", label: "Adjust azimuth & tilt", text: "Adjust azimuth and roof tilt angle" },
-          ];
-        } else if (isRoofQuery) {
-          replyText = `Here is the roof analysis for ${persona.name} (${persona.subtitle} · ${persona.location}). The interactive map displays high-suitability rooftop clusters in your area.`;
-          nextSuggestions = [
-            { id: "bill", label: "Compare monthly bill options", hint: "On-grid vs hybrid solar overview", text: "Compare monthly bill options" },
-            { id: "roof", label: "Adjust roof area & orientation", hint: "Enter roof type, tilt, and usable area", text: "Adjust roof area & orientation" },
-          ];
-        } else if (/bill|meralco|cost|tariff|kwh|pesos|₱/i.test(promptText)) {
-          replyText = `Based on a 450 kWh monthly consumption at ~₱12.45/kWh Meralco residential tariff, an on-grid 4.5 kWp solar array offsets up to 68% of daytime charges, saving ~₱5,800/month with an estimated 3.9-year payback period.`;
-          nextSuggestions = [
-            { id: "map-open", label: "View rooftop suitability map", text: "Help me estimate my roof size and solar capacity" },
-            { id: "packages", label: "Compare on-grid and hybrid", text: "Compare on-grid and hybrid solar packages" },
-          ];
-        } else if (/package|grid|hybrid|battery|compare/i.test(promptText)) {
-          replyText = `Solar package comparison for ${persona.name}:\n• On-Grid (₱180k – ₱230k): Fastest ROI, exports excess daytime power to Meralco via Net-Metering.\n• Hybrid with Battery (₱310k – ₱390k): Includes 5kWh LFP storage, provides seamless blackout protection during brownouts.`;
-          nextSuggestions = [
-            { id: "map-open", label: "Check roof size for packages", text: "Help me estimate my roof size and solar capacity" },
-            { id: "quote", label: "Get verified quote", text: "How do I get verified installer quotes?" },
-          ];
-        } else {
-          replyText = `I have updated your clean energy recommendations for ${persona.name}. You can review the rooftop map, inspect zone clusters, or compare monthly bill savings.`;
-          nextSuggestions = [
-            { id: "roof", label: "Check roof size", text: "Help me estimate my roof size and solar capacity" },
-            { id: "bill", label: "Analyze monthly bill", text: "Analyze a ₱6,780 monthly electricity bill" },
-          ];
-        }
-
-        patch((m) => ({
-          ...m,
-          phase: "done",
-          steps: [
-            { id: "s1", label: stepLabels[0], status: "done" },
-            { id: "s2", label: stepLabels[1], status: "done" },
-            { id: "s3", label: stepLabels[2], status: "done" },
-          ],
-          reply: {
-            text: replyText,
-            hasMapArtifact: true,
-            selectedZone: zone,
-            next: nextSuggestions,
-          },
-        }));
-
-        /* Contextual Auto-Open: only open when the query specifically relates to roof / map / zone */
-        if (isRoofQuery) {
-          setCanvasOpen(true);
-        }
-        setDrawerOpen(false);
-        abortRef.current = null;
-        busyRef.current = false;
-        setBusy(false);
-      }, 1450);
-
+      const controller = new AbortController();
       abortRef.current = () => {
-        clearTimeout(t1);
-        clearTimeout(t2);
-        clearTimeout(t3);
-        clearTimeout(t4);
+        controller.abort();
         patch((m) => ({
           ...m,
           phase: "done",
-          steps: m.steps.map((s) => (s.status === "running" ? { ...s, status: "done" } : s)),
-          reply: {
-            text: "Generation stopped.",
-            hasMapArtifact: isRoofQuery,
-            selectedZone: zone,
-            next: [
-              { id: "retry", label: "Retry analysis", text: promptText },
-              { id: "roof", label: "Check roof size", text: "Help me estimate my roof size and solar capacity" },
-            ],
-          },
+          steps: allDone(m.steps),
+          reply: { text: "Generation stopped.", hasMapArtifact: false, next: [] },
         }));
       };
 
-      return () => {
-        clearTimeout(t1);
-        clearTimeout(t2);
-        clearTimeout(t3);
-        clearTimeout(t4);
-      };
+      streamChat({
+        conversationId: cid,
+        message: text || "Attached files",
+        personaId,
+        language: "auto",
+        files: rawFiles,
+        signal: controller.signal,
+        onStep: (s) => patch((m) => ({ ...m, phase: "working", steps: upsertStep(m.steps, s) })),
+      })
+        .then((reply) => {
+          patch((m) => ({
+            ...m,
+            phase: "done",
+            steps: allDone(m.steps),
+            reply: { text: reply.text, hasMapArtifact: reply.hasMapArtifact, next: reply.next },
+          }));
+          if (reply.hasMapArtifact) {
+            setCanvasOpen(true);
+            setDrawerOpen(false);
+          }
+          setRoofTick((t) => t + 1);
+        })
+        .catch((err: unknown) => {
+          if (controller.signal.aborted) return; // stopTurn already updated the message
+          const message =
+            err instanceof ApiError && err.status > 0
+              ? err.message
+              : "I couldn't reach the Sol server. Make sure the backend is running on port 8000, then try again.";
+          patch((m) => ({ ...m, phase: "done", steps: allDone(m.steps), reply: { text: message, hasMapArtifact: false, next: [] } }));
+        })
+        .finally(() => {
+          abortRef.current = null;
+          busyRef.current = false;
+          setBusy(false);
+        });
     },
-    [appendMsg, persona],
+    [appendMsg, personaId],
   );
 
   const ask = useCallback(
-    (text: string, files: string[] = [], previews?: (string | null)[], zone?: SolarZone) => {
+    (text: string, files: string[] = [], previews?: (string | null)[], rawFiles: File[] = []) => {
       const t = text.trim();
       if ((!t && !files.length) || busyRef.current) return;
       let cid = currentId;
@@ -424,9 +364,14 @@ export default function App() {
         files: files.length ? files : undefined,
         previews: files.length ? previews : undefined,
       });
-      runUiTurn(cid, t, isNew, zone);
+      runTurn(cid, t, isNew, rawFiles);
     },
-    [currentId, appendMsg, runUiTurn],
+    [currentId, appendMsg, runTurn],
+  );
+
+  const onRoofSubmitted = useCallback(
+    (what: "drawn" | "sketch") => ask(what === "sketch" ? "I've finished sketching my roof." : "I've finished drawing my roof outline."),
+    [ask],
   );
 
   const toggleCanvas = useCallback(() => {
@@ -439,11 +384,6 @@ export default function App() {
     });
   }, []);
 
-  const handleZoneSelect = (zone: SolarZone) => {
-    setSelectedZone(zone);
-    ask(`Inspect solar potential for ${zone.name}`, [], undefined, zone);
-  };
-
   const newChat = () => {
     stopTurn();
     setCurrentId(null);
@@ -454,6 +394,7 @@ export default function App() {
 
   const deleteChat = (id: string) => {
     setDeleteOpen(false);
+    void deleteSession(id);
     if (currentId === id) {
       stopTurn();
       setCurrentId(null);
@@ -896,12 +837,8 @@ export default function App() {
                 transition={isDragging ? { duration: 0 } : { duration: 0.36, ease: [0.32, 0.72, 0, 1] }}
                 className="relative flex h-full shrink-0 overflow-hidden bg-[#fafaf9] border-l border-[#f0f0ee] will-change-transform"
               >
-                <div className="relative h-full w-full min-w-0 overflow-hidden">
-                  <MapCanvas
-                    onSelectZone={handleZoneSelect}
-                    onClose={() => setCanvasOpen(false)}
-                    selectedZoneId={selectedZone?.id}
-                  />
+                <div className="relative flex h-full w-full min-w-0 flex-col overflow-hidden">
+                  <MapCanvas conversationId={currentId} personaId={personaId} refreshKey={roofTick} onSubmitted={onRoofSubmitted} />
                 </div>
               </m.div>
             )}
@@ -929,11 +866,9 @@ export default function App() {
 function MapArtifactCard({
   open,
   onToggle,
-  zone,
 }: {
   open: boolean;
   onToggle: () => void;
-  zone?: SolarZone;
 }) {
   return (
     <button
@@ -949,10 +884,10 @@ function MapArtifactCard({
       </span>
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[13px] font-semibold text-[#111111]">
-          {zone ? zone.name : "Roof Map Analysis"}
+          Roof Map Analysis
         </span>
         <span className="block truncate text-[11px] text-[#787774]">
-          {zone ? `${zone.area} · ${zone.capacity} · ${zone.savings}` : (open ? "Active on right map canvas" : "Click to view map")}
+          {open ? "Active on right map canvas" : "Click to view map"}
         </span>
       </span>
       <span className="text-[#a3a3a3]">{Icon.chevronRight}</span>
@@ -987,7 +922,7 @@ function ChatView({
   persona: Persona;
   canvasOpen: boolean;
   onToggleCanvas: () => void;
-  onAsk: (text: string, files?: string[], previews?: (string | null)[]) => void;
+  onAsk: (text: string, files?: string[], previews?: (string | null)[], rawFiles?: File[]) => void;
   onStop: () => void;
 }) {
   const [input, setInput] = useState("");
@@ -1056,6 +991,7 @@ function ChatView({
       message,
       currentFiles.map((f) => f.name),
       previews,
+      currentFiles,
     );
     setInput("");
     setFiles([]);
@@ -1182,7 +1118,7 @@ function ChatView({
                   {/* Agent Message Content */}
                   {m.reply && (
                     <div className="rounded-[14px] bg-[#fafaf9] p-4 text-[13px] text-[#111111] border border-[#f0f0ee]">
-                      <p className="leading-relaxed whitespace-pre-wrap">{m.reply.text}</p>
+                      <TypedText id={m.id} text={m.reply.text} animate={m.id === messages.at(-1)?.id} />
 
                       {/* Roof Map Card Preview */}
                       {m.reply.hasMapArtifact && (
@@ -1190,7 +1126,6 @@ function ChatView({
                           <MapArtifactCard
                             open={canvasOpen}
                             onToggle={onToggleCanvas}
-                            zone={m.reply.selectedZone}
                           />
                         </div>
                       )}

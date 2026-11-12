@@ -1,0 +1,128 @@
+{
+ "type": "FeatureCollection",
+ "features": [
+  {
+   "type": "Feature",
+   "properties": {
+    "name": "Demo roof: Reyes Family",
+    "aliases": [
+     "reyes demo",
+     "reyes family demo",
+     "quezon city demo"
+    ],
+    "synthetic": true,
+    "roof_shape": "flat",
+    "note": "Synthetic rectangle at an approximate city centroid. Not a real building."
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       121.0436493,
+       14.6759634
+      ],
+      [
+       121.0437514,
+       14.6759643
+      ],
+      [
+       121.0437507,
+       14.6760366
+      ],
+      [
+       121.0436486,
+       14.6760357
+      ],
+      [
+       121.0436493,
+       14.6759634
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "name": "Demo roof: Ate Maria",
+    "aliases": [
+     "maria demo",
+     "ate maria demo",
+     "pasig demo"
+    ],
+    "synthetic": true,
+    "roof_shape": "flat",
+    "note": "Synthetic rectangle at an approximate city centroid. Not a real building."
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       121.0850585,
+       14.5763725
+      ],
+      [
+       121.085142,
+       14.5763732
+      ],
+      [
+       121.0851415,
+       14.5764275
+      ],
+      [
+       121.085058,
+       14.5764268
+      ],
+      [
+       121.0850585,
+       14.5763725
+      ]
+     ]
+    ]
+   }
+  },
+  {
+   "type": "Feature",
+   "properties": {
+    "name": "Demo roof: WFH Couple",
+    "aliases": [
+     "wfh demo",
+     "wfh couple demo",
+     "makati demo"
+    ],
+    "synthetic": true,
+    "roof_shape": "flat",
+    "note": "Synthetic rectangle at an approximate city centroid. Not a real building."
+   },
+   "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+     [
+      [
+       121.0243447,
+       14.5546589
+      ],
+      [
+       121.024456,
+       14.5546598
+      ],
+      [
+       121.0244553,
+       14.5547411
+      ],
+      [
+       121.024344,
+       14.5547402
+      ],
+      [
+       121.0243447,
+       14.5546589
+      ]
+     ]
+    ]
+   }
+  }
+ ]
+}

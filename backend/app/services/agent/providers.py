@@ -1,0 +1,234 @@
+"""Provider interface plus the deterministic ScriptedProvider and a FakeProvider for tests."""
+from __future__ import annotations
+
+import logging
+import re
+import time
+from typing import Protocol
+
+from .. import geo
+from . import intake, nlu
+from .summary import render_tool_result
+from .tools import TurnContext
+
+log = logging.getLogger("sol.agent")
+
+
+class ProviderUnavailable(Exception):
+    """The LLM could not answer (rate limit, outage, bad key). The caller falls back to the scripted agent."""
+
+
+class Provider(Protocol):
+    name: str
+
+    def run_turn(self, ctx: TurnContext) -> str: ...
+
+
+def tool_sentences(ctx: TurnContext) -> list[str]:
+    """Plain sentences for everything the tools did this turn (also the number-guard fallback)."""
+    out = []
+    for call in ctx.tool_calls:
+        text = render_tool_result(call["name"], call["result"])
+        if text:
+            out.append(text)
+    return out
+
+
+def question_text(ctx: TurnContext) -> str:
+    s = ctx.session
+    return intake.question_for(intake.next_slot(s), s, ctx.lang)
+
+
+class ScriptedProvider:
+    """Rule-based agent: exact-match choices, regex extraction, template replies. Needs no LLM or key."""
+
+    name = "scripted"
+
+    # ---- helpers ---------------------------------------------------------------------------------------------
+    def _announce_new_roof(self, ctx: TurnContext, notes: list[str]) -> bool:
+        """A roof submitted from the map panel between turns is acknowledged on the next message."""
+        s = ctx.session
+        roof = s.profile.roof
+        if roof and s.pending.get("roof_announced_id") != roof["id"]:
+            s.pending["roof_announced_id"] = roof["id"]
+            from .summary import roof_text
+
+            notes.append(roof_text(roof))
+            ctx.flags["open_map"] = True
+            return True
+        return False
+
+    def _handle_action(self, ctx: TurnContext, action: dict, notes: list[str]) -> None:
+        s = ctx.session
+        kind, payload = action["kind"], action["payload"]
+        if kind == "update":
+            if "roof_method" in payload:
+                ctx.call_tool("request_roof_input", {"mode": payload["roof_method"]})
+            else:
+                ctx.call_tool("update_profile", payload)
+        elif kind == "pick":
+            ctx.call_tool("get_building_outline", {"candidate_index": payload})
+        elif kind == "tool":
+            ctx.call_tool(payload, {})
+        elif kind == "note":
+            notes.append("Okay. Type your monthly bill in pesos or your usage in kWh." if payload == "load_bill"
+                         else "Okay. Attach a clear photo of your bill, and I'll read it and ask you to confirm.")
+        else:  # changing / change
+            intake.run_action(s, action)
+
+    def _handle_free_text(self, ctx: TurnContext, text: str, notes: list[str]) -> bool:
+        """Returns True if the message was understood."""
+        s = ctx.session
+        slot = intake.next_slot(s)
+        intent = nlu.detect_intent(text)
+        analysed = "analysis" in s.results
+
+        if intent == "passport" and analysed:
+            ctx.call_tool("issue_passport", {})
+            return True
+        if intent == "nm_compare" and analysed:
+            ctx.call_tool("compare_net_metering", {})
+            return True
+        if intent == "explain" and slot not in ("roof_address", "roof_pick"):
+            ctx.call_tool("explain_assumptions", {"topic": text[:80]})
+            return True
+        if intent == "products":
+            ctx.call_tool("search_products", {})
+            return True
+
+        if slot in ("roof_method", "roof_address", "roof_pick"):
+            # Details given in passing ("my bill is 7000 and I have 400k") are saved and acknowledged first.
+            # A bare city name is not a street address, so it is not sent to the geocoder together with them.
+            fields = nlu.extract(text, slot, s.profile.goal)
+            if fields:
+                ctx.call_tool("update_profile", fields)
+                return True
+
+        if slot == "roof_method":
+            method = nlu.method_from(text)
+            if nlu.looks_like_address(text) or geo.has_demo_match(text):
+                ctx.call_tool("geocode_address", {"query": text})
+                return True
+            if method == "address":
+                ctx.call_tool("request_roof_input", {"mode": "address"})
+                return True
+            if method:
+                ctx.call_tool("request_roof_input", {"mode": method})
+                return True
+            return False
+        if slot == "roof_address":
+            method = nlu.method_from(text)
+            if method in ("draw", "sketch") and len(text.split()) <= 8 and not nlu.looks_like_address(text):
+                ctx.call_tool("request_roof_input", {"mode": method})
+                return True
+            if len(text.strip()) >= 3:
+                ctx.call_tool("geocode_address", {"query": text.strip()})
+                return True
+            return False
+        if slot == "roof_pick":
+            idx = self._pick_index(s, text)
+            if idx is not None:
+                ctx.call_tool("get_building_outline", {"candidate_index": idx})
+                return True
+            if nlu.looks_like_address(text):
+                ctx.call_tool("geocode_address", {"query": text.strip()})
+                return True
+            return False
+        if slot == "roof_draw":
+            method = nlu.method_from(text)
+            if method and method != s.profile.roof_method and not re.search(r"\b(done|finished|tapos|ok(?:ay)?)\b", text.lower()):
+                ctx.call_tool("request_roof_input", {"mode": method})
+                return True
+            ctx.flags["open_map"] = True
+            notes.append("I don't see a roof outline yet. Please finish it in the map panel, then tell me.")
+            return True
+        if slot == "change":
+            if re.search(r"\b(cancel|never ?mind|nvm|go back|keep (?:it|everything)|no changes?)\b", text.lower()):
+                s.pending.pop("changing", None)  # back out of the change menu
+                return True
+            for key, label in (("roof", "roof"), ("load", "bill"), ("budget", "budget"), ("goal", "goal")):
+                if label in text.lower():
+                    act = intake.match_choice(s, intake.CHANGE_CHOICES[key][2])
+                    intake.run_action(s, act)  # type: ignore[arg-type]
+                    return True
+            return False
+
+        fields = nlu.extract(text, slot, s.profile.goal)
+        if slot == "confirm" and nlu.is_negate(text) and not fields:
+            intake.run_action(s, intake.match_choice(s, intake.CHANGE_TEXT))  # type: ignore[arg-type]
+            return True
+        if fields:
+            ctx.call_tool("update_profile", fields)
+            return True
+        if slot == "done":
+            return False
+        return False
+
+    @staticmethod
+    def _pick_index(s, text: str) -> int | None:
+        cands = s.pending.get("candidates") or []
+        t = text.lower().strip()
+        ordinals = {"first": 0, "1st": 0, "second": 1, "2nd": 1, "third": 2, "3rd": 2, "one": 0, "two": 1, "three": 2}
+        if t.isdigit() and 1 <= int(t) <= len(cands):
+            return int(t) - 1
+        for word, i in ordinals.items():
+            if re.search(rf"\b{word}\b", t) and i < len(cands):
+                return i
+        for i, c in enumerate(cands):
+            if t and t in str(c["label"]).lower():
+                return i
+        return None
+
+    # ---- main --------------------------------------------------------------------------------------------------
+    def run_turn(self, ctx: TurnContext) -> str:
+        ctx.trusted = True  # values below are parsed from the user's own text or a choice button
+        s = ctx.session
+        text = ctx.user_text.strip()
+        notes: list[str] = []
+        first = s.turn_count == 0
+        understood = True
+
+        if ctx.attachments:
+            notes.append("I can't read photos or PDFs in quick mode. Please type your monthly bill in pesos or your usage in kWh.")
+        announced = self._announce_new_roof(ctx, notes)
+        if text:
+            action = intake.match_choice(s, text)
+            if action:
+                self._handle_action(ctx, action, notes)
+            else:
+                understood = self._handle_free_text(ctx, text, notes) or announced  # "I've finished my roof" is understood
+
+        if intake.next_slot(s) == "run" and not ctx.results_of("run_analysis"):
+            ctx.call_tool("run_analysis", {})
+
+        parts: list[str] = []
+        if first:
+            parts.append(intake.INTRO[ctx.lang if ctx.lang in intake.INTRO else "english"].format(first=s.persona.first))
+        parts.extend(notes)
+        parts.extend(tool_sentences(ctx))
+        if not understood and not first and not ctx.tool_calls:
+            parts.append("Sorry, I didn't catch that." if ctx.lang != "taglish" else "Pasensya, hindi ko nakuha.")
+        parts.append(question_text(ctx))
+        return " ".join(p for p in parts if p)
+
+
+class FakeProvider:
+    """Test double: replays a script of ('tool', name, args) and ('text', str) steps."""
+
+    name = "fake"
+
+    def __init__(self, script: list[tuple]):
+        self.script = script
+
+    def run_turn(self, ctx: TurnContext) -> str:
+        text = ""
+        for step in self.script:
+            if step[0] == "tool":
+                ctx.call_tool(step[1], step[2] if len(step) > 2 else {})
+            elif step[0] == "text":
+                text = step[1]
+            elif step[0] == "raise":
+                raise step[1]
+            elif step[0] == "sleep":
+                time.sleep(step[1])
+        return text

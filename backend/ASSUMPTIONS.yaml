@@ -1,0 +1,76 @@
+# Every numeric assumption Sol uses, with unit, source and date.
+# verified: false means a placeholder that MUST be replaced with a sourced value before real use.
+# Results are estimates for a licensed installer to confirm. Demo data is synthetic.
+
+tariff_php_per_kwh:
+  value: 15.0615
+  unit: PHP/kWh
+  source_url: https://www.meralco.com.ph/media/articles/higher-residential-rates-october-2026
+  as_of: "2026-10"
+  verified: true
+  note: Meralco typical-household overall rate, Oct 2026 (figure taken from context/PITCH_DECK_PLAN.md).
+
+tariff_fixed_php_month:
+  value: 0
+  unit: PHP/month
+  source_url: ""
+  as_of: "2026-11"
+  verified: false
+  note: Modelling simplification. The overall per-kWh rate already folds fixed charges in, so no separate non-offsettable charge is modelled yet.
+
+export_credit_php_per_kwh:
+  value: 6.5
+  unit: PHP/kWh
+  source_url: https://www.meralco.com.ph/residential/energy-solutions/solar-and-renewables/solar-net-metering
+  as_of: "unverified placeholder"
+  verified: false
+  note: PLACEHOLDER. Replace with the latest Meralco generation charge. Credit is a blended generation cost, not the retail rate. Editable per request.
+
+tariff_growth_pct_pessimistic: {value: 0, unit: "%/year", source_url: "", as_of: "2026-11", verified: false, note: "Judgement, disclosed."}
+tariff_growth_pct_expected: {value: 3, unit: "%/year", source_url: "", as_of: "2026-11", verified: false, note: "Judgement, disclosed. Justify with the historical Meralco rate series."}
+tariff_growth_pct_optimistic: {value: 5, unit: "%/year", source_url: "", as_of: "2026-11", verified: false, note: "Judgement, disclosed."}
+export_credit_growth_pct_pessimistic: {value: 0, unit: "%/year", source_url: "", as_of: "2026-11", verified: false, note: "Judgement, disclosed."}
+export_credit_growth_pct_expected: {value: 3, unit: "%/year", source_url: "", as_of: "2026-11", verified: false, note: "Same as tariff growth in the expected case."}
+export_credit_growth_pct_optimistic: {value: 5, unit: "%/year", source_url: "", as_of: "2026-11", verified: false, note: "Same as tariff growth in the optimistic case."}
+
+degradation_pct_per_year: {value: 0.5, unit: "%/year", source_url: "", as_of: "2026-11", verified: false, note: "Default when a product datasheet value is missing."}
+system_losses_pct: {value: 14, unit: "%", source_url: "https://joint-research-centre.ec.europa.eu/photovoltaic-geographical-information-system-pvgis_en", as_of: "2026-11", verified: true, note: "PVGIS default order of magnitude for wiring, soiling and mismatch."}
+inverter_efficiency_pct: {value: 97, unit: "%", source_url: "", as_of: "2026-11", verified: false, note: "Default when a datasheet value is missing."}
+dc_ac_ratio_min: {value: 1.0, unit: ratio, source_url: "", as_of: "2026-11", verified: false, note: "Common practice, disclosed."}
+dc_ac_ratio_max: {value: 1.4, unit: ratio, source_url: "", as_of: "2026-11", verified: false, note: "Common practice, disclosed."}
+battery_round_trip_eff_pct: {value: 90, unit: "%", source_url: "", as_of: "2026-11", verified: false, note: "Typical lithium datasheet value."}
+battery_usable_dod_pct: {value: 90, unit: "%", source_url: "", as_of: "2026-11", verified: false, note: "Typical lithium datasheet value."}
+battery_life_years: {value: 12, unit: years, source_url: "", as_of: "2026-11", verified: false, note: "Datasheet cycles / 365, rounded."}
+inverter_life_years: {value: 12, unit: years, source_url: "", as_of: "2026-11", verified: false, note: "Typical datasheet value."}
+inverter_replacement_pct_of_price: {value: 100, unit: "%", source_url: "", as_of: "2026-11", verified: false, note: "Judgement, disclosed."}
+om_pct_of_capex_per_year: {value: 1.0, unit: "%/year", source_url: "", as_of: "2026-11", verified: false, note: "Industry norm, disclosed."}
+install_cost_php_per_kw:
+  value: 12000
+  unit: PHP/kW
+  source_url: ""
+  as_of: "unverified placeholder"
+  verified: false
+  note: PLACEHOLDER. Replace with the median of at least 3 public installer quotes (labor and balance of system).
+permits_misc_php:
+  value: 15000
+  unit: PHP
+  source_url: ""
+  as_of: "unverified placeholder"
+  verified: false
+  note: PLACEHOLDER for permits and the net-metering application. Replace with public LGU or Meralco figures.
+discount_rate_pct: {value: 8, unit: "%", source_url: "", as_of: "2026-11", verified: false, note: "Judgement, disclosed."}
+setback_m: {value: 0.5, unit: m, source_url: "", as_of: "2026-11", verified: false, note: "Common practice, disclosed."}
+usable_fraction_obstruction: {value: 0.9, unit: fraction, source_url: "", as_of: "2026-11", verified: false, note: "Allowance for vents and water tanks, disclosed."}
+default_tilt_flat_deg: {value: 12, unit: deg, source_url: "", as_of: "2026-11", verified: false, note: "About Manila latitude."}
+default_tilt_pitched_deg: {value: 20, unit: deg, source_url: "", as_of: "2026-11", verified: false, note: "Judgement, disclosed."}
+grid_emission_factor_kg_per_kwh:
+  value: 0.7
+  unit: kg CO2/kWh
+  source_url: ""
+  as_of: "unverified placeholder"
+  verified: false
+  note: PLACEHOLDER. Replace with the latest DOE National Grid Emission Factor.
+net_metering_cap_kw: {value: 100, unit: kW, source_url: "https://www.meralco.com.ph/residential/energy-solutions/solar-and-renewables/solar-net-metering", as_of: "2026-11", verified: false, note: "Residential cap per the plan; verify on the Meralco page."}
+analysis_years: {value: 25, unit: years, source_url: "", as_of: "2026-11", verified: true, note: "Projection horizon."}
+backup_essential_load_kw: {value: 0.6, unit: kW, source_url: "", as_of: "2026-11", verified: false, note: "Default essential load for the backup goal, editable."}
+backup_hours_default: {value: 4, unit: hours, source_url: "", as_of: "2026-11", verified: false, note: "Default backup duration, editable."}

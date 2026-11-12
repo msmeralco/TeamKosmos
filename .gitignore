@@ -8,3 +8,4 @@ backend/data/pvgis_cache/
 *.db
 .DS_Store
 frontend/
+reference(not_pushed)/*
