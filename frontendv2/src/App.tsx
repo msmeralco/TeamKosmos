@@ -15,6 +15,8 @@ import { AnimatePresence, domAnimation, LazyMotion, m } from "framer-motion";
 import { Icon } from "./components/icons";
 import { LoginView } from "./components/LoginView";
 import { MapCanvas } from "./components/MapCanvas";
+import { SolMark } from "./components/SolMark";
+import { AnimatedSol } from "./components/SolMascotLazy";
 import { ApiError, deleteSession, streamChat, type StepEvent } from "./lib/api";
 import {
   ConfirmDialog,
@@ -447,9 +449,7 @@ export default function App() {
               title="Sol Clean Energy"
             >
               <span className="flex h-10 w-10 shrink-0 items-center justify-center">
-                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-tr from-[#f59e0b] to-[#ea580c] text-white shadow-sm">
-                  {Icon.sun}
-                </span>
+                <SolMark size={34} />
               </span>
               <span className="min-w-0 flex-1 truncate pl-1.5 opacity-0 group-hover/rail:opacity-100 transition-opacity duration-200">
                 <span className="block text-[13px] font-semibold text-[#111111]">Sol</span>
@@ -699,16 +699,12 @@ export default function App() {
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
-                  onClick={toggleCanvas}
-                  className={`row-btn press flex h-7 items-center gap-1.5 rounded-[7px] px-2.5 text-[12px] font-medium transition-colors ${
-                    canvasOpen
-                      ? "bg-[#fafaf9] text-[#ea580c]"
-                      : "text-[#787774] hover:text-[#ea580c]"
-                  }`}
-                  title={canvasOpen ? "Close map view" : "Open roof map on right"}
+                  onClick={newChat}
+                  className="row-btn press flex h-7 items-center gap-1.5 rounded-[7px] px-2.5 text-[12px] font-medium text-[#787774] transition-colors hover:text-[#ea580c]"
+                  title="Start a new chat"
                 >
-                  {Icon.map}
-                  <span>{canvasOpen ? "Close Map" : "Roof Map"}</span>
+                  {Icon.plus}
+                  <span>New Chat</span>
                 </button>
 
                 {/* Notifications Bell in Top Workspace Header */}
@@ -1005,7 +1001,7 @@ function ChatView({
     setInput(e.target.value);
     const el = e.target;
     el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, 180)}px`;
+    el.style.height = `${Math.min(el.scrollHeight, 140)}px`;
   };
 
   const onPickFiles = (e: ChangeEvent<HTMLInputElement>) => {
@@ -1055,9 +1051,7 @@ function ChatView({
                 canvasOpen ? "max-w-full" : "max-w-[720px]"
               }`}
             >
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-tr from-[#f59e0b] to-[#ea580c] text-white shadow-[0_6px_20px_rgba(245,158,11,0.25)]">
-                {Icon.sun}
-              </div>
+              <AnimatedSol size={128} className="-mb-2" />
               <h1 className="mt-4 text-[26px] font-semibold tracking-tight text-[#111111]">
                 {hello}, {persona.first}
               </h1>
@@ -1157,13 +1151,7 @@ function ChatView({
           canvasOpen ? "max-w-full" : "max-w-[720px]"
         }`}
       >
-        <div className="rounded-[18px] bg-white p-3 border border-[#e5e5e4] shadow-[0_4px_20px_rgba(0,0,0,0.04)] focus-within:border-[#ea580c] focus-within:shadow-[0_4px_24px_rgba(234,88,12,0.08)] transition-all">
-          {/* Sol Persona Header hairline */}
-          <div className="flex items-center gap-1.5 px-1 pb-1 text-[12px]">
-            <span className="font-semibold text-[#111111]">Sol</span>
-            <span className="text-[#787774]">· {persona.subtitle}</span>
-          </div>
-
+        <div className="rounded-[16px] bg-white px-3 pt-2 pb-1.5 border border-[#e5e5e4] shadow-[0_4px_20px_rgba(0,0,0,0.04)] focus-within:border-[#ea580c] focus-within:shadow-[0_4px_24px_rgba(234,88,12,0.08)] transition-all">
           {/* Attached Files List */}
           {files.length > 0 && (
             <div className="flex flex-wrap gap-1.5 pt-1.5 pb-1">
@@ -1190,17 +1178,17 @@ function ChatView({
           {/* Textarea */}
           <textarea
             ref={textRef}
-            rows={empty ? 3 : 2}
+            rows={1}
             value={input}
             onChange={autoResize}
             onKeyDown={onKey}
             onPaste={onPaste}
             placeholder={empty ? "Ask about your roof, monthly bill, or solar options…" : "Reply to Sol…"}
-            className="w-full resize-none bg-transparent px-1 py-1.5 text-[14px] leading-relaxed text-[#111111] placeholder-[#a3a3a3] outline-none"
+            className="w-full resize-none bg-transparent px-1 py-1 text-[14px] leading-relaxed text-[#111111] placeholder-[#a3a3a3] outline-none"
           />
 
           {/* Bottom Bar Actions */}
-          <div className="flex items-center justify-between pt-1">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-1">
               <input
                 ref={fileRef}

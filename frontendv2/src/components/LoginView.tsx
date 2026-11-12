@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { AnimatePresence, LazyMotion, domAnimation, m, type Variants } from "framer-motion";
 import { Icon } from "./icons";
+import { SolMark } from "./SolMark";
 import { Login3DPlaceholder } from "./Login3DPlaceholder";
 
 interface LoginViewProps {
@@ -166,9 +167,7 @@ export function LoginView({ onLogin }: LoginViewProps) {
         <div className="relative flex h-full w-full lg:w-1/2 flex-col justify-between overflow-y-auto lg:overflow-hidden px-6 py-6 sm:px-12 md:px-16 lg:px-20 select-none">
           {/* Top Bar: Sol Logo Mark */}
           <div className="flex items-center gap-2.5">
-            <span className="flex h-8 w-8 items-center justify-center rounded-[8px] bg-[#ea580c] text-white shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
-              {Icon.sun}
-            </span>
+            <SolMark size={36} />
             <span className="text-[15px] font-semibold tracking-tight text-[#111111]">
               Sol
             </span>
