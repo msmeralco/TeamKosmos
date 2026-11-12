@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 
 from ..errors import ApiError
+from . import limits
 from .assumptions import A
 
 TEMPLATES = ("night_heavy", "balanced", "day_heavy")
@@ -77,8 +78,9 @@ def estimate_load(*, monthly_kwh: float | None = None, bill_php: float | None = 
     else:
         basis = basis or "kwh_input"
         base = float(monthly_kwh)
-    if not 30 <= base <= 5000:
-        raise ApiError("invalid_load", f"Monthly usage of {base:.0f} kWh is outside the supported range (30 to 5000).", status=422)
+    if not limits.KWH_MIN <= base <= limits.KWH_MAX:
+        raise ApiError("invalid_load", f"Monthly usage of {base:,.0f} kWh is outside the supported range ({limits.KWH_MIN:,.0f} to {limits.KWH_MAX:,.0f}).",
+                       hint=limits.usage_hint() + " You can change your bill or usage now.", status=422)
 
     monthly = base * SEASON
     rng = np.random.default_rng(20261112 + int(round(base)))

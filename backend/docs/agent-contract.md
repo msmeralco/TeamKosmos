@@ -88,6 +88,22 @@ The roof is chosen in chat (type an address, draw, or sketch). The agent sets `h
 
 The same roof services are also plain endpoints (no agent): `POST /api/geocode`, `/api/roof/from-address`, `/api/roof/finalize`, `/api/roof/from-sketch`, `/api/roof/layout`.
 
+### Sketch canvas upload check
+
+The sketch canvas lets the user upload a roof photo, site plan, blueprint or satellite view (JPEG, PNG, WebP or PDF, up to 5 MB) and trace over it. The picture is drawn in the browser only. PDFs are rendered with pdf.js (page picker for multi-page files). Before the user relies on the file, the client calls:
+
+`POST /api/roof/check-upload` (auth required, `multipart/form-data`, one field `file`) returns
+
+```jsonc
+{ "allowed": true, "category": "blueprint", "reason": "...", "verified": true, "mime": "application/pdf" }
+```
+
+- `category`: `roof_photo`, `site_plan`, `blueprint`, `satellite_view`, `electricity_bill` or `other`. Only the first four are allowed. A bill is rejected with a hint to attach it in the chat. Low confidence (under 0.5) is rejected.
+- Type, size and empty-file checks are always enforced (`415 unsupported_file_type`, `413 file_too_large`, `422 empty_file`). The file is never stored.
+- Fail open: if Gemini is not configured, down or returns bad output, the answer is `allowed: true, verified: false` and the UI shows a "could not verify" warning.
+- Gemini only classifies the file. Scale and the outline always come from the user.
+- 20 checks per user per minute (`429 rate_limited`). It does not count against the chat limit.
+
 ## 3. Other session endpoints
 
 - `GET /api/agent/sessions/{id}`: profile, `nextSlot`, summary, passport, history (404 if unknown).
@@ -113,6 +129,9 @@ HTTP errors are always `{"detail": {"code", "message", "hint"}}`:
 | 404 | `not_found` | Unknown conversation or Passport |
 
 ## 6. Behaviour worth knowing
+
+- **Usage limits.** Sol sizes one home at 30 to 5,000 kWh a month (`app/services/limits.py`). A bill is converted to kWh with the tariff, so the bill limit follows from it (about ₱452 to ₱75,308 today). Chat, signup and the load model all use the same numbers. A bill that is too high or low is refused when it is typed, with the real limits in the reply. If an unsizable value still reaches the run step, the agent opens the "what would you like to change?" menu instead of offering "Run the numbers" again.
+- **Several requests in one message.** Details are saved first, then "run the numbers", then the follow-ups that need the numbers (compare net metering, whole-roof preview, Solar Passport), always in that order. A step starts only when the one before it worked. If one fails or something is missing, the chain stops, the reply says what failed and what is still waiting, and the waiting follow-ups finish by themselves on a later turn once the numbers exist. "Never mind" drops them. Saying "run the numbers" inside a longer message counts as the go-ahead. A per-turn limit of 6 tool calls (`MAX_TOOL_CALLS`) covers a full chain.
 
 - The agent asks one question at a time and always returns clickable choices in `next`. Known choice texts are matched exactly, so clicking is deterministic and works without Gemini.
 - With `GEMINI_API_KEY` set, Gemini phrases replies and understands free text. On a rate limit or outage the same turn is answered by the built-in rule-based agent (a step "Switching to quick mode" appears). In that mode results are in English and photos cannot be read.

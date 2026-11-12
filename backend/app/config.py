@@ -99,7 +99,7 @@ def get_settings() -> Settings:
         turn_timeout_s=_env_float("TURN_TIMEOUT_S", 75.0),
         max_upload_bytes=_env_int("MAX_UPLOAD_BYTES", 5 * 1024 * 1024),
         max_files=_env_int("MAX_FILES", 6),
-        max_tool_calls=_env_int("MAX_TOOL_CALLS", 4),
+        max_tool_calls=_env_int("MAX_TOOL_CALLS", 6),  # a multi-request turn: save details, run, then up to two follow-ups
         nominatim_url=_env("NOMINATIM_URL", "https://nominatim.openstreetmap.org/search"),
         overpass_urls=tuple(u.strip() for u in overpass.split(",") if u.strip()),
         pvgis_live=_env_bool("PVGIS_LIVE", True),

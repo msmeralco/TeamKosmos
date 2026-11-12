@@ -8,14 +8,16 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from .. import limits
 from ..assumptions import A
+from ..load import bill_to_kwh
 from .session import GOALS, SYSTEM_TYPES, TEMPLATES, Session
 
 Suggestion = dict  # {"id", "label", "hint"?, "text"}
 
 # ---- limits (validation) -------------------------------------------------------------
-KWH_RANGE = (30.0, 5000.0)
-BILL_RANGE = (300.0, 200_000.0)
+KWH_RANGE = (limits.KWH_MIN, limits.KWH_MAX)
+BILL_RANGE = (300.0, 200_000.0)  # sanity bound for typos; the real bill limit follows from KWH_RANGE (see _bill_in_range)
 BUDGET_RANGE = (0.0, 10_000_000.0)
 TARGET_RANGE = (5.0, 100.0)
 BACKUP_RANGE = (1.0, 48.0)
@@ -112,6 +114,18 @@ def _clear_for_change(session: Session) -> None:
     session.invalidate_results()
 
 
+def _bill_problem(bill: float) -> str | None:
+    """Why a bill cannot be sized, or None. The bill is converted to kWh exactly like the load model does."""
+    kwh = bill_to_kwh(bill)
+    if limits.KWH_MIN <= kwh <= limits.KWH_MAX:
+        return None
+    lo, hi = limits.bill_limits_php()
+    side = "above" if kwh > limits.KWH_MAX else "below"
+    return (f"A {php(bill)} monthly bill is about {kwh:,.0f} kWh, {side} what Sol can size for one home "
+            f"({limits.KWH_MIN:,.0f} to {limits.KWH_MAX:,.0f} kWh, or a bill of about {php(lo)} to {php(hi)}). "
+            "Please give a bill or usage inside that range")
+
+
 def apply_updates(session: Session, **fields: Any) -> tuple[dict, list[str]]:
     """Validate and apply profile updates. Returns (applied, errors)."""
     p = session.profile
@@ -140,6 +154,11 @@ def apply_updates(session: Session, **fields: Any) -> tuple[dict, list[str]]:
         p.load_confirmed = True
         applied["monthly_kwh"] = kwh
     bill = num("monthly_bill_php", BILL_RANGE, "Monthly bill")
+    if bill is not None:
+        problem = _bill_problem(bill)
+        if problem:  # a bill that would later fail the load model is refused now, with the real limits
+            errors.append(problem)
+            bill = None
     if bill is not None:
         p.monthly_bill_php, p.monthly_kwh = bill, None
         p.load_source = "bill_photo" if fields.get("load_source") == "bill_photo" else "user"

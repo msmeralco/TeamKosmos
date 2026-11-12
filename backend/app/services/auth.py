@@ -15,6 +15,7 @@ from fastapi import Header
 
 from ..db import UserExists, get_repo
 from ..errors import ApiError
+from . import limits
 
 TOKEN_TTL_S = 30 * 24 * 3600
 MIN_PASSWORD = 8
@@ -116,8 +117,8 @@ def validate_household(fields: dict) -> dict:
         out["household_template"] = fields["household_template"]
     if fields.get("monthly_kwh") is not None:
         kwh = float(fields["monthly_kwh"])
-        if not 20 <= kwh <= 5000:
-            raise ApiError("invalid_kwh", "Monthly usage must be between 20 and 5000 kWh.", status=422)
+        if not limits.KWH_MIN <= kwh <= limits.KWH_MAX:
+            raise ApiError("invalid_kwh", f"Monthly usage must be between {limits.KWH_MIN:,.0f} and {limits.KWH_MAX:,.0f} kWh.", status=422)
         out["monthly_kwh"] = kwh
     lat, lon = fields.get("lat"), fields.get("lon")
     if lat is not None or lon is not None:

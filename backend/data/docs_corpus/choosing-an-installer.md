@@ -6,7 +6,9 @@ source_url: https://www.meralco.com.ph/residential/energy-solutions/solar-and-re
 fetched_at: '2026-11-12'
 ---
 
-Sol note: Sol has no vetted or accredited installer list, so it does not name or rank installers as trusted. Searches for "best solar installers in the Philippines" mostly return rankings that installers publish about themselves. Use the checks below and ask every installer for a written quote.
+Sol note: Sol has no vetted or accredited installer list, so it does not name or rank installers as trusted. 
+
+Sol note: the closest official source is the DOE Solar PV Installer Registry (see the separate registry note). It lists registered firms, but the DOE states it does not endorse them. Searches for "best solar installers in the Philippines" mostly return rankings that installers publish about themselves. Use the checks below and ask every installer for a written quote.
 
 What Meralco says to look for in a provider: choose an experienced provider that follows electrical and interconnection standards, documents the proposed equipment completely, secures the applicable permits, completes the required corrections, supports testing and commissioning, and offers dependable after-sales support. Keep copies of the design, equipment data, permits, inspection records, warranties and final settings.
 

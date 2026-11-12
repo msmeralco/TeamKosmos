@@ -1195,8 +1195,8 @@ function ChatView({
                     </div>
                   )}
 
-                  {/* Follow-up suggestions: outside the answer card, clearly tappable */}
-                  {m.reply?.next && m.reply.next.length > 0 && (
+                  {/* Follow-up suggestions: only under the latest message, outside the answer card, clearly tappable */}
+                  {m.id === messages.at(-1)?.id && m.reply?.next && m.reply.next.length > 0 && (
                     <div className="flex flex-wrap gap-2 pt-0.5" role="group" aria-label="Suggested replies">
                       {m.reply.next.map((n) => (
                         <button
