@@ -13,13 +13,9 @@ import {
 } from "react";
 import { AnimatePresence, domAnimation, LazyMotion, m } from "framer-motion";
 import { Icon } from "./components/icons";
-<<<<<<< HEAD
 import { LoginView } from "./components/LoginView";
-import { MapCanvas, type SolarZone } from "./components/MapCanvas";
-=======
 import { MapCanvas } from "./components/MapCanvas";
 import { ApiError, deleteSession, streamChat, type StepEvent } from "./lib/api";
->>>>>>> 38d8bce71fe8a3faa1a19755de7acdd5950cc071
 import {
   ConfirmDialog,
   MenuItem,
@@ -50,26 +46,26 @@ const PERSONAS: Record<PersonaId, Persona> = {
   reyes: {
     id: "reyes",
     initials: "RR",
-    name: "Reyes Household",
+    name: "Reyes Family",
     subtitle: "Typical residential · 450 kWh/mo",
     location: "Quezon City, Metro Manila",
     first: "Reyes Family",
   },
   maria: {
     id: "maria",
-    initials: "MC",
-    name: "Maria Santos",
-    subtitle: "High daytime usage · 780 kWh/mo",
+    initials: "AM",
+    name: "Ate Maria",
+    subtitle: "Night-heavy usage · 250 kWh/mo",
     location: "Pasig City, Metro Manila",
     first: "Maria",
   },
   wfh: {
     id: "wfh",
-    initials: "DL",
-    name: "David Lim",
-    subtitle: "WFH professional · 320 kWh/mo",
-    location: "Taguig, Metro Manila",
-    first: "David",
+    initials: "WC",
+    name: "WFH Couple",
+    subtitle: "Day-heavy usage · 700 kWh/mo",
+    location: "Makati City, Metro Manila",
+    first: "Alex & Sam",
   },
 };
 
