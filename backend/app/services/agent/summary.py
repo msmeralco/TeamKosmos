@@ -4,7 +4,10 @@ Every number in these sentences comes straight from tool results (the LLM never 
 """
 from __future__ import annotations
 
+import re
+
 from ..readiness import readiness
+from . import reply_format
 from .intake import goal_label, php
 
 CAVEAT = "These are estimates for a licensed installer to confirm, and prices are suggestions from demo or public listings, so confirm with the seller."
@@ -271,16 +274,23 @@ def recommend_text(r: dict) -> str:
 
 
 def docs_text(r: dict) -> str:
-    """Scripted-mode answer: the best passage, trimmed to whole sentences, with its source."""
+    """Scripted-mode answer: the best passage as a short lead plus bullets, with its source as a note."""
     if not r.get("passages"):
         return "I don't have a source for that, so I'd rather not guess. Meralco or your installer can confirm it."
     top = r["passages"][0]
-    sents = [x for x in top["text"].replace("\n", " ").split(". ") if x.strip()]
-    body = ". ".join(sents[:3]).strip()
-    body += "" if body.endswith(".") else "."
-    us = " (a US example, not Philippine rules)" if top.get("region") == "US" else ""
     who = top["publisher"] or top["title"]
-    return f"**From {who}**{us}: {body}\n\nSource: [{who}]({top['source_url']})" if top["source_url"] else f"{body}"
+    us = " (a US example, not Philippine rules)" if top.get("region") == "US" else ""
+    body = reply_format.clean_passage(re.sub(r"^\s*(?:#{1,6}\s+|[-*•]\s+)", "", top["text"], flags=re.M))
+    sents = [x for x in re.split(r"(?<=[.!?])\s+(?=[A-Z\"'(])", body) if x.strip()]
+    points = [reply_format.shorten(x) for x in sents[:3]]
+    if not points:
+        return "I found a page on that, but its text is not readable enough to quote. Open the source below to read it."  \
+            + (f"\n\n> Source: [{who}]({top['source_url']})" if top["source_url"] else "")
+    out = [f"**From {who}**{us}:", ""]
+    out += [f"- {p}" for p in points]
+    if top["source_url"]:
+        out += ["", f"> Source: [{who}]({top['source_url']})"]
+    return "\n".join(out)
 
 
 def installers_text(r: dict) -> str:

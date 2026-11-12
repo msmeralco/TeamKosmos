@@ -604,4 +604,4 @@ def test_recommend_question_is_answered_from_the_site_and_usage(client):
     m = reply(client, "what do you recommend")
     txt = m["reply"]["text"]
     assert "didn't catch" not in txt and "63" in txt and "kWp" in txt and "₱150,000 to ₱300,000" in txt
-    assert m["reply"]["slot"] == "budget" and txt.rstrip().endswith("installed?")  # it then asks the budget question again
+    assert m["reply"]["slot"] == "budget" and txt.rstrip().rstrip("*").endswith("installed?")  # the closing question is bold; it then asks the budget question again

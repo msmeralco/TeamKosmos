@@ -13,7 +13,7 @@ from ...config import Settings, get_settings
 from ...errors import ApiError
 from ...models import FinalizeRequest, FromAddressRequest, LatLon, RoofModel, SketchRequest
 from .. import geo, installers as installers_svc, market_packages, roof as roof_svc
-from . import followups, guard, intake, summary as summary_svc
+from . import followups, guard, intake, reply_format, summary as summary_svc
 from .providers import Provider, ProviderUnavailable, ScriptedProvider, question_text, tool_sentences
 from .session import Session, load_session, save_session
 from .tools import TurnContext, budget_packages_card, jsonable, layout_for_selected, market_region as tools_market_region, profile_view, roof_summary
@@ -206,6 +206,8 @@ def _worker(req: ChatRequest, settings: Settings, out: "queue.Queue", ctx_box: l
                 del session.guard_events[:-20]
                 lead = "I don't see your installation site outline yet." if slot_now == "roof_draw" else ""
                 text = "\n\n".join(p for p in (lead, safe_text(ctx)) if p)
+
+        text = reply_format.tidy(text)  # one layout for every agent: lead, bullets, source note, bold closing question
 
         # The results table is built from tool results only (so it is exempt from the number guard) and goes above
         # the model's explanation. History keeps just the explanation, to keep the next prompt short.

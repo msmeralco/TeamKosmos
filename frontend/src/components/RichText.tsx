@@ -168,9 +168,14 @@ export function RichText({ text }: { text: string }) {
     if (/^\s*>\s?/.test(line)) {
       const parts: string[] = [];
       while (i < lines.length && /^\s*>\s?/.test(lines[i])) parts.push(lines[i++].replace(/^\s*>\s?/, ""));
+      const joined = parts.join(" ");
+      const isSource = /^Sources?:\s/i.test(joined);
       blocks.push(
-        <p key={key()} className="my-2 border-l-2 border-[#ea580c]/40 pl-3 text-[12px] leading-relaxed text-[#6b6b66]">
-          {inline(parts.join(" "), `q${i}`)}
+        <p
+          key={key()}
+          className={`my-2 border-l-2 pl-3 text-[12px] leading-relaxed text-[#6b6b66] ${isSource ? "border-[#ea580c]" : "border-[#ea580c]/40"}`}
+        >
+          {inline(joined, `q${i}`)}
         </p>,
       );
       continue;
@@ -200,8 +205,10 @@ export function RichText({ text }: { text: string }) {
     ) {
       para.push(lines[i++]);
     }
+    // A paragraph that is one bold sentence ending in "?" is the question Sol is asking: set it apart.
+    const isAsk = para.length === 1 && /^\*\*[^*]+\?\*\*$/.test(para[0].trim()) && blocks.length > 0;
     blocks.push(
-      <p key={key()} className="my-1.5">
+      <p key={key()} className={isAsk ? "mb-0 mt-3 border-t border-[#ecebe8] pt-3" : "my-1.5"}>
         {para.map((p, idx) => (
           <Fragment key={idx}>
             {idx > 0 && <br />}
