@@ -33,7 +33,6 @@ def norm(text: str) -> str:
 
 # ---- static choice texts ---------------------------------------------------------------
 ROOF_CHOICES = {
-    "address": ("Type my address", "I'll find the building outline from OpenStreetMap", "I'll type my address"),
     "draw": ("Draw on the map", "Trace your installation site on the satellite map", "I'll draw my installation site on the map"),
     "sketch": ("Sketch on a canvas", "Draw with a metre scale on a blank canvas", "I'll sketch my installation site on a blank canvas"),
 }
@@ -58,7 +57,7 @@ GOAL_CHOICES = {
 CUT_TARGETS = (50, 70, 90)
 BACKUP_OPTIONS = (4, 8)
 CHANGE_CHOICES = {
-    "roof": ("Change my installation site", "Pick a different address or drawing", "Change my installation site"),
+    "roof": ("Change my installation site", "Redraw or sketch it again", "Change my installation site"),
     "load": ("Change my bill", "Use a different usage or bill", "Change my bill"),
     "system": ("Change system type", "Grid-tied, off-grid or hybrid", "Change my system type"),
     "budget": ("Change my budget", "Pick another budget range", "Change my budget"),
@@ -74,8 +73,6 @@ FOLLOW_UPS = {
 DEFAULT_GOAL = "max_savings_10y"
 RUN_TEXT = "Yes, run the numbers"
 CHANGE_TEXT = "I want to change something"
-OTHER_ADDRESS_TEXT = "None of these, I'll draw it instead"
-USE_ADDRESS_TEXT = "Use my address instead"
 SKETCH_INSTEAD_TEXT = "I'll sketch it on a canvas instead"
 DRAW_INSTEAD_TEXT = "I'll draw it on the map instead"
 
@@ -88,8 +85,6 @@ def next_slot(session: Session) -> str:
     if p.roof is None:
         if p.roof_method is None:
             return "roof_method"
-        if p.roof_method == "address":
-            return "roof_pick" if session.pending.get("candidates") else "roof_address"
         return "roof_draw"
     if not p.load_confirmed or (p.monthly_kwh is None and p.monthly_bill_php is None):
         return "load"
@@ -240,7 +235,7 @@ def apply_updates(session: Session, **fields: Any) -> tuple[dict, list[str]]:
 
     method = fields.get("roof_method")
     if method is not None:
-        if method in ("address", "draw", "sketch"):
+        if method in ("draw", "sketch"):
             if method != p.roof_method or p.roof is not None:
                 p.roof = None
                 session.pending.pop("candidates", None)
@@ -248,7 +243,7 @@ def apply_updates(session: Session, **fields: Any) -> tuple[dict, list[str]]:
             p.roof_method = method
             applied["roof_method"] = method
         else:
-            errors.append("roof_method must be address, draw or sketch")
+            errors.append("roof_method must be draw or sketch")
 
     if p.budget_max_php is not None and p.goal is None:
         # No goal question: aim for the biggest 10-year savings unless the user picks another one (Change something > goal).
@@ -283,23 +278,10 @@ def choices_for(slot: str, session: Session) -> list[Suggestion]:
     p = session.profile
     if slot == "roof_method":
         return [_s(f"roof_{k}", *v) for k, v in ROOF_CHOICES.items()]
-    if slot == "roof_address":
-        return [
-            _s("roof_draw", "Draw on the map", "Skip the lookup and trace it yourself", ROOF_CHOICES["draw"][2]),
-            _s("roof_sketch", *ROOF_CHOICES["sketch"]),
-        ]
-    if slot == "roof_pick":
-        out = []
-        for i, c in enumerate((session.pending.get("candidates") or [])[:3]):
-            out.append(_s(f"cand_{i}", str(c["label"])[:48], "Use this address", f"Use {str(c['label'])[:120]}"))
-        out.append(_s("cand_none", "None of these", "Draw the installation site instead", OTHER_ADDRESS_TEXT))
-        return out
     if slot == "roof_draw":
-        if p.roof_method == "draw":
-            return [_s("roof_address", "Use my address", "Look up the outline instead", USE_ADDRESS_TEXT),
-                    _s("roof_sketch", "Sketch on a canvas", "Use a metre scale instead", SKETCH_INSTEAD_TEXT)]
-        return [_s("roof_address", "Use my address", "Look up the outline instead", USE_ADDRESS_TEXT),
-                _s("roof_draw", "Draw on the map", "Trace on the satellite map", DRAW_INSTEAD_TEXT)]
+        if p.roof_method == "sketch":
+            return [_s("roof_draw", "Draw on the map", "Trace on the satellite map", DRAW_INSTEAD_TEXT)]
+        return [_s("roof_sketch", "Sketch on a canvas", "Use a metre scale instead", SKETCH_INSTEAD_TEXT)]
     if slot == "load":
         out = []
         if p.monthly_kwh:
@@ -351,10 +333,8 @@ def _static_table() -> dict[str, tuple]:
         t[norm(v[2])] = ("update", {"roof_method": k})
     for k, v in SYSTEM_CHOICES.items():
         t[norm(v[2])] = ("update", {"system_type": k})
-    t[norm(USE_ADDRESS_TEXT)] = ("update", {"roof_method": "address"})
     t[norm(SKETCH_INSTEAD_TEXT)] = ("update", {"roof_method": "sketch"})
     t[norm(DRAW_INSTEAD_TEXT)] = ("update", {"roof_method": "draw"})
-    t[norm(OTHER_ADDRESS_TEXT)] = ("update", {"roof_method": "draw"})
     t[norm("I'll type my monthly bill")] = ("note", "load_bill")
     t[norm("I'll attach a photo of my bill")] = ("note", "load_photo")
     for bid, lo, hi, label in BUDGETS:
@@ -459,14 +439,9 @@ def question_for(slot: str, session: Session, lang: str = "english") -> str:
     persona = session.persona
     tag = lang == "taglish"
     if slot == "roof_method":
-        return ("Paano mo gustong ipakita ang installation site mo? Puwede mong i-type ang address, i-drawing sa satellite map, o mag-sketch sa blank canvas."
+        return ("Paano mo gustong ipakita ang installation site mo? Puwede mong i-drawing sa satellite map (may search box doon para hanapin ang lugar mo), o mag-sketch sa blank canvas."
                 if tag else
-                "How would you like to show me your installation site? You can type your address and I'll look up the outline, draw it on the satellite map, or sketch it on a blank canvas.")
-    if slot == "roof_address":
-        return ("Ano ang address ng bahay? Mas maganda kung may kalye, barangay at lungsod."
-                if tag else "What's the address of the house? A street, barangay and city works best.")
-    if slot == "roof_pick":
-        return "Alin dito ang bahay mo?" if tag else "I found a few matches. Which one is your home?"
+                "How would you like to show me your installation site? You can draw it on the satellite map (use its search box to jump to your street), or sketch it on a blank canvas.")
     if slot == "roof_draw":
         if p.roof_method == "sketch":
             return ("Mag-sketch sa canvas sa kanan at maglagay ng isang totoong sukat para sa scale. Sabihin mo sa akin kapag tapos na."
@@ -521,9 +496,9 @@ def question_for(slot: str, session: Session, lang: str = "english") -> str:
 
 INTRO = {
     "english": ("Hi {first}! I'm Sol. I'll help you compare solar options for your home: I'll look at your installation site, your bill and your goal, "
-                "then show sized options with a 25-year payback range. Every result is an estimate for a licensed installer to confirm."),
+                "then show sized options with a 10-year payback range. Every result is an estimate for a licensed installer to confirm."),
     "taglish": ("Hi {first}! Ako si Sol. Tutulungan kitang ihambing ang mga solar option para sa bahay mo: titingnan ko ang installation site, ang bill at ang goal mo, "
-                "tapos magpapakita ako ng mga option na may 25-year payback range. Tantiya lang ang lahat ng resulta, kaya kailangan pa ring i-confirm ng licensed installer."),
+                "tapos magpapakita ako ng mga option na may 10-year payback range. Tantiya lang ang lahat ng resulta, kaya kailangan pa ring i-confirm ng licensed installer."),
 }
 
 _TAGLISH_HINTS = re.compile(

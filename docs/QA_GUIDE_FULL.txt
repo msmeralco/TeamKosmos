@@ -1,0 +1,825 @@
+==============================================================================
+SOL: YOUR CLEAN ENERGY PARTNER
+FULL Q&A GUIDE FOR JUDGES, MENTORS AND CROWD QUESTIONS
+Team Kosmos | IDOL Hackathon 2026 | Challenge 1: Clean Energy Adoption and Rewards
+==============================================================================
+
+HOW TO USE THIS GUIDE
+- Every answer is written to be said out loud in 15 to 30 seconds. The "if pushed" line is the second-level answer.
+- Rule 1: never claim something that is not built. Use the STATUS TAGS below.
+- Rule 2: when a question hits a weak spot, admit it in one sentence, then say what we did about it. Judges reward honesty and punish bluffing.
+- Rule 3: pivot to the working demo whenever you can. "Let me show you" beats "we plan to".
+
+STATUS TAGS (use these words exactly)
+  [BUILT]    Works in the app today.
+  [PARTIAL]  Code exists, but it is limited or uses sample data.
+  [PITCH]    Our proposal. Nothing is agreed with any partner. Say so.
+  [NOT BUILT] A next step. Do not imply otherwise.
+
+THE ONE-BREATH PITCH (memorize this)
+"Sol is an AI agent that helps a Meralco household go solar. You give it your
+address, bill, budget and goal. It measures your roof on a satellite map,
+simulates grid-only, solar and solar-plus-battery hour by hour over ten years,
+picks parts and installers that fit, and issues a signed Solar Passport that
+unlocks vouchers once an installer confirms the install. The AI never does the
+math. Tools do. And every number it says is checked."
+
+THE THREE-LINE ANSWER TO "WHY NOT JUST USE CLAUDE / CHATGPT / GEMINI?"
+1. A chatbot talks. Sol measures your roof, runs a real simulation, and shows its sources.
+2. A chatbot can make up numbers. In Sol the AI cannot calculate, and a guard blocks any number the tools did not produce.
+3. A chatbot ends at advice. Sol ends at a signed Passport and a redeemable voucher.
+
+
+==============================================================================
+SECTION 1. "WHY NOT JUST USE CLAUDE / CHATGPT?" (EXPECT THIS FIRST)
+==============================================================================
+
+Q1.1  What is the difference between Sol and Claude (or ChatGPT, Gemini)?
+A: Claude is a general assistant. Sol is a product built around an AI agent.
+   Sol has a satellite roof outline, a validated solar simulation (pvlib with
+   PVGIS-ERA5 weather), a budget- and roof-constrained optimizer, a parts
+   catalog, a Meralco/DOE document library, a number guard, and a signed
+   Passport with redeemable vouchers. Claude has none of those unless someone
+   builds them around it. In fact, Sol uses a large language model (Gemini) as
+   its conversation layer. The model is the voice. The product is everything
+   around it.
+   If pushed: asking "should I go solar?" in a chat gives a paragraph. Sol gives
+   a roof outline, a 10-year table with a best case and a bad year, a package
+   list, and a verifiable record. [BUILT]
+
+Q1.2  Why can't I just paste my bill into Claude and ask?
+A: You can, and you will get a plausible answer. Three problems:
+   (a) It does not know your roof. Area, tilt and direction decide output, and
+       Sol outlines the roof from OpenStreetMap on a satellite map.
+   (b) It estimates solar output from memory. Sol runs an hourly simulation on
+       real modeled weather for your location.
+   (c) It can state wrong figures confidently. In Sol, numbers come only from
+       tools, and the number guard rejects anything the tools did not return.
+   If pushed: a chatbot has no way to know it is wrong. Sol is built so it
+   cannot be wrong in the way chatbots are wrong. [BUILT]
+
+Q1.3  Claude can read images and do math with code. Is that not enough?
+A: A model with code execution can compute something if the user supplies the
+   right inputs and knows what to ask. A household does not know to ask about
+   self-consumption share, export credit below retail, transformer hosting
+   limits or Net Metering fees. Sol builds those checks into the flow ("Before
+   you invest": right size, right location, right provider, know the
+   requirements) so nobody has to know what to ask. [BUILT]
+
+Q1.4  Could Claude do everything Sol does if you gave it tools?
+A: Largely yes. That is the point. Sol IS that: a model with tools. Our work is
+   the tools, data, guard rails and the loop after the advice (Passport,
+   vouchers). A generic assistant does not come with a Philippine tariff model,
+   a Meralco rules library, a DOE installer registry, a parts catalog, or a
+   signing key. We built the missing parts. Being honest: the model layer is
+   replaceable, and that is a design choice, not a weakness.
+
+Q1.5  What does Sol know that a general AI does not?
+A: Local, sourced and current facts: Meralco tariff and Net Metering pages, the
+   DOE circular DC2026-08-0017, the DOE Solar PV Installer Registry (77 firms
+   in Metro Manila, Central Luzon and CALABARZON, shown as "registered, not
+   endorsed"), 25 real installer packages with published prices, and
+   PVGIS-ERA5 weather bundled for Metro Manila. It shows the source passage and
+   link for each rules answer. [BUILT]
+
+Q1.6  Is Sol just a wrapper around an LLM?
+A: No. Of the backend, the LLM is one provider among two. The rule-based
+   ScriptedProvider runs the whole flow with no LLM at all. The substance is
+   deterministic services: load estimate, irradiance, hourly simulation,
+   battery dispatch, net-metering billing, finance, optimizer, layout,
+   readiness checks, Passport signing. A wrapper has nothing to run when the
+   model is off. Sol does. [BUILT]
+
+Q1.7  Why would a household use Sol instead of just asking an installer?
+A: Installers quote to sell. Sol gives an independent range before the first
+   call, shows how exports are really credited, and hands the household a
+   checklist of what to ask. The household arrives informed, and the installer
+   arrives with a layout and a checked brief. [BUILT: advice and checklist.
+   PITCH: that installers fund rewards.]
+
+Q1.8  Why not Google Project Sunroof, Aurora, or other solar calculators?
+A: Be honest: we did not benchmark them feature by feature. Our differences:
+   (1) Philippines-specific: Meralco tariff, Net Metering rules, DOE
+       registry. 
+   (2) Ranges (bad year, expected, best case) rather than one number.
+   (3) Conversational agent that explains and answers rule questions with
+       sources.
+   (4) Passport and rewards: the journey continues after the estimate.
+   We would not claim our roof modelling beats a company with aerial imagery
+   and 3D models. Ours is an outline from OpenStreetMap or a hand-drawn polygon.
+
+Q1.9  If models keep improving, will Sol be obsolete?
+A: Better models make Sol's conversation better, and the provider is
+   swappable. They do not give anyone a signing key, a verified installer
+   registry, a redemption ledger, or funded vouchers. The moat is data, rules,
+   and the trust loop, not the model.
+
+
+==============================================================================
+SECTION 2. WHAT MAKES SOL UNIQUE AND INNOVATIVE
+==============================================================================
+
+Q2.1  What is the single most innovative thing?
+A: The combination: an AI agent that cannot do arithmetic. The model
+   orchestrates and explains, deterministic tools produce every number, and a
+   guard checks the reply against tool output before you see it. Most AI
+   advisors trust the model's math. Sol structurally cannot. [BUILT]
+
+Q2.2  What is the second?
+A: The Solar Passport. Advice normally ends at a PDF. Sol ends at a signed,
+   shareable, QR-verifiable record (Ed25519 signature) that moves through three
+   stages: plan, installed, redeemed. It is the bridge between "I got a quote"
+   and "I got a reward". [BUILT; install confirmation flow is PARTIAL, see 6.x]
+
+Q2.3  What else is new?
+A: - Honest ranges, not a single number: bad year, expected, best case.
+   - Export credit modelled at Meralco's blended generation charge, editable,
+     with a lower-credit sensitivity, not the retail rate.
+   - The optimizer chooses from a real catalog. The model cannot invent parts.
+   - "Before you invest" checks on every option, built from Meralco's own four
+     points.
+   - Works without any AI key (rule-based fallback), so the demo cannot die
+     from an API outage.
+   - A data-honesty register (ASSUMPTIONS.yaml): every assumption has unit,
+     source, date, and a verified flag. The agent says so when an unverified
+     number drives a result. [BUILT]
+
+Q2.4  Is it innovative or just integration?
+A: Both, and we will not pretend otherwise. The individual ingredients (PVGIS,
+   pvlib, OpenStreetMap, an LLM) are known. The novelty is the closed loop:
+   roof -> simulation -> ranges -> parts -> installer -> signed Passport ->
+   voucher, with an AI that is forbidden from inventing a figure. Integration
+   done with discipline is the innovation here.
+
+Q2.5  What is the "wow" moment in the demo?
+A: Type an address. The roof is outlined. Say your bill and budget. Ten
+   seconds later you see a three-way 10-year comparison with a bad year, and
+   the battery is honestly shown as NOT paying back. Then the Passport opens
+   like a booklet and a voucher redeems once.
+
+Q2.6  Why does the battery honesty matter?
+A: Most vendors upsell a battery. Sol shows that at current prices it does not
+   pay for itself within ten years and picks it only if backup is your goal.
+   Trust is the product. [BUILT]
+
+Q2.7  Did you invent a new algorithm?
+A: No. We used established methods (pvlib, hourly dispatch, BM25 retrieval).
+   Our contribution is applying them to a Philippine household decision with a
+   truthfulness guard and a reward loop.
+
+
+==============================================================================
+SECTION 3. THE PROBLEM AND THE MARKET
+==============================================================================
+
+Q3.1  What problem are you solving?
+A: Households want to go solar but cannot tell a qualified quote from a cheap
+   one, do not know exports are credited below the retail rate, and see no
+   reward for acting. Meralco's typical household rate rose 16% from January to
+   October 2026 (₱12.95 to ₱15.06 per kWh), so the pressure is real.
+
+Q3.2  How big is the pain?
+A: Published installed prices run ₱45 to ₱75 per watt, a wide spread. A buyer
+   without a reference cannot judge it. That spread is the gap Sol fills.
+
+Q3.3  Who is the customer?
+A: Primary: a Meralco household considering rooftop solar. Secondary:
+   installers and sellers who want better-prepared leads. Tertiary: Meralco and
+   regulators who want customers to enter the correct grid pathway.
+
+Q3.4  Why Challenge 1: Clean Energy Adoption and Rewards?
+A: Adoption: Sol lowers the confusion that stops people. Rewards: the Passport
+   turns a confirmed install into vouchers and discounts. Both halves of the
+   challenge are in one flow.
+
+Q3.5  Why the Philippines specifically?
+A: High tariffs, strong sun, Net Metering rules, and a registry of DOE
+   installers. Also, existing tools are built for US/EU tariffs and rules.
+
+Q3.6  What is your market size?
+A: We have not sized a market and we will not invent a number on stage. The
+   addressable group is Meralco residential customers. If asked for a figure,
+   say: "We have not sized it. We focused on proving the product works first."
+
+Q3.7  Who are your competitors?
+A: Direct: installer websites with a basic calculator, global solar tools
+   (Sunroof, Aurora, etc.), and generic chatbots. Indirect: doing nothing.
+   Our edge is local rules, honest ranges, a verified-number AI, and a
+   reward loop. We did not do a formal competitive audit; say so if asked.
+
+
+==============================================================================
+SECTION 4. HOW IT WORKS (PRODUCT)
+==============================================================================
+
+Q4.1  Walk me through the flow.
+A: 1. Roof: type an address, Sol outlines the roof from OpenStreetMap on a
+      satellite map. Adjust it or draw it by hand.
+   2. Chat: bill, budget, goal (cut the bill, best 10-year savings, fastest
+      payback, blackout backup). If no goal is given, it defaults to the
+      biggest 10-year savings.
+   3. Options: optimizer builds the top 2 or 3 parts lists inside budget, goal
+      and roof size.
+   4. Simulation: hourly, with PVGIS-ERA5 weather.
+   5. ROI table: grid only, solar, solar with battery over 10 years.
+   6. Layout, Passport, rewards.
+   7. Ask the rules: net metering, tariffs, DOE circular, with source links.
+
+Q4.2  What is a Solar Passport?
+A: Proof of going solar. Sol issues it with your plan and signs it (Ed25519).
+   It has a shareable page and a QR code. Anyone can verify it at /verify/<id>.
+   It does NOT prove your real roof or usage; those are inputs. [BUILT]
+
+Q4.3  What are the three Passport stages?
+A: Plan, installed, redeemed. The installed fact is inside the signed record.
+
+Q4.4  What can't it do?
+A: Electrical design, shading analysis, multi-plane roofs, and permits. A
+   licensed installer must confirm every result. Say this early and
+   confidently. It is the correct scope. [NOT BUILT]
+
+Q4.5  Does it work without an AI key?
+A: Yes. The rule-based ScriptedProvider handles intake, tools and replies.
+   /api/health shows the mode (gemini or scripted). [BUILT]
+
+Q4.6  What languages does it support?
+A: The agent has a language setting and NLU for language detection. We did not
+   formally test every language; do not promise Tagalog quality. If asked,
+   say: "It detects and replies in the user's language where the model
+   supports it. We tested mainly English." [PARTIAL]
+
+Q4.7  Can I upload a bill photo?
+A: Yes. Bill photo reading works in chat (Gemini image input). In scripted
+   mode there is no vision. [BUILT]
+
+Q4.8  What are the starter pills?
+A: Map my site, Recommend Installers, Compare packages, Brief on Solar. They
+   use the same API as typed chat.
+
+Q4.9  Can I save and revisit chats?
+A: Yes: recents list, new chat, delete, export. Sign up, login and logout are
+   built. [BUILT]
+
+Q4.10 What is the "Overview" page?
+A: Package comparison plus a math drawer that shows the sources behind each
+   figure. [BUILT]
+
+
+==============================================================================
+SECTION 5. NUMBERS, ACCURACY AND TRUST
+==============================================================================
+
+Q5.1  What stops the AI from making up numbers?
+A: Three layers. (1) The system prompt and tool design: the model has no
+   calculator, only tools. (2) Every tool returns structured results. (3) The
+   number guard (guard.py) compares numbers in the reply against tool output
+   and blocks or corrects mismatches. [BUILT]
+   If pushed: no guard is perfect. It catches invented numbers; it cannot prove
+   that a tool's input assumption is right. That is why assumptions are listed
+   and flagged.
+
+Q5.2  So can I fully trust the output?
+A: No, and we say it in the product. Every result is an estimate for a
+   licensed installer to confirm. Demo households are synthetic.
+
+Q5.3  Where do weather numbers come from?
+A: PVGIS-ERA5, a modeled dataset (not measured at your roof). It is bundled for
+   Metro Manila at 12 and 20 degree tilt facing south. Other locations can be
+   fetched live (up to 35 seconds) and otherwise fall back to a labelled
+   approximation. [BUILT, with the approximation flagged]
+
+Q5.4  Where do prices come from?
+A: Seed catalog and 25 real installer packages from 6 installers with
+   published prices and links, re-checkable via scripts/build_packages.py. The
+   scraper code exists, but no retailer source is enabled (we did not clear
+   robots.txt and terms for any). Cached or sample items are labeled.
+   [PARTIAL]
+
+Q5.5  Are the sample packages fake?
+A: Some are, and they are always labeled "Sample" and shown only where no real
+   package fits. [BUILT]
+
+Q5.6  Which assumptions are unverified?
+A: ASSUMPTIONS.yaml marks entries with verified: false. Examples: the Meralco
+   generation charge used for export credit (a PLACEHOLDER to replace with the
+   latest published figure), the tariff growth rates (0%, 3%, 5% per year,
+   judgement, disclosed), and the modelling simplification that folds fixed
+   charges into the per-kWh rate. The agent tells the user when these drive a
+   result. Admit this plainly; it is a strength to be this open.
+
+Q5.7  Why 3% tariff growth?
+A: It is a disclosed judgement, not a sourced forecast. We show 0%
+   (pessimistic) and 5% (optimistic) around it. It would be justified with the
+   historical Meralco rate series; that is an open item.
+
+Q5.8  How do you handle net metering credit?
+A: Exports earn a credit at Meralco's blended generation cost, not the retail
+   rate. The charge is editable per request, and a lower-credit case is shown.
+   The current default value is a placeholder until replaced with the latest
+   published charge.
+
+Q5.9  Why 10 years?
+A: One horizon for every figure makes comparison readable. Paybacks longer
+   than 10 years display as "not within 10 years".
+
+Q5.10 Does the battery pay for itself?
+A: Not within 10 years in our example. It adds roughly ₱89k to ₱155k and saves
+   roughly ₱50k to ₱110k of bills. It buys backup. The 80% self-use share with
+   a battery is our assumption and it decides the result. State that
+   dependency yourself before a judge finds it.
+
+Q5.11 Where do the deck's comparison numbers come from?
+A: A small illustrative model for one 450 kWh household (bigger than Meralco's
+   typical 200 kWh household), the published ₱45 to ₱75 per watt, the Meralco
+   October rate and PVGIS weather years. Flat tariff, no upkeep. The app runs
+   the real hourly simulation. Do not present the deck table as app output.
+
+Q5.12 How accurate is the roof measurement?
+A: An OpenStreetMap outline or a hand-drawn polygon, with a stated outline
+   confidence. Obstructions, shading, multiple roof planes and structural
+   fitness are flagged for the installer, not solved. Judge a "centimeter
+   accurate" claim as false; do not make it.
+
+Q5.13 How was it tested?
+A: About 23 backend test files run offline on a temporary SQLite database,
+   covering agent flow, auth, guard and tools, engine, geo, irradiance, load,
+   packages, passport, RAG, rewards, roof, routes, simulation and optimizer,
+   and upload check. Live checks need RUN_LIVE=1. Do not quote a pass count
+   unless you ran the suite that day.
+
+Q5.14 What is the AI model, and is it reliable?
+A: Gemini with function calling, with a fallback model, then the scripted
+   agent. Default model names are marked [VERIFY] in config and are checked
+   with scripts/verify_gemini.py. /api/health reports the mode so we know which
+   one is live.
+
+Q5.15 What happens when Gemini is overloaded or the internet fails?
+A: The provider falls back to a second model, then to the scripted agent. The
+   forms and buttons use the same API as chat. Prices and weather fall back to
+   cached files. The demo does not die. [BUILT]
+
+
+==============================================================================
+SECTION 6. PASSPORT, REWARDS AND TRUST LOOP
+==============================================================================
+
+Q6.1  What are the vouchers?
+A: Signed codes tied to one Passport, issued after install confirmation. Sample
+   examples: a free site survey, an installer discount on the recommended
+   package. Values are samples until a partner funds them. [BUILT as sample;
+   PITCH for funding]
+
+Q6.2  Can someone fake or reuse one?
+A: The code derives from Sol's signature, so it cannot be invented. It is only
+   issued after the install is confirmed, and it redeems once (a repeat
+   returns 409). [BUILT]
+
+Q6.3  Who confirms the install?
+A: Honest answer: there is no installer confirm flow yet. In the demo only the
+   seeded owner (dela.cruz@sol.test) has an installed Passport, with a sample
+   installer flagged sample: true inside the signed record. Say this clearly.
+   [PARTIAL]
+
+Q6.4  Who pays for rewards?
+A: Today, nobody, because values are samples. The pitch: installers or
+   retailers fund them because they receive a customer who arrives with a
+   layout and a checked price. This is a pitch, not an agreement. [PITCH]
+
+Q6.5  Is this a Meralco reward?
+A: No. Meralco is not involved and Sol promises no Meralco benefit. Vouchers
+   have no cash value.
+
+Q6.6  Why not points or tiers?
+A: They need a program owner and rules we cannot invent. A voucher works with
+   one Passport and needs no account.
+
+Q6.7  How would usage rewards work?
+A: A monthly generation reading from a REC meter would be added to the
+   Passport and unlock a usage reward. The demo has no meter data, so that
+   reward shows as locked. [NOT BUILT]
+
+Q6.8  Isn't the Passport easy to forge or self-issue?
+A: It cannot be forged without the private signing key. But a user can issue a
+   plan Passport for any inputs, and we say a Passport does not prove the real
+   roof or usage. Value comes from the installer-confirmed stage.
+   If pushed: key loss or leak is the main risk. The key
+   (backend/data/passport_ed25519.key) is gitignored; losing it means issued
+   Passports can no longer be verified. Back it up. Rotation is not built.
+
+Q6.9  How does verification work?
+A: GET /verify/<id> renders an HTML page and the API checks the Ed25519
+   signature against the stored record. There is also a paste-to-verify box on
+   the Saved Records page. [BUILT]
+
+Q6.10 Does a Passport help the user beyond rewards?
+A: It is a portable record to hand an installer as a quote brief, and a
+   reference when speaking to Meralco about the grid pathway.
+
+
+==============================================================================
+SECTION 7. IMPACT: CUSTOMERS, BUSINESSES, MERALCO, CLIMATE
+==============================================================================
+
+Q7.1  How does this help customers?
+A: A range instead of one number, a plain answer on what exports earn, rule
+   answers with source links, and a Passport that earns vouchers for going
+   solar. [BUILT]
+
+Q7.2  How does this help business owners (installers, sellers)?
+A: They get a customer who arrives with a layout, a price and checked
+   assumptions. They open the same Passport link as a quote brief, confirm the
+   install, and redeem vouchers with a code. Passport page and redeem route
+   are built. Partner funding is a pitch. [PARTIAL / PITCH]
+
+Q7.3  How does this help Meralco?
+A: Customers arrive knowing how exports are credited and which grid pathway
+   applies, and there is a record to point to when referring them to listed
+   installers. This is a next step, not a built feature, and Sol promises no
+   Meralco benefit. [PITCH]
+
+Q7.4  Does Sol reduce emissions?
+A: Indirectly, by lowering the barrier to adoption. We do NOT claim a CO2
+   figure. Embodied carbon appears only when a source publishes it; otherwise
+   it reads "not disclosed". Do not invent a tonnes-saved number.
+
+Q7.5  Does this help low-income households?
+A: Honestly, solar needs up-front cash, so the first users are middle-income
+   households with a roof they own. Sol helps by making the true cost and
+   payback clear. We have not built financing or community-solar options.
+   Name them as a next step, not a feature.
+
+Q7.6  How would you measure success?
+A: Proposed (not yet measured): estimates completed, Passports issued,
+   installs confirmed, vouchers redeemed, and how closely users' final quotes
+   land inside Sol's range.
+
+Q7.7  Why would a household trust it?
+A: Prices show sources, outputs show ranges, the math is open, rule answers
+   link to the source passage, and the Passport shows its sources.
+
+Q7.8  Are the installers "Meralco accredited"?
+A: Demo installers are synthetic. Real firms come from the DOE Solar PV
+   Installer Registry and are shown as "registered, not endorsed". We could not
+   find a citable Meralco-accredited list, so we say "listed installers".
+
+
+==============================================================================
+SECTION 8. BUSINESS MODEL AND GO-TO-MARKET
+==============================================================================
+
+Q8.1  How does Sol make money?
+A: We have not built or tested a revenue model. Candidate options: installer
+   lead or referral fees, funded voucher campaigns, or a verified-quote
+   subscription for installers. Say "options we would test", never "our
+   revenue". [PITCH]
+
+Q8.2  Who is the paying customer?
+A: Probably installers and retailers, not households. The household product
+   stays free to keep trust high. Not validated with any installer yet.
+
+Q8.3  Have any installers agreed to take part?
+A: No. The installers on the slide are samples. None has agreed. Say this
+   without hesitation.
+
+Q8.4  How would you acquire users?
+A: Candidate channels: partnerships with installers, community and condo
+   associations, and content about Net Metering questions. None are tested.
+
+Q8.5  Does it conflict with installers' interests?
+A: It standardizes quotes, which good installers benefit from and cheap or
+   opaque ones may not. We expect cooperation from registered firms who want
+   informed leads.
+
+Q8.6  Is this scalable beyond Meralco?
+A: The tariff model, rules library and weather data are parameterized, so
+   other Philippine utilities and countries are feasible with new data. We did
+   not build or test it.
+
+Q8.7  What would you do with the next 3 months?
+A: (1) Replace placeholder assumptions with sourced values. (2) Build the
+   installer confirm flow with one real partner. (3) Pilot with real
+   households and compare Sol's range against the quotes they receive.
+   (4) Multi-plane roofs and shading from imagery. (5) Real REC meter data for
+   usage rewards.
+
+
+==============================================================================
+SECTION 9. TECHNICAL DEEP DIVE
+==============================================================================
+
+Q9.1  What is the stack?
+A: Backend: Python 3.12, FastAPI. Frontend: Vite, React, TypeScript. Storage:
+   Supabase Postgres or SQLite (auto fallback). Simulation: pvlib with
+   PVGIS-ERA5. AI: Gemini function calling plus a rule-based provider.
+   Retrieval: BM25 keyword search over a local document library. Signing:
+   Ed25519. Auth: scrypt password hashes and hashed opaque tokens (30 day
+   expiry). Streaming: Server-Sent Events.
+
+Q9.2  Architecture in one sentence?
+A: A FastAPI service where a runner orchestrates one agent turn (lock, provider
+   with fallback, tools, number guard, reply), over deterministic domain
+   services and a database, serving a React frontend.
+
+Q9.3  What was hardest technically?
+A: Hourly battery dispatch across many weather years, an optimizer constrained
+   by budget and roof size, reliable price fetching, and a signed Passport with
+   install confirmation. Also making a language model refuse to invent numbers.
+
+Q9.4  Why RAG, and why BM25 not embeddings?
+A: RAG gives the agent Meralco and DOE rules with source links so it does not
+   answer rule questions from memory. BM25 keyword search works offline, is
+   deterministic, needs no embedding service, and is good enough for a small
+   curated corpus. RAG supplies facts only; numbers come from tools.
+
+Q9.5  What if the document search gets it wrong?
+A: Every answer shows its source passage and link so the user can check, and
+   when nothing is found the agent says so.
+
+Q9.6  How does the optimizer work?
+A: It filters the catalog by roof fit, budget and system type (grid-tied,
+   hybrid, off-grid), then ranks by the goal. The model can only pick from the
+   catalog. [BUILT]
+
+Q9.7  How do you estimate household load?
+A: From kWh or bill using three templates (a simplified profile). It is an
+   estimate, which is why real meter data is a listed next step.
+
+Q9.8  How do you handle concurrency and abuse?
+A: A per-session lock allows one turn at a time, a sliding-window rate limiter
+   guards the Gemini quota, there are upload size and file count limits, and a
+   75 second turn timeout. [BUILT]
+   Honest gap: several engine, roof and geocode endpoints may be open without
+   auth and call external services (Nominatim, Overpass, PVGIS). They need
+   auth or rate limits before public release. Only claim what you verified.
+
+Q9.9  Is the LLM prompt-injectable?
+A: Uploaded files and web text are untrusted. The tool-only-numbers design
+   limits the damage, because injected text cannot make the model produce an
+   unchecked figure. We did not run a formal red-team; do not say it is
+   immune.
+
+Q9.10 How do you scrape prices responsibly?
+A: The scraper checks robots.txt and has no retailer enabled until its terms
+   are read. Packages come from published installer pages and the build script
+   re-checks them.
+
+Q9.11 What if a third-party service is down (Nominatim, Overpass, PVGIS)?
+A: Address search, roof outlines and weather fall back to bundled or cached
+   data, and the roof can always be drawn by hand. Nominatim returns 403 for a
+   placeholder CONTACT_EMAIL, so a real address must be set. Check
+   /api/health before the demo.
+
+Q9.12 Why pvlib?
+A: It is the standard open-source library for PV modelling, peer reviewed and
+   widely used, so we did not write our own physics.
+
+Q9.13 What does "hourly simulation over 16 weather years" mean?
+A: We run the system against 16 years of hourly modeled weather rather than a
+   single "typical" year. That is how we produce a bad year, an expected case
+   and a best case.
+
+Q9.14 Where is the data stored and is it safe?
+A: The demo uses synthetic households. Passwords use scrypt, tokens are stored
+   hashed. Uploads are processed per session and not stored. No real customer
+   data is used in the demo. A production deployment would need a privacy
+   review (the Philippine Data Privacy Act) that we have not done.
+
+Q9.15 What is in the repo?
+A: backend/ (FastAPI app, tests, migrations, data, scripts), frontend/
+   (Vite/React/TS), deck/ (3D voxel pitch deck), docs/ (plan, pitch script,
+   Q&A guides, status checklist), scripts/ (dev launchers).
+
+Q9.16 How would it scale?
+A: The API is stateless apart from the database and a per-process lock and
+   rate limiter. Scaling out needs those moved to a shared store. A single
+   process is fine for the demo.
+
+
+==============================================================================
+SECTION 10. AI SAFETY, ETHICS AND PRIVACY
+==============================================================================
+
+Q10.1 Is the advice a financial or engineering guarantee?
+A: No. It is a decision aid. Every result is an estimate for a licensed
+   installer to confirm. This is stated in the product and Passport.
+
+Q10.2 Could Sol push people into a bad purchase?
+A: It is designed to do the opposite: show the battery not paying back, show a
+   bad year, flag unverified assumptions, and list questions to ask the
+   installer. We have not run a user study.
+
+Q10.3 Does it favor certain installers?
+A: Registry results are shown as "registered, not endorsed". Packages come
+   from six installers because those were the ones with checkable published
+   prices, not because of any commercial tie. No one paid for placement.
+
+Q10.4 What personal data does it handle?
+A: Account email and password hash, the address and bill figures the user
+   types, and optional uploaded images. The demo is synthetic. Production
+   would need consent flows, retention limits and a privacy review.
+
+Q10.5 What about hallucinated rules (e.g. wrong Net Metering fees)?
+A: Rule answers come from retrieved passages with source links, not model
+   memory. If the library lacks it, the agent says it cannot find it.
+
+Q10.6 Is the dataset licensed for use?
+A: PVGIS and OpenStreetMap are open data with attribution requirements.
+   Documents are summarized in our own words with source links.
+   Confirm attribution is visible in the UI before submission.
+
+Q10.7 Did you use AI to write the code?
+A: Answer truthfully and consistently with your team. The event rule is that
+   all code is written between 9:00 AM Nov 12 and 9:00 AM Nov 13, with
+   planning and data collection before. Agree on this answer before the pitch.
+   If AI tools were used, say so; do not deny it.
+
+
+==============================================================================
+SECTION 11. HACKATHON RULES AND SCOPE
+==============================================================================
+
+Q11.1 Did you write this inside the code window?
+A: Yes: all code between 9:00 AM Nov 12 and 9:00 AM Nov 13. Before that we
+   planned and collected data. (Confirm with git history before saying it.)
+
+Q11.2 Is any customer data real?
+A: No. Households, demo roofs, catalog entries for samples, and vouchers are
+   synthetic. Real items are labeled: DOE registry entries, published
+   installer package prices, Meralco and DOE documents. The shipped demo
+   outlines are synthetic rectangles; a script can build real OSM outlines.
+
+Q11.3 What is built vs. not built? (the honest slide)
+A: BUILT: address and map roof, drawing, load estimate, hourly simulation,
+   net-metering billing, 10-year ROI with ranges, optimizer, packages and
+   installers, readiness checks, chat agent with number guard, rules search,
+   layout, Passport (issue/sign/verify/QR), vouchers and once-only redeem,
+   accounts, saved chats, bill photo reading, assumptions register.
+   PARTIAL: live price fetching (no retailer enabled), installer confirmation
+   (seeded owner only), non-Metro-Manila weather (live fetch or approximation).
+   NOT BUILT: auto-outline from photo, shading and multi-plane roofs, real
+   meter data and usage rewards, funded partner vouchers, 3D view.
+
+Q11.4 Why is the scraper not enabled?
+A: We have not read the robots.txt and terms of any retailer to our
+   satisfaction, and we would rather ship fewer sources legally than more
+   sources unsafely.
+
+
+==============================================================================
+SECTION 12. TOUGH, HOSTILE AND TRICK QUESTIONS
+==============================================================================
+
+Q12.1 "This is just a chatbot with a calculator."
+A: The chatbot is the front door. Behind it are a satellite-based roof outline,
+   a weather-driven hourly simulation, an optimizer, a rules library, a guard
+   and a signing service. Take the chat away and the forms still work through
+   the same API.
+
+Q12.2 "Your numbers are fake, aren't they?"
+A: The households are synthetic by design and we say so. The method is real:
+   PVGIS weather, pvlib physics, published prices. Unverified assumptions are
+   listed and flagged, and we can show the register.
+
+Q12.3 "No installer has signed up. Where is the traction?"
+A: There is none, and we won't pretend. This is a hackathon prototype. Rewards
+   funding and install confirmation are proposals, labeled as such.
+
+Q12.4 "Why would an installer pay for this?"
+A: A hypothesis: pre-qualified customers who arrive with a layout and a budget
+   convert faster. We have not tested it. The first step is a pilot with one
+   registered installer.
+
+Q12.5 "What if Meralco changes its rules or rates?"
+A: Rates and rules live in data (ASSUMPTIONS.yaml and the document library),
+   not in code, and the generation charge is editable per request. Updating
+   means updating data and re-running the corpus builder. It does require
+   upkeep.
+
+Q12.6 "Isn't the Passport a gimmick?"
+A: Fair challenge. It is only valuable if third parties honor it. Today it is
+   a verifiable record and a quote brief. Its value depends on installers and
+   partners funding rewards, which is a pitch. The signature mechanism is real
+   and working.
+
+Q12.7 "Why should we believe your simulation?"
+A: It uses pvlib with modeled PVGIS-ERA5 hourly weather over many years, which
+   is a standard approach, and we show a bad year and best case. We did not
+   validate against real meter data from a Philippine installation. That is
+   the biggest accuracy gap, and a pilot would close it.
+
+Q12.8 "What is the biggest weakness?"
+A: Pick one, say it first: (1) assumptions marked unverified, (2) household
+   load is estimated, not metered, (3) roof outline lacks shading and
+   structure, (4) no real partner yet. All four are disclosed in the product.
+
+Q12.9 "What if the model gives a wrong answer despite the guard?"
+A: The guard catches numbers not produced by tools. It cannot detect a wrong
+   interpretation (for example, misreading a bill photo). That is why the app
+   shows the inputs it used and lets the user edit them.
+
+Q12.10 "Why not build this as a spreadsheet?"
+A: A spreadsheet needs the user to know the inputs and rules. Sol finds the
+   roof, asks plain questions, runs thousands of hourly calculations, and
+   explains in the user's words, with sources.
+
+Q12.11 "Is this legal advice or engineering sign-off?"
+A: Neither. A licensed installer and the utility decide what is approved.
+
+Q12.12 "What if the demo breaks?"
+A: Hold a backup video. Also: the app runs without Gemini (scripted mode), and
+   weather for Metro Manila is bundled locally. Check /api/health and
+   CONTACT_EMAIL before going on stage.
+
+Q12.13 "What did you cut, and why?"
+A: Photo auto-outline, shading, 3D view and retailer scraping. We cut from the
+   bottom of the tier list to keep the core loop reliable.
+
+Q12.14 "Can I try to break it?"
+A: Yes. Invite them to ask for a number the tools do not give. The guard
+   should refuse. Do this only if you rehearsed it.
+
+
+==============================================================================
+SECTION 13. JUDGING CRITERIA CHEAT SHEET
+==============================================================================
+
+INNOVATION (30)
+- AI that cannot do math: tools + number guard.
+- Signed Passport that turns advice into a verifiable record and rewards.
+- Honest ranges and a visible assumptions register.
+- Works with or without an LLM.
+
+FUNCTIONALITY (25)
+- Show the live flow: address -> roof -> chat -> options -> 10-year table ->
+  layout -> Passport -> voucher redeem (once only).
+- Show the failure mode: turn off the key, it still works.
+
+IMPACT (20)
+- Customers: clarity and trust. Business: pre-qualified leads. Meralco: better
+  prepared customers. Be clear which are built and which are pitch.
+- Rate rose 16% (Jan to Oct 2026); prices ₱45 to ₱75 per watt.
+
+TECHNICAL CHALLENGE (15)
+- Hourly dispatch over multi-year weather, constrained optimizer, guard,
+  Ed25519 Passport, RAG with sources, provider fallback, locking and rate
+  limits.
+
+PRESENTATION (10)
+- 10 minutes plus 5 minutes Q&A. Lead with the demo. Say what is built, what is
+  a pitch, and what is not built.
+
+
+==============================================================================
+SECTION 14. DEMO SAFETY CHECKLIST
+==============================================================================
+[ ] GET /api/health is ok; note whether mode is gemini or scripted.
+[ ] CONTACT_EMAIL is a real address (not @example.com) so Nominatim works.
+[ ] Gemini model names verified with scripts/verify_gemini.py.
+[ ] Demo addresses tested; OpenStreetMap outline exists for each.
+[ ] Metro Manila weather is bundled, so no live PVGIS wait during the demo.
+[ ] Seeded owner exists (seed_users.py then seed_owner.py); password
+    "password" unless SEED_PASSWORD is set.
+[ ] Passport signing key backed up.
+[ ] Backup demo video ready.
+[ ] The root README says "cd frontendv2" but the folder is "frontend": use
+    "frontend" when running.
+[ ] Repo link submitted before 9:30 AM Nov 13.
+
+
+==============================================================================
+SECTION 15. WORDS TO USE AND WORDS TO AVOID
+==============================================================================
+USE
+  "estimate for a licensed installer to confirm"
+  "modeled weather data"
+  "sample values until a partner funds them"
+  "registered, not endorsed"
+  "our pitch / our next step" for anything unbuilt
+  "the AI orchestrates, the tools calculate"
+
+AVOID
+  "guaranteed savings", "accurate to the cent", "Meralco-approved",
+  "Meralco partner", "accredited" (unless cited), "cash rewards",
+  "real customers", "production-ready", "AI-powered" without saying what the
+  AI does, "100% accurate", any invented market size or CO2 figure.
+
+
+==============================================================================
+SECTION 16. LAST-RESORT ANSWERS
+==============================================================================
+"I don't know."
+  -> "We haven't measured that. Here is what we did measure, and here is how we
+     would find out."
+"Can you promise X?"
+  -> "No, and the product says so. What I can show is..."
+"Who is it for?"
+  -> "A Meralco household that owns a roof and wants an honest answer before
+     calling an installer."
+"What is the one thing to remember?"
+  -> "The AI doesn't do the math, and every number comes with its source."
+
+NOTE ON SOURCES: this guide is derived from the repository (README files,
+docs/QA_GUIDE.md, PROJECT_SUMMARY.md, STATUS_CHECKLIST.md, ASSUMPTIONS.yaml,
+backend code structure). Peso figures and percentages repeat those documents.
+Re-verify any figure against the live app before quoting it on stage.
+==============================================================================

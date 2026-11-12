@@ -5,7 +5,7 @@ const BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? "";
 
 export type Language = "auto" | "english" | "taglish";
 export type StepEvent = { id: string; label: string; status: "running" | "done" };
-export type Card = { type: "roof" | "analysis" | "passport" | "installers" | "packages"; data: unknown };
+export type Card = { type: "roof" | "analysis" | "passport" | "installers" | "packages" | "export"; data: unknown };
 
 /* ---- lists shown in the side panel ---------------------------------- */
 export type InstallerRow = {
@@ -68,6 +68,11 @@ export type Listing = { type: "installers"; data: InstallerList } | { type: "pac
 /** Pick the list cards out of a reply. */
 export function listingsOf(cards: Card[] | undefined): Listing[] {
   return (cards ?? []).filter((c) => c.type === "installers" || c.type === "packages") as Listing[];
+}
+/** The "download your plan" card of a reply, if there is one. */
+export function exportOf(cards: Card[] | undefined): { package_index: number; label: string } | null {
+  const c = (cards ?? []).find((x) => x.type === "export");
+  return c ? (c.data as { package_index: number; label: string }) : null;
 }
 export type Reply = {
   text: string;
@@ -264,7 +269,7 @@ export type RoofState = {
   center: { lat: number; lon: number; zoom: number };
   persona: { id: string; city: string };
   roof: RoofModel | null;
-  roofMethod: "address" | "draw" | "sketch" | null;
+  roofMethod: "draw" | "sketch" | "address" | null; // "address" only appears in chats saved before address lookup was removed
   nextSlot: string;
   needsRoof: boolean;
   pin?: { lat: number; lon: number } | null;
@@ -298,6 +303,15 @@ export type RoofSubmission =
       roof_type: "flat" | "single_slope" | "gable";
     };
 
+export type GeoCandidate = { label: string; lat: number; lon: number; source: string };
+
+/** Address search for the map's search box. `degraded` means the lookup service could not be reached. */
+export async function geocode(q: string): Promise<{ candidates: GeoCandidate[]; degraded: boolean }> {
+  const res = await fetch(`${BASE}/api/geocode`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ q }) });
+  if (!res.ok) throw await toError(res);
+  return (await res.json()) as { candidates: GeoCandidate[]; degraded: boolean };
+}
+
 export async function submitRoof(conversationId: string, body: RoofSubmission): Promise<void> {
   const res = await fetch(`${BASE}/api/agent/sessions/${conversationId}/roof`, {
     method: "POST",
@@ -305,6 +319,19 @@ export async function submitRoof(conversationId: string, body: RoofSubmission): 
     body: JSON.stringify(body),
   });
   if (!res.ok) throw await toError(res);
+}
+
+/** Download the chosen package (installation area, budget, package and numbers) as a PDF. */
+export async function exportPlan(conversationId: string, packageIndex: number): Promise<void> {
+  const res = await fetch(`${BASE}/api/agent/sessions/${conversationId}/export?package_index=${packageIndex}`, { headers: authHeaders() });
+  if (!res.ok) throw await toError(res);
+  const name = /filename="([^"]+)"/.exec(res.headers.get("Content-Disposition") ?? "")?.[1] ?? "sol-plan.pdf";
+  const url = URL.createObjectURL(await res.blob());
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 export async function deleteSession(conversationId: string): Promise<void> {
@@ -338,11 +365,11 @@ export type PackageSummary = {
   grid_only_monthly_bill_php: number;
   bill_reduction_pct_year1: number;
   payback_years: Range3;
-  net_profit_25y_php: Range3;
+  net_profit_10y_php: Range3;
   year1_savings_php: number;
   lcoe_php_per_kwh: number | null;
   year1_generation_kwh: number;
-  co2_avoided_t_25y: number;
+  co2_avoided_t_10y: number;
   readiness?: ReadinessCheck[];
 };
 export type AnalysisSummary = {

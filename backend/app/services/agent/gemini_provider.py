@@ -50,9 +50,15 @@ def schema_for(types, ann, description: str | None):
     return types.Schema(type="STRING", **kw)
 
 
+# Typed addresses are not looked up in chat any more: the map has its own search box.
+HIDDEN_TOOLS = {"geocode_address", "get_building_outline"}
+
+
 def function_declarations(types) -> list:
     decls = []
     for t in TOOLS.values():
+        if t.name in HIDDEN_TOOLS:
+            continue
         props, required = {}, []
         for name, field in t.args_model.model_fields.items():
             props[name] = schema_for(types, field.annotation, field.description)

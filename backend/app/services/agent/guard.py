@@ -99,7 +99,7 @@ _SLOT_WORDS = {
     "budget": r"\b(?:budget|afford|spend)\b|₱",
     "goal": r"\b(?:goal|savings|payback|backup|cut)\b",
 }
-_SLOT_FAMILY = {"roof_method": "site", "roof_address": "site", "roof_pick": "site", "roof_draw": "site", "load": "load",
+_SLOT_FAMILY = {"roof_method": "site", "roof_draw": "site", "load": "load",
                 "system_type": "system", "budget": "budget", "goal": "goal", "goal_param": "goal"}
 
 

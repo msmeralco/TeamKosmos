@@ -21,11 +21,11 @@ HOUSEHOLDS = {  # signed up as fresh accounts for every run
     "wfh": {"household_name": "WFH Couple", "city": "Makati City", "lat": 14.5547, "lon": 121.0244, "monthly_kwh": 700, "household_template": "day_heavy"},
 }
 SCENARIOS = [
-    ("reyes", "Reyes Family", ["I want to install solar", "I'll type my address", "reyes demo", "Yes, use 450 kWh per month",
+    ("reyes", "Reyes Family", ["I want to install solar", "reyes demo", "Yes, use 450 kWh per month",
                                 "My budget is ₱300,000 to ₱500,000", "I want to cut my electricity bill", "Cut my bill by 50%", "Yes, run the numbers"]),
-    ("maria", "Ate Maria", ["I want to install solar", "I'll type my address", "pasig demo", "Yes, use 250 kWh per month",
+    ("maria", "Ate Maria", ["I want to install solar", "pasig demo", "Yes, use 250 kWh per month",
                              "My budget is ₱150,000 to ₱300,000", "I want the fastest payback", "Yes, run the numbers"]),
-    ("wfh", "WFH Couple", ["I want to install solar", "I'll type my address", "makati demo", "Yes, use 700 kWh per month",
+    ("wfh", "WFH Couple", ["I want to install solar", "makati demo", "Yes, use 700 kWh per month",
                             "My budget is ₱500,000 or more", "I want the biggest 10-year savings", "Yes, run the numbers"]),
 ]
 
@@ -80,14 +80,14 @@ def main() -> int:
             if card is None:
                 raise RuntimeError("no analysis card: " + last["reply"]["text"][:160])
             top = card["data"]["packages"][0]
-            pb, pf = top["payback_years"], top["net_profit_25y_php"]
+            pb, pf = top["payback_years"], top["net_profit_10y_php"]
             rows.append((name, top["label"], top["kwp"], top["capex_php"], top["bill_reduction_pct_year1"],
                          f"{yrs(pb['best_case'])} / {yrs(pb['expected'])} / {yrs(pb['bad_year'])}",
                          f"{pf['bad_year']:,.0f} to {pf['best_case']:,.0f}", "approx" if card["data"]["weather_is_approximate"] else "PVGIS"))
         except Exception as exc:  # noqa: BLE001
             failures += 1
             rows.append((name, f"FAILED: {exc}", 0, 0, 0, "", "", ""))
-    print(f"{'Household':<14}{'Top option':<16}{'kWp':>6}{'Capex PHP':>12}{'Bill cut':>9}  {'Payback best/exp/bad (yrs)':<28}{'25y profit PHP (bad to best)':<30}{'Sun data'}")
+    print(f"{'Household':<14}{'Top option':<16}{'kWp':>6}{'Capex PHP':>12}{'Bill cut':>9}  {'Payback best/exp/bad (yrs)':<28}{'10y profit PHP (bad to best)':<30}{'Sun data'}")
     for r in rows:
         print(f"{r[0]:<14}{str(r[1]):<16}{r[2]:>6.1f}{r[3]:>12,.0f}{r[4]:>8.0f}%  {r[5]:<28}{r[6]:<30}{r[7]}")
     print("\nAll scenarios passed." if not failures else f"\n{failures} scenario(s) failed.")

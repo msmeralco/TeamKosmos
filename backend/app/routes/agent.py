@@ -7,13 +7,14 @@ import re
 from typing import Annotated, Literal, Union
 
 from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response, StreamingResponse
 from pydantic import Field
 
 from ..config import get_settings
 from ..db import get_repo
 from ..errors import ApiError
 from ..models import FinalizeRequest, FromAddressRequest, SketchRequest
+from ..services import export as export_svc
 from ..services.agent import intake
 from ..services.agent.attachments import validate_files
 from ..services.agent.runner import LOCKS, ChatRequest, run_turn_json, session_roof_payload, stream_events, submit_roof
@@ -92,15 +93,28 @@ def list_sessions(ctx: Annotated[AuthContext, Depends(require_auth)]):
     return {"sessions": [{"id": r["id"], "title": r["title"], "turnCount": r["turn_count"], "updatedAt": r["updated_at"]} for r in rows]}
 
 
+def _current_summary(s):
+    """A summary saved before the 10-year figures existed has no such field; ask the user to re-run instead of crashing."""
+    sm = s.results.get("summary")
+    return sm if sm and all("net_profit_10y_php" in p for p in sm.get("packages", [])) else None
+
+
 @router.get("/sessions/{session_id}")
 def get_session(session_id: str, ctx: Annotated[AuthContext, Depends(require_auth)]):
     s = _load(session_id, ctx.user["id"])
     return {
         "id": s.id, "title": s.title, "language": s.language, "turnCount": s.turn_count,
         "nextSlot": intake.next_slot(s), "profile": s.profile.model_dump(mode="json"),
-        "summary": s.results.get("summary"), "passport": s.results.get("passport"),
+        "summary": _current_summary(s), "passport": s.results.get("passport"),
         "history": s.history, "guardEvents": s.guard_events,
     }
+
+
+@router.get("/sessions/{session_id}/export")
+def export_plan(session_id: str, ctx: Annotated[AuthContext, Depends(require_auth)], package_index: int | None = Query(None, ge=0)):
+    """Download the chosen package with the installation area, budget and numbers as a PDF."""
+    filename, data = export_svc.plan_pdf(_load(session_id, ctx.user["id"]), package_index)
+    return Response(data, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="{filename}"'})
 
 
 @router.delete("/sessions/{session_id}")

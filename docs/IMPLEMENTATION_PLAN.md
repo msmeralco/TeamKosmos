@@ -10,7 +10,7 @@ Status tags used below: **[DECIDED]** agreed in planning, **[PROPOSED]** my defa
 ## 1. Goal, scope and success criteria
 
 ### 1.1 One-sentence product
-Sol is a conversational agent that takes a Meralco household's roof, bill, budget and goal, then returns sized solar options, a 10-year cost comparison with honest ranges (a 25-year cash flow sits behind it), and a Solar Passport: proof of going solar that earns vouchers and discounts once an installer confirms the install.
+Sol is a conversational agent that takes a Meralco household's roof, bill, budget and goal, then returns sized solar options, a 10-year cost comparison with honest ranges, and a Solar Passport: proof of going solar that earns vouchers and discounts once an installer confirms the install.
 
 ### 1.1b Who it serves **[DECIDED]**
 Build the customer chat agent first. Three groups benefit, and the deck has a slide for each (slide 9, "Who it helps"):
@@ -28,7 +28,7 @@ There are no separate pages for installers or Meralco. The Passport page is the 
 - Household load estimate from monthly kWh or bill.
 - Hourly solar simulation (PVGIS-ERA5 data) with optional battery.
 - Net-metering-correct billing with on/off toggle and editable export credit.
-- ROI table: grid-only vs on-grid solar vs hybrid. The headline is the **10-year** total (the same horizon as the deck). The 25-year cash flow behind it gives payback and lifetime profit.
+- ROI table: grid-only vs on-grid solar vs hybrid. Every figure uses a **10-year** horizon (the same as the deck). Payback is shown only if it falls inside it.
 - Budget- and goal-driven optimizer producing the top 2 or 3 parts lists.
 - Live equipment price search with cache fallback and source/timestamp on every price.
 - **Solar Passport:** the customer's proof of going solar. Sol issues it with the plan (inputs, assumptions, package, results) and signs it. A listed installer confirms the install, and the confirmed Passport unlocks vouchers and discounts. Three stages: plan, installed, redeemed.
@@ -133,7 +133,7 @@ sol/
         irradiance.py     PVGIS/NASA fetch, cache, scale to kWp
         dispatch.py       hourly PV/battery/grid loop
         billing.py        net-metering monthly bill model
-        finance.py        25-year cash flow, payback, NPV, IRR, LCOE
+        finance.py        cash flow, payback, NPV, IRR, LCOE
         optimizer.py      candidate search by goal
         scraper/          fetch.py extract.py validate.py sources.yaml
         passport.py       canonical JSON, Ed25519 signature, install confirmation
@@ -224,14 +224,14 @@ type ScenarioResult = {
   year1_export_kwh: number;
   year1_savings_php: number;
   payback_years: number | null;
-  net_profit_25y_php: number;
+  net_profit_10y_php: number;
   npv_php: number; irr_pct: number | null; lcoe_php_per_kwh: number;
   cashflow_cumulative_php: number[26];     // index 0 = -capex
-  co2_avoided_t_25y: number;
+  co2_avoided_t_10y: number;
 };
 
 type RoiTable = {
-  grid_only: { monthly_bill_php: number; bill_25y_php: number };
+  grid_only: { monthly_bill_php: number };
   on_grid: ScenarioSet; hybrid: ScenarioSet | null;
   net_metering_off: { on_grid: ScenarioSet; hybrid: ScenarioSet | null };  // toggle data
 };
@@ -406,12 +406,12 @@ Cap check: system AC size above `net_metering_cap_kw` is rejected by the optimiz
 
 ### 7.7 Finance (`services/finance.py`)
 
-Per scenario, 25 years:
+Per scenario, over the model horizon (`analysis_years`; users see the first 10 years):
 - Yearly generation = year-1 generation × `(1 - degradation)^(y-1)`.
 - Savings_y = baseline_bill_y − solar_bill_y.
 - Costs: O&M = `om_pct * capex` each year; inverter replacement at `inverter_life_years` (cost `pct * inverter_price`); battery replacement at `battery_life_years`.
 - Net cash flow_y = savings_y − O&M_y − replacements_y. Cumulative starts at `-capex`.
-- **Payback:** first year cumulative ≥ 0, linearly interpolated; `null` if not within 25 years.
+- **Payback:** first year cumulative ≥ 0, linearly interpolated; `null` if not within the model horizon; shown to users only when it falls within 10 years.
 - **NPV:** at `discount_rate_pct`. **IRR:** `scipy.optimize.brentq` on NPV(r); `null` if no sign change.
 - **LCOE:** `(capex + PV(O&M + replacements)) / PV(generation)`.
 - **CO2 avoided:** total kWh generated times `grid_emission_factor_kg_per_kwh` / 1000, in tonnes.
@@ -437,7 +437,7 @@ Per scenario, 25 years:
 |---|---|
 | Cut bill by X% | Minimize capex among candidates with first-year bill reduction ≥ X% |
 | Maximize 10-year savings | Maximize 10-year cumulative net cash flow |
-| Fastest payback | Minimize payback years (tie-break: higher 25-year profit) |
+| Fastest payback | Minimize payback years (tie-break: higher 10-year profit) |
 | Blackout backup | Minimize capex among candidates meeting the backup constraint; tie-break on savings |
 
 **Output:** the best candidate labeled by goal, plus up to two diverse alternatives (for example, with and without battery). Then run the full 16-year, 3-scenario simulation only on those 2 or 3 finalists.
@@ -501,7 +501,7 @@ Vouchers and discounts reward going solar and give the Passport a purpose. Small
 **Screens and components:**
 1. **Roof step:** `MapPanel` (Leaflet, Esri imagery, attribution), address search box, `RoofEditor` using Leaflet-Geoman to edit/draw a polygon; shows area, assumed direction arrow, roof-type selector, tilt and azimuth sliders, "usable area" overlay. Tier 2: `Sketch canvas` tab with manual scale input.
 2. **Household step:** monthly kWh or bill field, household template (3 cards), budget range slider, goal selector (4 cards). Demo persona buttons prefill.
-3. **Results:** `PackageCards` (2 or 3, each with capex, kWp, payback range, 25-year profit range), `RoiTable` with net-metering toggle and editable export rate, `CashflowChart` (three scenario lines with shaded band), `DayProfileChart` (typical day: load, solar, battery, grid), `LayoutView` (panels overlaid on the roof map).
+3. **Results:** `PackageCards` (2 or 3, each with capex, kWp, payback range, 10-year profit range), `RoiTable` with net-metering toggle and editable export rate, `CashflowChart` (three scenario lines with shaded band), `DayProfileChart` (typical day: load, solar, battery, grid), `LayoutView` (panels overlaid on the roof map).
 4. **Products:** `ProductCard` with brand, model, ₱, ₱/W, efficiency, degradation, warranty, embodied carbon or "not disclosed", source link, freshness chip (live, cached), confidence dot. Live feed list while scraping.
 5. **Math drawer:** formulas, inputs, assumptions with source links, scenario definitions, data sources (PVGIS-ERA5 modeled estimate), and the disclaimer.
 6. **Passport and rewards:** `PassportView` with QR, status badge (plan or installed), installer label, link to `/passport/{id}`, "Download JSON", and a "Confirm install" box for the demo installer code. `RewardCards` shows each voucher (title, sample value, code, status, locked ones greyed) and a redeem box.
@@ -584,7 +584,7 @@ Never cut: address/draw roof input, simulation, ROI table with ranges, Passport.
 1. **0:00 to 1:00, hook and problem.** Rate up 16% since January, the 450 kWh household, then two gaps: solar options are hard to compare, and hard to understand. Three short slides, each with a source line.
 2. **1:00 to 2:45, Sol.** Introduce Sol. Type an address (prepared). Satellite map shows the roof outline; adjust one corner.
 3. **2:45 to 5:00, ask and answer.** Chat: bill amount, budget, goal. Sol fetches products live (feed visible), optimizes, shows 3 packages.
-4. **5:00 to 6:45, compare.** ROI table: grid-only vs on-grid vs hybrid over 10 years. Flip the net-metering toggle. Show best-case and bad-year range, then the 25-year cash flow for payback.
+4. **5:00 to 6:45, compare.** ROI table: grid-only vs on-grid vs hybrid over 10 years. Flip the net-metering toggle. Show best-case and bad-year range, then payback within 10 years.
 5. **6:45 to 7:45, show the math and the sources.** Open the drawer: sources, assumptions, export credit approximation, scenario definitions. Ask Sol one rule question (for example how exports are credited) and show the RAG answer with its source link. This is the "verifiable" moment.
 6. **7:45 to 9:00, Passport and rewards.** Issue the Passport and show its QR. Enter the demo installer code to confirm the install; the status flips to installed and the vouchers appear. Redeem one with its code. Say the programme is our proposal.
 7. **9:00 to 9:35, who it helps.** Deck slide: customers, business owners, Meralco. Say which parts are built and which are our pitch.
@@ -639,7 +639,7 @@ Planning, installs and data gathering are allowed before the window. Writing cod
 | Can someone fake or reuse a voucher? | The code comes from Sol's signature, so it can't be made up. It is only issued after the install is confirmed, and it redeems once. |
 | Why would installers fund vouchers? | They get a customer who arrives with a layout, a price and the assumptions already checked. That's a pitch, not an agreement. |
 | How does this help Meralco? | Customers arrive knowing how exports are credited and which grid pathway applies, and there is a record to point to in referrals. This is a next step. Sol promises no Meralco benefit. |
-| Why 10 years, not 25? | Ten years is the headline so the comparison is easy to read. The 25-year cash flow sits behind it for payback and lifetime profit. |
+| Why 10 years? | Ten years is the horizon for every figure, so the comparison is easy to read. A payback longer than 10 years shows as "not within 10 years". |
 | Does the battery pay for itself? | Not within 10 years in the deck's illustrative case. It buys backup power. Sol shows the numbers and lets you decide. |
 | What would you build next? | Multi-plane roofs and shading from imagery, real meter integration, and installer-side quotes. |
 

@@ -63,8 +63,6 @@ def method_from(text: str) -> str | None:
         return "sketch"
     if re.search(r"\bdraw|\btrace|\bmap\b|drawing|i-drawing|iguhit", t):
         return "draw"
-    if re.search(r"address|type|search|look ?up|i-type", t):
-        return "address"
     return None
 
 
@@ -122,6 +120,9 @@ def detect_intent(text: str) -> str | None:
     t = text.lower()
     if re.search(r"passport|verify|verification|sign(?:ed)? record", t):
         return "passport"
+    if re.search(r"\b(?:export|download|save|print)\b.{0,25}\b(?:my|our|the|this|it|that)\b.{0,15}\b(?:plan|details?|results?|data|info|report|summary|numbers?|quote|it)\b|"
+                 r"\bcan i (?:export|download)\b|^\s*(?:export|download)\b|\bpdf\b|\bi-?(?:export|download)\b", t):
+        return "export"
     if re.search(r"net[- ]?metering.*(off|without|disable|no\b)|without net[- ]?metering|what if.*net[- ]?metering|compare.*net[- ]?metering", t):
         return "nm_compare"
     if re.search(r"assumption|where do .* come from|\bsources?\b", t):
@@ -136,6 +137,9 @@ def detect_intent(text: str) -> str | None:
         return "products"
     if _DOCS.search(t) and _QUESTION.search(t):
         return "docs"
+    if re.search(r"recommend|suggest(?!ed)|what should i (?:pick|choose|get|spend|go with)|how much (?:should i|do i need to) (?:spend|budget)|not sure (?:about |of )?(?:my |the )?budget|"
+                 r"irekomenda|rekomenda|ano (?:ang )?(?:dapat|maganda)", t):
+        return "recommend"
     if re.search(r"explain|what is|what's|what are|how does|how do|paano|bakit|ano ang|ano po|\?$", t):
         return "ask"
     return None

@@ -5,7 +5,7 @@ import { Fragment, type ReactNode } from "react";
 
 function inline(text: string, keyBase: string): ReactNode[] {
   const out: ReactNode[] = [];
-  const re = /(!\[[^\]]*\]\([^)\s]+\)|\[[^\]]+\]\([^)\s]+\)|\*\*[^*]+\*\*|\*[^*\s][^*]*\*)/g;
+  const re = /(!\[[^\]]*\]\([^)\s]+\)|\[[^\]]+\]\([^)\s]+\)|\*\*[^*]+\*\*|\*[^*\s][^*]*\*|https?:\/\/[^\s)<]+)/g;
   let last = 0;
   let i = 0;
   for (const m of text.matchAll(re)) {
@@ -24,6 +24,23 @@ function inline(text: string, keyBase: string): ReactNode[] {
       } else {
         out.push(img[1]);
       }
+      last = at + tok.length;
+      continue;
+    }
+    if (/^https?:\/\//.test(tok)) {
+      const url = tok.replace(/[.,;:!?]+$/, "");
+      let label = url;
+      try {
+        label = new URL(url).hostname.replace(/^www\./, "");
+      } catch {
+        /* keep the full text */
+      }
+      out.push(
+        <a key={`${keyBase}-${i++}`} href={url} target="_blank" rel="noreferrer" className="font-medium text-[#ea580c] underline underline-offset-2">
+          {label}
+        </a>,
+      );
+      out.push(tok.slice(url.length));
       last = at + tok.length;
       continue;
     }
@@ -93,6 +110,32 @@ function Table({ lines, k }: { lines: string[]; k: string }) {
       </table>
     </div>
   );
+}
+
+/** A long reply that arrives as one block gets paragraph breaks: before a "Source:" line, after a bare link, and every two or three
+ *  sentences, with a closing question in its own paragraph. Text that already has line breaks is left alone. */
+export function paragraphize(text: string): string {
+  if (text.length < 220 || /\n/.test(text)) return text;
+  const t = text.replace(/\s+(?=Source:\s)/g, "\n\n").replace(/(https?:\/\/\S+)\s+(?=[A-Z])/g, "$1\n\n");
+  const out: string[] = [];
+  for (const chunk of t.split("\n\n")) {
+    const sents = chunk.split(/(?<=[.!?])\s+(?=[A-Z"'(])/);
+    let cur = "";
+    sents.forEach((s, idx) => {
+      const lastIsQuestion = idx === sents.length - 1 && s.endsWith("?") && sents.length > 1;
+      if (lastIsQuestion || (cur && (cur + " " + s).length > 240)) {
+        if (cur) out.push(cur);
+        cur = "";
+      }
+      cur = cur ? cur + " " + s : s;
+      if (lastIsQuestion) {
+        out.push(cur);
+        cur = "";
+      }
+    });
+    if (cur) out.push(cur);
+  }
+  return out.join("\n\n");
 }
 
 export function RichText({ text }: { text: string }) {

@@ -139,7 +139,7 @@ def safe_text(ctx: TurnContext) -> str:
     """Template reply built only from tool results and the next question."""
     parts = tool_sentences(ctx)
     parts.append(question_text(ctx))
-    return " ".join(p for p in parts if p)
+    return "\n\n".join(p for p in parts if p)
 
 
 # ---- the turn ------------------------------------------------------------------------------------------------------
@@ -205,7 +205,7 @@ def _worker(req: ChatRequest, settings: Settings, out: "queue.Queue", ctx_box: l
                 session.guard_events.append({"at": time.time(), "untraced": [], "off_slot": slot_now, "original": text[:400]})
                 del session.guard_events[:-20]
                 lead = "I don't see your installation site outline yet." if slot_now == "roof_draw" else ""
-                text = " ".join(p for p in (lead, safe_text(ctx)) if p)
+                text = "\n\n".join(p for p in (lead, safe_text(ctx)) if p)
 
         # The results table is built from tool results only (so it is exempt from the number guard) and goes above
         # the model's explanation. History keeps just the explanation, to keep the next prompt short.

@@ -3,7 +3,7 @@
 Team Kosmos, IDOL Hackathon 2026. Challenge 1: Clean Energy Adoption and Rewards.
 
 ## What Sol does
-Tell Sol your roof, your bill, your budget and your goal. It returns two or three solar options, a 10-year cost comparison with a best case and a bad year (a 25-year cash flow sits behind it), and a Solar Passport: your proof of going solar, which earns vouchers and discounts once an installer confirms the install.
+Tell Sol your roof, your bill, your budget and your goal. It returns two or three solar options, a 10-year cost comparison with a best case and a bad year, and a Solar Passport: your proof of going solar, which earns vouchers and discounts once an installer confirms the install.
 
 ## The problem
 - Meralco's typical household rate rose 16% from January to October 2026 (₱12.95 to ₱15.06 per kWh).
@@ -16,7 +16,7 @@ Tell Sol your roof, your bill, your budget and your goal. It returns two or thre
 3. **Prices:** Sol reads 3 to 5 retailer sites. Each price shows its source and time. Cached prices are labeled.
 4. **Options:** the optimizer builds the top 2 or 3 parts lists within budget, goal and roof size.
 5. **Simulation:** pvlib with PVGIS-ERA5 hourly weather, run hour by hour against an estimated household load.
-6. **ROI table:** grid only, solar, and solar with battery over 10 years. Toggle net metering, edit the buyback rate, see payback and the 25-year cash flow.
+6. **ROI table:** grid only, solar, and solar with battery over 10 years. Toggle net metering, edit the buyback rate, see payback within 10 years.
 7. **Layout, Passport and rewards:** a 2D panel layout, then the Solar Passport. After an installer confirms the install, it unlocks vouchers and discounts.
 8. **Ask the rules:** Sol answers questions about net metering, tariffs and the DOE circular from a local document library (RAG), with source links.
 

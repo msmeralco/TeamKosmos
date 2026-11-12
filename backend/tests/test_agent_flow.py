@@ -27,15 +27,16 @@ def texts(msg):
 
 
 # ---- first contact -----------------------------------------------------------------------------------------
-def test_first_message_greets_and_offers_three_roof_choices(client):
+def test_first_message_greets_and_offers_two_roof_choices(client):
     msg = reply(client, "I want to install solar")
     assert msg["phase"] == "done" and msg["conversationId"] == CID
     assert msg["steps"][0]["id"] == "s0" and all(s["status"] == "done" for s in msg["steps"])
     r = msg["reply"]
     assert "Sol" in r["text"] and "installation site" in r["text"].lower() and "estimate" in r["text"].lower()
-    assert len(r["next"]) == 3 and r["hasMapArtifact"] is False
+    assert len(r["next"]) == 2 and r["hasMapArtifact"] is False
     assert {"id", "label", "text"} <= set(r["next"][0])
-    assert "I'll type my address" in texts(msg)
+    assert texts(msg) == ["I'll draw my installation site on the map", "I'll sketch my installation site on a blank canvas"]
+    assert "address" not in " ".join(texts(msg)).lower() and "search box" in r["text"]  # no typed-address option; the map has the search
 
 
 def test_reply_shape_matches_frontend_types(client):
@@ -54,11 +55,7 @@ def test_taglish_language_is_honoured(client):
 # ---- the whole conversation, offline ---------------------------------------------------------------------------
 def test_full_conversation_from_vague_request_to_passport(client):
     reply(client, "I want to install solar")
-    m = reply(client, "I'll type my address")
-    assert "address" in m["reply"]["text"].lower()
-    assert "I'll draw my installation site on the map" in texts(m) or "I'll draw my installation site on the map" in " ".join(texts(m))
-
-    m = reply(client, "reyes demo")  # synthetic demo roof: found offline, auto-selected
+    m = reply(client, "reyes demo")  # a named synthetic demo site loads straight away (no address step any more)
     assert m["reply"]["hasMapArtifact"] is True
     assert "88" in m["reply"]["text"] and "kWh" in m["reply"]["text"]  # roof area, then the usage question
     assert any(n["text"] == "Yes, use 450 kWh per month" for n in m["reply"]["next"])
@@ -93,6 +90,35 @@ def test_full_conversation_from_vague_request_to_passport(client):
     assert top["capex_php"] <= 500_000
     assert top["payback_years"]["best_case"] is None or top["payback_years"]["bad_year"] is None or top["payback_years"]["best_case"] <= top["payback_years"]["bad_year"]
     assert "Create my Solar Passport" in texts(m)
+    assert "Can I export my plan?" in texts(m)  # the export is offered as a pill once there is something to export
+
+    ex = client.get(f"/api/agent/sessions/{CID}/export?package_index=0")
+    assert ex.status_code == 200 and ex.headers["content-type"] == "application/pdf" and ".pdf" in ex.headers["content-disposition"]
+    assert ex.content.startswith(b"%PDF") and ex.content.count(b"/Type /Page\n") >= 1
+    from app.db import get_repo
+    from app.services import export as export_svc
+    from app.services.agent.session import Session
+
+    sess = Session.model_validate(get_repo().get_session(CID))
+    d = export_svc.plan_data(sess, 0)
+    area = dict(d["area"])
+    assert area["Roof area"].startswith("88") and dict(d["inputs"])["Budget"] == "₱300,000 to ₱500,000" and "cut your bill by 50%" in dict(d["inputs"])["Goal"]
+    assert dict(d["chosen"])["Solar panels"].startswith(f"{top['panel_count']} ×") and dict(d["chosen"])["Installed cost"] == f"₱{round(top['capex_php']):,}"
+    assert "10-year net profit" in dict(d["numbers"]) and "25-year" not in str(d) and "25 years" not in str(d)
+    raw = export_svc.plan_pdf(sess, 0, compress=False)[1]  # uncompressed, so the text can be found in the file itself
+    assert b"Installation area" in raw and b"10 years" in raw
+    assert client.get(f"/api/agent/sessions/{CID}/export?package_index=9").status_code == 422
+
+    m = reply(client, "can i export my details")  # asked in chat: a download card, not "I didn't catch that"
+    assert "didn't catch" not in m["reply"]["text"] and "ready" in m["reply"]["text"]
+    card = next(c for c in m["reply"]["cards"] if c["type"] == "export")["data"]
+    assert card["package_index"] == 0 and card["label"] == top["label"]
+
+    m = reply(client, "Tell me more about Starter 3 kWp from Triple30 Renewables")  # picking a package offers the export too
+    assert any(c["type"] == "export" for c in m["reply"]["cards"])
+    sess = Session.model_validate(get_repo().get_session(CID))
+    picked = export_svc.plan_data(sess, 0)["picked"]
+    assert picked and dict(picked["rows"])["Package"] == "Starter 3 kWp" and dict(picked["rows"])["From"] == "Triple30 Renewables"
 
     m = reply(client, "What if net metering is off?")
     assert "without it" in m["reply"]["text"].lower()
@@ -127,7 +153,7 @@ def test_details_given_in_passing_are_saved_and_acknowledged(client):
     assert p["monthly_bill_php"] == 7000 and p["budget_max_php"] == 400000 and p["load_confirmed"] is True
     text = m["reply"]["text"]
     assert "7,000" in text and "400,000" in text  # it says what it understood...
-    assert m["reply"]["slot"] == "roof_method" and len(m["reply"]["next"]) == 3  # ...and still asks about the roof
+    assert m["reply"]["slot"] == "roof_method" and len(m["reply"]["next"]) == 2  # ...and still asks about the roof
 
 
 def test_address_typed_at_the_first_question_is_understood(client):
@@ -135,18 +161,18 @@ def test_address_typed_at_the_first_question_is_understood(client):
     assert client.get(f"/api/agent/sessions/{CID}").json()["profile"]["roof"] is not None
 
 
-def test_unknown_address_falls_back_to_drawing_choices(client):
-    reply(client, "I'll type my address")
+def test_a_typed_address_points_to_the_map_search_box(client):
+    reply(client, "I want to install solar")
     m = reply(client, "999 Nowhere Street, Atlantis")
-    assert "not available right now" in m["reply"]["text"].lower() or "no match" in m["reply"]["text"].lower()
-    assert any("draw" in t.lower() for t in texts(m))
+    assert "search box" in m["reply"]["text"].lower() and m["reply"]["slot"] == "roof_draw" and m["reply"]["hasMapArtifact"] is True
+    assert client.get(f"/api/agent/sessions/{CID}").json()["profile"]["roof"] is None  # nothing was looked up
 
 
 def test_unrecognised_input_re_asks_without_losing_state(client):
     reply(client, "hello")
     m = reply(client, "asdf qwer")
     assert "didn't catch" in m["reply"]["text"].lower()
-    assert m["reply"]["slot"] == "roof_method" and len(m["reply"]["next"]) == 3
+    assert m["reply"]["slot"] == "roof_method" and len(m["reply"]["next"]) == 2
 
 
 def test_invalid_values_are_rejected_with_a_helpful_message(client):
@@ -290,7 +316,7 @@ def test_uploaded_files_are_not_persisted(client, tmp_path):
 def test_llm_unavailable_falls_back_to_scripted_with_a_step(client):
     runner.set_provider_override(FakeProvider([("raise", ProviderUnavailable("429"))]))
     m = reply(client, "I want to install solar")
-    assert "Sol" in m["reply"]["text"] and len(m["reply"]["next"]) == 3
+    assert "Sol" in m["reply"]["text"] and len(m["reply"]["next"]) == 2
     assert any(s["label"] == "Switching to quick mode" for s in m["steps"])
 
 
@@ -531,7 +557,6 @@ def test_off_slot_question_detector():
     assert not off(jump, "load")  # the same question is fine once the bill is the open step
     assert not off("Got it, about 450 kWh a month. What is your budget?", "budget")  # a recap before the right question
     assert not off("Thanks! That helps a lot.", "load")  # no question at all
-    assert not off("Which one is your home?", "roof_pick")  # matches no step words
     assert not off("Do you want to use 250 kWh a month or type your bill?", "load")
 
 
@@ -542,7 +567,7 @@ def test_model_that_skips_ahead_is_replaced_and_pills_match(client):
     m = reply(client, "my sketch is ready")["reply"]
     assert m["slot"] == "roof_draw"
     assert "monthly electricity bill" not in m["text"] and "installation site" in m["text"].lower()
-    assert {"roof_address", "roof_draw"} <= {n["id"] for n in m["next"]}  # the pills now fit what the reply says
+    assert {"roof_draw"} <= {n["id"] for n in m["next"]}  # the pills now fit what the reply says
     state = client.get(f"/api/agent/sessions/{CID}").json()
     assert state["guardEvents"][-1]["off_slot"] == "roof_draw"
 
@@ -571,3 +596,12 @@ def test_a_new_budget_offers_packages_again(client):
     out = reply(client, "My budget is ₱500,000 or more")["reply"]
     card = next(c for c in out["cards"] if c["type"] == "packages")["data"]
     assert card["open"] is True and card["budget_min"] == 500000
+
+
+def test_recommend_question_is_answered_from_the_site_and_usage(client):
+    for text in ("I want to install solar", "reyes demo", "Yes, use 450 kWh per month", "I want a grid-tied (on-grid) system"):
+        reply(client, text)
+    m = reply(client, "what do you recommend")
+    txt = m["reply"]["text"]
+    assert "didn't catch" not in txt and "63" in txt and "kWp" in txt and "₱150,000 to ₱300,000" in txt
+    assert m["reply"]["slot"] == "budget" and txt.rstrip().endswith("installed?")  # it then asks the budget question again

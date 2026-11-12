@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
+    <script src="../assets/reel.js"></script>
+    <style>
+      :root {
+        --cream: #fafaf9; --paper: #f4f4f2; --ink: #111111; --grey: #5f5e5b; --orange: #ea580c; --orange-d: #c2410c; --sun: #fbd554; --blue: #1d4ed8;
+        --teal: #2f7f78; --teal-d: #235f5a; --page: #e8e1d2; --tan: #c9bfa8; --chip: #b9cbc6; --green: #346538;
+        --sans: "Helvetica Neue", Helvetica, Arial, sans-serif; --mono: Menlo, "SF Mono", monospace;
+      }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--cream); }
+      #root { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: var(--cream); font-family: var(--sans); color: var(--ink); }
+      .abs { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; }
+      canvas { position: absolute; left: 0; top: 0; z-index: 40; pointer-events: none; }
+
+      #grid { z-index: 0; background-image: radial-gradient(rgba(17,17,17,0.16) 1.4px, transparent 1.6px); background-size: 48px 48px; opacity: 0.55; }
+      /* HUD */
+      .hud { z-index: 50; font: 600 17px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: rgba(17,17,17,0.75); }
+      .hud span { position: absolute; white-space: nowrap; }
+      .hud .tl { left: 64px; top: 52px; } .hud .tr { right: 64px; top: 52px; } .hud .bl { left: 64px; bottom: 50px; } .hud .br { right: 64px; bottom: 50px; }
+      .hud .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--orange); margin-right: 12px; }
+      .frame-line { position: absolute; left: 32px; top: 32px; right: 32px; bottom: 32px; border: 1px solid rgba(17,17,17,0.14); z-index: 49; }
+      .corner { position: absolute; width: 22px; height: 22px; z-index: 49; border: 0 solid rgba(17,17,17,0.5); }
+      .c1 { left: 24px; top: 24px; border-left-width: 2px; border-top-width: 2px; } .c2 { right: 24px; top: 24px; border-right-width: 2px; border-top-width: 2px; }
+      .c3 { left: 24px; bottom: 24px; border-left-width: 2px; border-bottom-width: 2px; } .c4 { right: 24px; bottom: 24px; border-right-width: 2px; border-bottom-width: 2px; }
+      .tag { position: absolute; left: 0; width: 1920px; text-align: center; bottom: 50px; z-index: 50; font: 600 17px var(--mono); letter-spacing: 0.18em; color: rgba(17,17,17,0.75); text-transform: uppercase; }
+      .tag b { color: var(--orange-d); font-weight: 700; margin-right: 14px; }
+      .wipe { z-index: 45; left: 0; top: 0; transform: translateX(-1920px); }
+
+      /* scene 1: the chain of words */
+      .kcenter { position: absolute; left: 0; top: 150px; width: 1920px; height: 560px; display: flex; align-items: center; justify-content: center; z-index: 10; }
+      .kbox { position: relative; padding: 28px 70px 34px; border: 3px solid currentColor; }
+      .kbox .kw { display: block; font: 900 260px/1 var(--sans); letter-spacing: -0.05em; white-space: nowrap; }
+      .kbox .h { position: absolute; width: 20px; height: 20px; background: var(--cream); border: 3px solid currentColor; }
+      .kbox .h.a { left: -12px; top: -12px; } .kbox .h.b { right: -12px; top: -12px; } .kbox .h.c { left: -12px; bottom: -12px; } .kbox .h.d { right: -12px; bottom: -12px; }
+      .kcap { position: absolute; left: 0; width: 1920px; text-align: center; top: 640px; z-index: 10; font: 700 26px var(--mono); letter-spacing: 0.2em; text-transform: uppercase; }
+      .kcap i { font-style: normal; opacity: 0.6; margin-right: 14px; }
+      .kidx { position: absolute; left: 0; width: 1920px; text-align: center; top: 128px; z-index: 10; font: 700 22px var(--mono); letter-spacing: 0.22em; color: var(--grey); }
+      #track { position: absolute; left: 0; top: 0; z-index: 11; }
+      .node { position: absolute; top: 944px; width: 16px; height: 16px; border-radius: 50%; border: 3px solid var(--ink); background: var(--cream); z-index: 11; }
+      .nodelabel { position: absolute; top: 970px; width: 200px; text-align: center; font: 700 15px var(--mono); letter-spacing: 0.16em; color: var(--grey); z-index: 11; }
+      #hop { position: absolute; left: 0; top: 0; width: 110px; height: 110px; z-index: 12; transform-origin: 50% 100%; }
+      /* scene 2: passport */
+      #bookWrap { position: absolute; left: 250px; top: 170px; width: 600px; height: 720px; perspective: 1800px; z-index: 12; }
+      #book { position: absolute; inset: 0; border-radius: 12px; background: var(--teal); padding: 22px; box-shadow: 10px 10px 0 -2px var(--teal-d), 18px 18px 0 -4px #cfc7b3, 24px 24px 0 -6px #bdb49d; }
+      #book .head { height: 118px; padding: 12px 8px; }
+      #book .strip { height: 12px; border-radius: 2px; background: var(--page); margin-bottom: 16px; }
+      #book .title { display: inline-block; padding: 10px 20px; border-radius: 4px; background: var(--page); color: var(--teal-d); font: 900 32px/1 var(--sans); letter-spacing: 0.14em; }
+      #book .chip { display: inline-block; margin-left: 10px; padding: 10px 14px; border-radius: 4px; background: var(--chip); color: #173f3b; font: 700 18px/1 var(--mono); letter-spacing: 0.08em; vertical-align: top; }
+      #book .page { position: absolute; left: 22px; right: 22px; top: 140px; bottom: 22px; border-radius: 5px; background: var(--page); padding: 34px 38px; }
+      .row { padding-bottom: 12px; margin-bottom: 18px; border-bottom: 2px solid var(--tan); }
+      .row small { display: block; font: 700 14px var(--mono); letter-spacing: 0.16em; color: #4f4838; text-transform: uppercase; }
+      .row b { display: block; margin-top: 5px; font: 600 29px/1.1 var(--sans); color: #3a3429; }
+      #qr { position: absolute; left: 38px; bottom: 34px; width: 128px; height: 128px; background: #111; padding: 10px; border-radius: 2px; }
+      #seal { position: absolute; right: -34px; bottom: -34px; width: 210px; height: 210px; border-radius: 50%; background: var(--teal); box-shadow: 0 0 0 10px var(--teal-d), 0 14px 28px rgba(0,0,0,0.25); display: flex; align-items: center; justify-content: center; z-index: 3; }
+      #seal i { width: 148px; height: 148px; border-radius: 50%; background: var(--teal-d); display: flex; align-items: center; justify-content: center; }
+      #seal svg { width: 92px; height: 92px; filter: drop-shadow(0 0 10px rgba(255,255,255,0.9)); }
+      #cover { position: absolute; inset: 0; border-radius: 12px; background: var(--teal); background-image: radial-gradient(rgba(255,255,255,0.09) 1.4px, transparent 1.6px); background-size: 14px 14px; transform-origin: 0% 50%; backface-visibility: hidden; z-index: 5; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 64px 40px; box-shadow: inset 0 0 0 14px var(--teal), inset 0 0 0 17px rgba(232,225,210,0.45); }
+      #cover .strip2 { width: 70%; height: 14px; border-radius: 2px; background: var(--page); }
+      #cover .ring { width: 190px; height: 190px; border-radius: 50%; border: 4px solid var(--page); display: flex; align-items: center; justify-content: center; }
+      #cover h2 { margin-top: 26px; font: 900 56px/1.05 var(--sans); letter-spacing: 0.16em; color: var(--page); text-align: center; }
+      #cover p { font: 700 18px var(--mono); letter-spacing: 0.24em; color: #f4efe3; }
+      #vhead { position: absolute; left: 960px; top: 196px; z-index: 12; font: 700 24px var(--mono); letter-spacing: 0.2em; color: var(--ink); }
+      #vhead small { display: block; margin-top: 10px; font: 600 18px var(--mono); letter-spacing: 0.1em; color: var(--grey); text-transform: none; }
+      .vt { position: absolute; left: 960px; width: 800px; height: 128px; z-index: 12; border: 3px dashed #9a927e; border-radius: 10px; background: #fff; padding: 20px 30px; }
+      .vt b { display: block; font: 800 36px/1.1 var(--sans); letter-spacing: -0.01em; }
+      .vt span { display: block; margin-top: 8px; font: 600 18px var(--mono); letter-spacing: 0.02em; color: var(--grey); }
+      .vt em { position: absolute; right: 30px; top: 22px; font: 700 20px var(--mono); letter-spacing: 0.14em; font-style: normal; color: #9a927e; }
+      .stamp { position: absolute; right: 22px; top: 54px; padding: 6px 14px; border: 4px solid var(--green); border-radius: 6px; font: 900 26px/1 var(--mono); letter-spacing: 0.16em; color: var(--green); transform: rotate(-7deg); }
+      /* scene 3: the plan */
+      #pdf { position: absolute; left: 330px; top: 150px; width: 540px; height: 764px; z-index: 12; background: #fff; border: 1px solid #e5e5e3; box-shadow: 0 30px 60px rgba(17,17,17,0.18); padding: 36px 38px; }
+      #pdf .ph { display: flex; align-items: center; justify-content: space-between; padding-bottom: 14px; border-bottom: 1px solid #e5e5e3; }
+      #pdf .ph div { display: flex; align-items: center; gap: 10px; font: 700 28px "Times New Roman", serif; } #pdf .ph img { width: 40px; height: 40px; }
+      #pdf .ph small { font: 600 13px var(--mono); letter-spacing: 0.16em; color: #5f5e5b; }
+      #pdf h3 { margin-top: 24px; font: 700 34px/1.1 "Times New Roman", serif; }
+      #pdf p { margin-top: 6px; font: 500 15px var(--sans); color: #5f5e5b; }
+      .pstats { margin-top: 18px; display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid #e5e5e3; border-top: 3px solid var(--orange); background: #fafaf9; }
+      .pstats div { padding: 10px 9px 12px; border-left: 1px solid #e5e5e3; } .pstats div:first-child { border-left: 0; }
+      .pstats small { display: block; font: 600 9px var(--mono); letter-spacing: 0.1em; color: #5f5e5b; }
+      .pstats b { display: block; margin-top: 6px; font: 700 16px "Times New Roman", serif; }
+      #pdf h4 { margin-top: 24px; font: 700 20px "Times New Roman", serif; } #pdf h4::after { content: ""; display: block; width: 36px; height: 3px; margin-top: 5px; background: var(--orange); }
+      #pdf .rows { margin-top: 10px; } #pdf .rows div { height: 26px; display: flex; gap: 14px; align-items: center; border-bottom: 1px solid #ecebe8; font: 500 13px var(--sans); } #pdf .rows div span { width: 110px; color: #5f5e5b; font-size: 11px; }
+      #roofsvg { position: absolute; right: 38px; top: 366px; width: 190px; height: 130px; }
+      #pdf .foot { position: absolute; left: 38px; right: 38px; bottom: 26px; display: flex; justify-content: space-between; font: 500 11px var(--mono); color: #5f5e5b; border-top: 1px solid #e5e5e3; padding-top: 10px; }
+      #big { position: absolute; left: 980px; top: 200px; z-index: 12; }
+      #big small { display: block; font: 700 24px var(--mono); letter-spacing: 0.2em; color: var(--grey); text-transform: uppercase; }
+      #big .num { display: block; margin-top: 12px; font: 800 150px/1 var(--sans); letter-spacing: -0.045em; color: var(--ink); white-space: nowrap; }
+      #big .num u { text-decoration: none; color: var(--orange); }
+      #big .rng { margin-top: 6px; font: 600 24px var(--mono); letter-spacing: 0.04em; color: var(--grey); }
+      #pay { position: absolute; left: 980px; top: 520px; z-index: 12; font: 800 92px/1 var(--sans); letter-spacing: -0.04em; }
+      #pay small { display: block; margin-bottom: 8px; font: 700 24px var(--mono); letter-spacing: 0.2em; color: var(--grey); text-transform: uppercase; }
+      #pay em { font-style: normal; color: var(--teal); }
+      #btn { position: absolute; left: 980px; top: 780px; z-index: 13; display: inline-flex; align-items: center; gap: 18px; padding: 24px 40px; border-radius: 16px; background: var(--ink); color: #fff; font: 700 38px var(--sans); }
+      #btn small { padding: 6px 12px; border-radius: 8px; background: var(--orange); font: 800 20px var(--mono); letter-spacing: 0.1em; }
+      #toast { position: absolute; left: 1330px; top: 786px; z-index: 13; padding: 20px 28px; border-radius: 14px; background: #fff; border: 2px solid var(--green); font: 700 26px var(--mono); color: var(--green); letter-spacing: 0.04em; box-shadow: 0 12px 30px rgba(17,17,17,0.12); }
+      /* scene 4: end card */
+      #rays { position: absolute; left: 700px; top: 60px; width: 520px; height: 520px; z-index: 5; }
+      #mascot6 { position: absolute; left: 835px; top: 195px; width: 250px; height: 250px; z-index: 12; }
+      #wordmark { position: absolute; left: 730px; top: 580px; width: 460px; z-index: 12; overflow: hidden; } #wordmark img { display: block; width: 460px; }
+      #cta { position: absolute; left: 0; width: 1920px; text-align: center; top: 828px; z-index: 12; font: 800 72px var(--sans); letter-spacing: -0.03em; }
+      #cta em { font-style: normal; color: var(--orange); }
+      #note { position: absolute; left: 0; width: 1920px; text-align: center; top: 920px; z-index: 12; font: 600 19px var(--mono); letter-spacing: 0.12em; color: var(--grey); }
+      #code-line { position: absolute; left: 0; width: 1920px; text-align: center; top: 962px; z-index: 12; font: 600 21px var(--mono); letter-spacing: 0.08em; }
+      #code-line u { display: inline-block; width: 12px; height: 24px; margin-left: 6px; background: var(--orange); vertical-align: -4px; text-decoration: none; }
+      #team { position: absolute; left: 0; width: 1920px; text-align: center; top: 1008px; z-index: 12; font: 500 17px var(--mono); letter-spacing: 0.2em; color: var(--grey); text-transform: uppercase; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="outro" data-start="0" data-duration="10" data-width="1920" data-height="1080" data-fps="30">
+      <audio id="music" src="../assets/outro.wav" data-start="0" data-duration="10" data-track-index="9" data-volume="0.9"></audio>
+      <div id="grid" class="abs" data-layout-ignore></div>
+      <div class="frame-line"></div><div class="corner c1"></div><div class="corner c2"></div><div class="corner c3"></div><div class="corner c4"></div>
+      <div class="abs hud" data-layout-ignore>
+        <span class="tl"><i class="dot"></i>SOL MOTION REEL 2026 &nbsp;·&nbsp; OUTRO</span>
+        <span class="tr">120 BPM &nbsp;·&nbsp; 1920×1080 &nbsp;·&nbsp; 30 FPS</span>
+        <span class="bl" id="tc">00:00:00:00</span><span class="br" id="fr">F 000 / 300</span>
+      </div>
+
+      <!-- scene 1: roof to rewards, one word per beat, the mascot hops along -->
+      <div id="s1">
+        <div class="kidx clip" data-start="0" data-duration="2.5" data-track-index="1" data-layout-ignore>FROM ROOF TO REWARDS</div>
+        <div id="k0" class="clip" data-start="0" data-duration="0.5" data-track-index="2"><div class="kcenter" style="color:#ea580c"><div class="kbox"><span class="kw">ROOF</span><i class="h a"></i><i class="h b"></i><i class="h c"></i><i class="h d"></i></div></div><div class="kcap" style="color:#c2410c"><i>01</i>map the site</div></div>
+        <div id="k1" class="clip" data-start="0.5" data-duration="0.5" data-track-index="2"><div class="kcenter" style="color:#1d4ed8"><div class="kbox"><span class="kw">SUN</span><i class="h a"></i><i class="h b"></i><i class="h c"></i><i class="h d"></i></div></div><div class="kcap" style="color:#1d4ed8"><i>02</i>simulate the sky</div></div>
+        <div id="k2" class="clip" data-start="1.0" data-duration="0.5" data-track-index="2"><div class="kcenter" style="color:#111111"><div class="kbox"><span class="kw">MATH</span><i class="h a"></i><i class="h b"></i><i class="h c"></i><i class="h d"></i></div></div><div class="kcap" style="color:#111"><i>03</i>ten-year numbers</div></div>
+        <div id="k3" class="clip" data-start="1.5" data-duration="0.5" data-track-index="2"><div class="kcenter" style="color:#ea580c"><div class="kbox"><span class="kw" style="font-size:210px">PACKAGES</span><i class="h a"></i><i class="h b"></i><i class="h c"></i><i class="h d"></i></div></div><div class="kcap" style="color:#c2410c"><i>04</i>real, published prices</div></div>
+        <div id="k4" class="clip" data-start="2.0" data-duration="0.52" data-track-index="2"><div class="kcenter" style="color:#2f7f78"><div class="kbox"><span class="kw" style="font-size:210px">PASSPORT</span><i class="h a"></i><i class="h b"></i><i class="h c"></i><i class="h d"></i></div></div><div class="kcap" style="color:#235f5a"><i>05</i>proof you went solar</div></div>
+        <div id="trk" class="abs clip" data-start="0" data-duration="2.52" data-track-index="3" data-layout-ignore></div>
+      </div>
+      <!-- scene 2: the passport opens, the vouchers are stamped -->
+      <div id="s2" class="abs clip" data-start="2.5" data-duration="3.05" data-track-index="2">
+        <div id="bookWrap">
+          <div id="book">
+            <div class="head"><div class="strip"></div><span class="title">SOLAR PASSPORT</span><span class="chip">SOL-7F3K92</span><span class="chip">13 NOV</span></div>
+            <div class="page">
+              <div class="row"><small>Holder</small><b>Reyes Family · demo</b></div>
+              <div class="row"><small>Installed</small><b>Sample Solar Installer</b></div>
+              <div class="row"><small>System</small><b>14 panels · 7.7 kWp</b></div>
+              <div class="row"><small>Record hash</small><b style="font-family:var(--mono);font-size:24px;letter-spacing:0.08em">f4e2ab1886a2</b></div>
+              <div id="qr"><svg viewBox="0 0 9 9" width="108" height="108" shape-rendering="crispEdges" id="qrsvg"></svg></div>
+              <div id="seal"><i><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></i></div>
+            </div>
+          </div>
+          <div id="cover"><div class="strip2"></div><div><div class="ring"><img src="../assets/mascot.svg" width="150" height="150" alt="" /></div><h2>SOLAR<br/>PASSPORT</h2></div><p>TAP TO OPEN</p></div>
+        </div>
+        <div id="vhead" data-layout-ignore>VOUCHERS &amp; DISCOUNTS<small>sample values · nothing here has a cash value</small></div>
+        <div class="vt" id="v0" style="top:290px"><em>CODE 7C2A-91FE</em><b>Free site survey</b><span>Worth PHP 3,500 · sample installer</span><div class="stamp" id="st0">REDEEMED</div></div>
+        <div class="vt" id="v1" style="top:446px"><em>CODE 4D8B-12AC</em><b>5% off your solar package</b><span>Up to PHP 15,000 off · sample installer</span><div class="stamp" id="st1">REDEEMED</div></div>
+        <div class="vt" id="v2" style="top:602px"><em>CODE 9E01-77B3</em><b>Battery add-on credit</b><span>PHP 10,000 credit · sample storage</span><div class="stamp" id="st2">REDEEMED</div></div>
+        <div class="vt" id="v3" style="top:758px"><em>CODE 2F6C-E5D0</em><b>LED lighting bundle</b><span>20% off · sample retailer</span><div class="stamp" id="st3">REDEEMED</div></div>
+      </div>
+      <!-- scene 3: the plan, exported as a PDF -->
+      <div id="s3" class="abs clip" data-start="5.5" data-duration="2.05" data-track-index="2">
+        <div id="pdf">
+          <div class="ph"><div><img src="../assets/mascot.svg" alt="" />Sol</div><small>SOLAR PLAN</small></div>
+          <h3>Solar plan for Reyes Family</h3><p>Max savings: 14 panels, 7.7 kWp, grid-tied</p>
+          <div class="pstats"><div><small>INSTALLED COST</small><b>PHP 298,600</b></div><div><small>PAYBACK</small><b>3.7 years</b></div><div><small>10-YEAR PROFIT</small><b>PHP 603,921</b></div><div><small>BILL CUT</small><b>100%</b></div></div>
+          <h4>Installation area</h4>
+          <div class="rows"><div><span>Roof area</span>88.01 m²</div><div><span>Usable</span>63.01 m²</div><div><span>Facing</span>180° (south)</div><div><span>Panel spots</span>14</div><div><span>Confidence</span>medium</div></div>
+          <svg id="roofsvg" viewBox="0 0 190 130"></svg>
+          <h4 style="margin-top:130px">The numbers, over 10 years</h4>
+          <div class="rows"><div><span>Bill today</span>about PHP 6,778 a month</div><div><span>Savings, year 1</span>PHP 81,332</div></div>
+          <div class="foot"><span>Sol, your clean energy partner. Estimates for a licensed installer to confirm.</span><span>Page 1 of 2</span></div>
+        </div>
+        <div id="big"><small>10-year net profit</small><span class="num" id="np">PHP 0</span><div class="rng">range PHP 484,356 to PHP 694,526 · demo household</div></div>
+        <div id="pay"><small>Payback</small><span id="pb">0.0</span> <em>years</em></div>
+        <div id="btn">Export plan <small>PDF</small></div>
+        <div id="toast">✓ sol-plan-max-savings.pdf</div>
+      </div>
+      <!-- scene 4: the end card -->
+      <div id="s4" class="abs clip" data-start="7.45" data-duration="2.55" data-track-index="2">
+        <svg id="rays" viewBox="-400 -400 800 800"></svg>
+        <img id="mascot6" src="../assets/mascot.svg" alt="" />
+        <div id="wordmark"><img id="wmImg" src="../assets/sol-logo.png" alt="Sol" /></div>
+        <div id="cta">Go solar. <em>Get rewarded.</em></div>
+        <div id="note">Rewards shown are samples · Estimates for a licensed installer to confirm</div>
+        <div id="code-line">every frame of this reel is code.<u id="cursor"></u></div>
+        <div id="team">Team Kosmos &nbsp;·&nbsp; IDOL Hackathon 2026</div>
+      </div>
+
+      <div id="wipe1" class="abs wipe" style="background:#2f7f78"></div>
+      <div id="wipe2" class="abs wipe" style="background:#ea580c"></div>
+      <div id="wipe3" class="abs wipe" style="background:#fbd554"></div>
+      <canvas id="cConf" width="1920" height="1080"></canvas>
+      <div id="tag1" class="tag clip" data-start="0" data-duration="2.5" data-track-index="5"><b>01</b>From roof to rewards</div>
+      <div id="tag2" class="tag clip" data-start="2.5" data-duration="3.0" data-track-index="5"><b>02</b>Solar Passport</div>
+      <div id="tag3" class="tag clip" data-start="5.5" data-duration="2.0" data-track-index="5"><b>03</b>Your plan, as a PDF</div>
+    </div>
+
+    <script>
+      const R = window.Reel, DUR = 10, FPS = 30, $ = (id) => document.getElementById(id);
+      const cConf = $("cConf").getContext("2d");
+      const mascotImg = new Image(); mascotImg.src = "assets/mascot.svg";
+
+      // static pieces built once
+      (function () { // sun rays for the end card
+        let s = "";
+        for (let i = 0; i < 48; i++) { const a = (i / 48) * R.TAU, long = i % 2 === 0, r1 = 230, r2 = long ? 372 : 300;
+          s += `<line x1="${(Math.cos(a) * r1).toFixed(1)}" y1="${(Math.sin(a) * r1).toFixed(1)}" x2="${(Math.cos(a) * r2).toFixed(1)}" y2="${(Math.sin(a) * r2).toFixed(1)}" stroke="${long ? "#ea580c" : "#f4b92f"}" stroke-width="${long ? 5 : 3}" stroke-linecap="round" opacity="${long ? 0.9 : 0.7}"/>`; }
+        $("rays").innerHTML = `<g id="raysG">${s}</g>`;
+        // a QR-looking pattern from a seeded generator (decoration only)
+        const r = R.rng(31); let q = '<rect width="9" height="9" fill="#111"/>';
+        for (let y = 0; y < 9; y++) for (let x = 0; x < 9; x++) { const corner = (x < 3 && y < 3) || (x > 5 && y < 3) || (x < 3 && y > 5); if (corner ? !((x % 3 === 1) && (y % 3 === 1)) && (x % 3 === 1 || y % 3 === 1 || true) && ((x + y) % 3 !== 1) : r() < 0.5) q += `<rect x="${x}" y="${y}" width="1" height="1" fill="#e8e1d2"/>`; }
+        $("qrsvg").innerHTML = q;
+        // the roof drawing on the PDF page: outline, usable area and two rows of seven panels
+        let g = '<polygon points="10,30 170,22 180,108 18,118" fill="#efeeea" stroke="#52514e" stroke-width="2"/><polygon points="20,40 162,33 170,100 26,108" fill="none" stroke="#ea580c" stroke-width="1.4" stroke-dasharray="4 3"/>';
+        for (let row = 0; row < 2; row++) for (let i = 0; i < 7; i++) { const x = 28 + i * 19.6 + row * 0.6, y = 44 + row * 29 - i * 0.9; g += `<polygon points="${x},${y} ${x + 16},${y - 0.8} ${x + 16.4},${y + 22} ${x + 0.4},${y + 22.8}" fill="#2b4a63" stroke="#fff" stroke-width="0.8"/>`; }
+        $("roofsvg").innerHTML = g;
+        // the track under the words
+        const labels = ["ROOF", "SUN", "MATH", "PACKAGES", "PASSPORT"]; let t = '<svg width="1920" height="1080" style="position:absolute;left:0;top:0"><line x1="400" y1="952" x2="1520" y2="952" stroke="rgba(17,17,17,0.25)" stroke-width="3" stroke-dasharray="3 9" stroke-linecap="round"/></svg>';
+        labels.forEach((l, i) => { t += `<div class="node" style="left:${NODE(i) - 11}px"></div><div class="nodelabel" style="left:${NODE(i) - 100}px">${l}</div>`; });
+        $("trk").innerHTML = t + '<img id="hop" src="../assets/mascot.svg" alt="" />';
+      })();
+      function NODE(i) { return 400 + i * 280; }
+
+      // the mascot hops from word to word, one hop per beat, landing as each word slams in
+      function hop(t) {
+        const el = $("hop"); if (!el) return;
+        let k = Math.min(4, Math.max(0, Math.floor((t + 0.35) / 0.5))), x, y = 0, sx = 1, sy = 1, rot = 0;
+        const land = k * 0.5, u = R.clamp((t - (land - 0.35)) / 0.35);
+        if (k === 0) { x = NODE(0); const d = R.clamp(t / 0.14); y = -(1 - d * d) * 150; }
+        else { x = R.lerp(NODE(k - 1), NODE(k), R.E.inOutSine(u)); y = -Math.sin(Math.PI * u) * 105; rot = (u - 0.5) * 0.5; }
+        const since = t - land; // squash on landing
+        if (since >= 0 && since < 0.14) { const q = Math.sin((Math.PI * since) / 0.14) * 0.34; sy = 1 - q; sx = 1 + q * 0.9; }
+        else if (u < 1 && k > 0) { sy = 1 + Math.sin(Math.PI * u) * 0.12; sx = 1 / Math.sqrt(sy); }
+        el.style.transform = `translate(${x - 55}px, ${830 + y}px) rotate(${rot}rad) scale(${sx}, ${sy})`;
+      }
+      // sun-coloured confetti, a pure function of time
+      const CONF = (function () { const r = R.rng(8), a = []; for (let i = 0; i < 160; i++) a.push({ ang: -Math.PI / 2 + (r() - 0.5) * 2.6, v: 500 + r() * 900, w: 8 + r() * 12, h: 5 + r() * 8, spin: (r() - 0.5) * 14, c: ["#ea580c", "#fbd554", "#2f7f78", "#1d4ed8", "#f4b92f"][Math.floor(r() * 5)] }); return a; })();
+      function confetti(s, x0, y0) {
+        if (s < 0 || s > 2.4) return;
+        for (const p of CONF) { const x = x0 + Math.cos(p.ang) * p.v * s * (1 - 0.18 * s), y = y0 + Math.sin(p.ang) * p.v * s + 1500 * s * s * 0.5; cConf.save(); cConf.translate(x, y); cConf.rotate(p.spin * s); cConf.globalAlpha = R.clamp(1.6 - s * 0.7); cConf.fillStyle = p.c; cConf.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); cConf.restore(); }
+      }
+      const fmt = (n) => "PHP " + R.group(n);
+
+      function update(t) {
+        t = Math.min(DUR, Math.max(0, t));
+        $("tc").textContent = R.timecode(t, FPS); $("fr").textContent = "F " + String(Math.min(299, Math.floor(t * FPS + 1e-6))).padStart(3, "0") + " / 300";
+        hop(t);
+        cConf.clearRect(0, 0, 1920, 1080);
+        confetti(t - 3.5, 560, 780); confetti(t - 7.5, 960, 600);
+        const c = R.E.outCubic(R.prog(t - 5.5, 0.25, 1.1));
+        $("np").textContent = fmt(603921 * c); $("pb").textContent = (3.7 * c).toFixed(1);
+      }
+
+      const tl = gsap.timeline({ paused: true }), clock = { t: 0 };
+      tl.fromTo(clock, { t: 0 }, { t: DUR, duration: DUR, ease: "none", onUpdate: () => update(clock.t) }, 0);
+
+      // scene 1: each word slams in on its beat
+      for (let i = 0; i < 5; i++) {
+        const b = i * 0.5;
+        tl.fromTo(`#k${i} .kbox`, { scale: 1.18, opacity: 0, rotation: i % 2 ? 3 : -3 }, { scale: 1, opacity: 1, rotation: 0, duration: 0.22, ease: "back.out(2)" }, b);
+        tl.fromTo(`#k${i} .kcap`, { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.2, ease: "power2.out" }, b + 0.08);
+      }
+      tl.fromTo(".kidx", { opacity: 0 }, { opacity: 1, duration: 0.3 }, 0.05);
+      // wipes between scenes
+      [["#wipe1", 2.3], ["#wipe2", 5.3], ["#wipe3", 7.3]].forEach(([id, t]) => {
+        tl.fromTo(id, { x: -1920 }, { x: 0, duration: 0.2, ease: "power3.in" }, t);
+        tl.to(id, { x: 1920, duration: 0.26, ease: "power3.out" }, t + 0.2);
+      });
+      // scene 2: the cover swings open, the page fills in, the seal stamps, four vouchers are stamped
+      tl.fromTo("#bookWrap", { scale: 0.9, opacity: 0, y: 40 }, { scale: 1, opacity: 1, y: 0, duration: 0.35, ease: "power3.out" }, 2.5);
+      tl.fromTo("#cover", { rotationY: 0 }, { rotationY: -168, duration: 0.8, ease: "power3.inOut" }, 2.85);
+      tl.to("#cover", { opacity: 0, duration: 0.15 }, 3.5);
+      tl.set("#book .row", { opacity: 0 }, 0);
+      tl.fromTo("#book .row", { opacity: 0, x: -16 }, { opacity: 1, x: 0, duration: 0.25, stagger: 0.07, ease: "power2.out" }, 3.2);
+      tl.fromTo("#seal", { scale: 2.8, opacity: 0, rotation: -24 }, { scale: 1, opacity: 1, rotation: 0, duration: 0.2, ease: "power4.in" }, 3.4);
+      tl.fromTo("#bookWrap", { x: 0 }, { x: 8, duration: 0.04, yoyo: true, repeat: 3, ease: "none" }, 3.58);
+      tl.fromTo("#vhead", { opacity: 0, x: 30 }, { opacity: 1, x: 0, duration: 0.3, ease: "power3.out" }, 3.15);
+      [0, 1, 2, 3].forEach((i) => {
+        const t0 = 3.4 + i * 0.5;
+        tl.fromTo(`#v${i}`, { x: 120, opacity: 0 }, { x: 0, opacity: 1, duration: 0.3, ease: "power3.out" }, t0);
+        tl.fromTo(`#st${i}`, { scale: 2.4, opacity: 0, rotation: -30 }, { scale: 1, opacity: 1, rotation: -7, duration: 0.16, ease: "power4.in" }, t0 + 0.34);
+      });
+      // scene 3: the page rises, the numbers count up, the button is pressed and the file lands
+      tl.fromTo("#pdf", { y: 90, opacity: 0, rotation: -2 }, { y: 0, opacity: 1, rotation: 0, duration: 0.45, ease: "power3.out" }, 5.5);
+      tl.fromTo("#big, #pay", { opacity: 0, x: 40 }, { opacity: 1, x: 0, duration: 0.35, stagger: 0.1, ease: "power3.out" }, 5.6);
+      tl.fromTo("#btn", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.3, ease: "power3.out" }, 6.05);
+      tl.to("#btn", { scale: 0.93, duration: 0.07, yoyo: true, repeat: 1 }, 6.45);
+      tl.fromTo("#toast", { opacity: 0, x: -30, scale: 0.9 }, { opacity: 1, x: 0, scale: 1, duration: 0.25, ease: "back.out(1.8)" }, 6.6);
+      tl.to("#pdf", { x: -10, duration: 0.2, ease: "sine.inOut", yoyo: true, repeat: 1 }, 6.6);
+      // scene 4
+      tl.fromTo("#rays", { scale: 0.5, opacity: 0, rotation: -30 }, { scale: 1, opacity: 1, rotation: 0, duration: 0.9, ease: "power3.out" }, 7.5);
+      tl.to("#raysG", { rotation: 40, svgOrigin: "0 0", duration: 3, ease: "none" }, 7.5);
+      tl.fromTo("#mascot6", { scale: 0.1, opacity: 0, y: 120 }, { scale: 1, opacity: 1, y: 0, duration: 0.6, ease: "back.out(1.9)" }, 7.5);
+      tl.fromTo("#mascot6", { rotation: 0 }, { rotation: 360, duration: 0.7, ease: "power2.out" }, 7.5);
+      tl.fromTo("#wmImg", { yPercent: 108 }, { yPercent: 0, duration: 0.6, ease: "power4.out" }, 7.9);
+      tl.fromTo("#cta", { opacity: 0, y: 26, scale: 0.94 }, { opacity: 1, y: 0, scale: 1, duration: 0.5, ease: "back.out(1.5)" }, 8.3);
+      tl.fromTo("#note", { opacity: 0 }, { opacity: 1, duration: 0.4 }, 8.7);
+      tl.fromTo("#code-line", { opacity: 0 }, { opacity: 1, duration: 0.3 }, 8.9);
+      tl.fromTo("#team", { opacity: 0 }, { opacity: 1, duration: 0.4 }, 9.1);
+      for (let t = 8.9, on = true; t < 10; t += 0.5, on = !on) tl.set("#cursor", { opacity: on ? 1 : 0 }, t);
+      tl.to("#mascot6", { y: -10, duration: 0.5, ease: "sine.inOut", yoyo: true, repeat: 3 }, 8.2);
+
+      window.__timelines = window.__timelines || {};
+      Promise.all([mascotImg.decode ? mascotImg.decode().catch(() => {}) : Promise.resolve(), document.fonts ? document.fonts.ready : Promise.resolve()]).then(() => {
+        update(0); window.__timelines["outro"] = tl; tl.seek(0);
+      });
+    </script>
+  </body>
+</html>

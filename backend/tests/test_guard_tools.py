@@ -109,7 +109,7 @@ def test_geocode_multiple_candidates_then_pick(monkeypatch):
     monkeypatch.setattr(geo, "client_factory", lambda: httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(200, json=items))))
     ctx, _ = make_ctx()
     out = ctx.call_tool("geocode_address", {"query": "street quezon city"})
-    assert len(out["candidates"]) == 2 and out["next_slot"] == "roof_pick"
+    assert len(out["candidates"]) == 2 and out["next_slot"] == "roof_draw"
     assert intake.match_choice(ctx.session, "Use A Street, Quezon City") == {"kind": "pick", "payload": 0}
     assert ctx.call_tool("get_building_outline", {"candidate_index": 9})["error"] == "invalid_candidate"
 
@@ -140,10 +140,10 @@ def test_compare_net_metering_and_what_if_credit():
     ready_session(ctx)
     ctx.call_tool("run_analysis", {})
     base = ctx.call_tool("compare_net_metering", {})
-    assert base["net_metering_on"]["net_profit_25y_php"]["expected"] >= base["net_metering_off"]["net_profit_25y_php"]["expected"]
+    assert base["net_metering_on"]["net_profit_10y_php"]["expected"] >= base["net_metering_off"]["net_profit_10y_php"]["expected"]
     low = ctx.call_tool("compare_net_metering", {"export_credit_php_per_kwh": 1.0})
     assert low["export_credit_php_per_kwh"] == 1.0
-    assert low["net_metering_on"]["net_profit_25y_php"]["expected"] <= base["net_metering_on"]["net_profit_25y_php"]["expected"]
+    assert low["net_metering_on"]["net_profit_10y_php"]["expected"] <= base["net_metering_on"]["net_profit_10y_php"]["expected"]
     ctx.calls_made = 0  # the per-turn cap is tested separately
     assert ctx.call_tool("compare_net_metering", {"package_index": 99})["error"] == "invalid_package"
     assert ctx.call_tool("compare_net_metering", {"export_credit_php_per_kwh": 99})["error"] == "invalid_arguments"

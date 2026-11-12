@@ -94,17 +94,17 @@ def test_persistent_rate_limit_falls_back_to_scripted(client):
     msg = chat(client, "I want to install solar")
     assert len(fake.models.calls) == 2
     assert any(s["label"] == "Switching to quick mode" for s in msg["steps"])
-    assert len(msg["reply"]["next"]) == 3 and "Sol" in msg["reply"]["text"]
+    assert len(msg["reply"]["next"]) == 2 and "Sol" in msg["reply"]["text"]
 
 
 def test_overload_503_is_not_retried_and_trips_the_breaker(client):
     fake = use([FakeAPIError(503), text_resp("should not be used")])
     msg = chat(client, "I want to install solar", cid="conv-503-a-0123456789")
     assert len(fake.models.calls) == 1  # a 503 already costs seconds: fail over, do not retry
-    assert any(s["label"] == "Switching to quick mode" for s in msg["steps"]) and len(msg["reply"]["next"]) == 3
+    assert any(s["label"] == "Switching to quick mode" for s in msg["steps"]) and len(msg["reply"]["next"]) == 2
     # the next message skips Gemini entirely for a while, so it answers instantly
-    msg2 = chat(client, "I'll type my address", cid="conv-503-a-0123456789")
-    assert len(fake.models.calls) == 1 and "address" in msg2["reply"]["text"].lower()
+    msg2 = chat(client, "I'll draw my installation site on the map", cid="conv-503-a-0123456789")
+    assert len(fake.models.calls) == 1 and "map" in msg2["reply"]["text"].lower()
     gemini_provider.reset_breakers()
 
 
@@ -201,11 +201,13 @@ def test_identical_requests_hit_the_cache(client):
 
 def test_function_declarations_cover_every_tool():
     decls = function_declarations(types)
-    assert {d.name for d in decls} == set(TOOLS)
+    from app.services.agent.gemini_provider import HIDDEN_TOOLS
+
+    assert {d.name for d in decls} == set(TOOLS) - HIDDEN_TOOLS  # the address lookup tools are not offered to the model
     by = {d.name: d for d in decls}
     goal = by["update_profile"].parameters.properties["goal"]
     assert goal.enum == ["cut_bill", "max_savings_10y", "fastest_payback", "backup"]
-    assert by["geocode_address"].parameters.required == ["query"]
+    assert "geocode_address" not in by and "get_building_outline" not in by
     assert by["update_profile"].parameters.properties["monthly_kwh"].type == "NUMBER"
     assert by["run_analysis"].parameters is None
     assert by["search_products"].parameters.properties["categories"].type == "ARRAY"

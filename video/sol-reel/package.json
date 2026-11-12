@@ -1,0 +1,15 @@
+{
+  "name": "sol-reel",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "npx --yes hyperframes@0.9.39 preview",
+    "check": "npx --yes hyperframes@0.9.39 check",
+    "render": "npm run render:intro",
+    "publish": "npx --yes hyperframes@0.9.39 publish",
+    "render:intro": "npx --yes hyperframes@0.9.39 render -o renders/sol-intro.mp4",
+    "render:outro": "npx --yes hyperframes@0.9.39 render -c compositions/outro.html -o renders/sol-outro.mp4",
+    "render:all": "npm run render:intro && npm run render:outro",
+    "audio": "../../.venv/bin/python ../make_audio.py"
+  }
+}

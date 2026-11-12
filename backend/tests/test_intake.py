@@ -22,10 +22,9 @@ def test_new_session_is_seeded_from_persona():
 def test_slot_order_walks_to_done():
     s = new_session()
     assert intake.next_slot(s) == "roof_method"
-    intake.apply_updates(s, roof_method="address")
-    assert intake.next_slot(s) == "roof_address"
-    s.pending["candidates"] = [{"label": "A", "lat": 14.6, "lon": 121.0}]
-    assert intake.next_slot(s) == "roof_pick"
+    intake.apply_updates(s, roof_method="draw")
+    assert intake.next_slot(s) == "roof_draw"
+    assert "roof_method must be draw or sketch" in intake.apply_updates(s, roof_method="address")[1]  # no typed-address option any more
     s.profile.roof = ROOF
     assert intake.next_slot(s) == "load"  # persona kWh must still be confirmed
     intake.apply_updates(s, confirm_load=True)
@@ -127,10 +126,8 @@ def test_every_choice_text_round_trips_through_match_choice():
     s.profile.roof = ROOF
     s.profile.goal = "cut_bill"
     s.results["analysis"] = {}
-    for slot in ["roof_method", "roof_address", "roof_pick", "roof_draw", "load", "system_type", "budget", "goal", "goal_param",
+    for slot in ["roof_method", "roof_draw", "load", "system_type", "budget", "goal", "goal_param",
                  "confirm", "change", "done"]:
-        if slot == "roof_pick":
-            s.profile.roof = None
         for sug in intake.choices_for(slot, s):
             assert set(sug) >= {"id", "label", "text"}
             assert intake.match_choice(s, sug["text"]) is not None, (slot, sug)

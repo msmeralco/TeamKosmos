@@ -345,7 +345,11 @@ function PackagesPanel({ data, onClose, onAsk }: { data: PackageList; onClose: (
   }, [visible, kind, sort]);
   const real = shown.filter((p) => !p.synthetic);
   const samples = shown.filter((p) => p.synthetic);
-  const best = new Set(sort === "match" && data.wanted_kwp ? real.filter((p) => p.within_budget !== false).slice(0, 3).map((p) => p.id) : []);
+  // "Best match" must really match: inside the budget, the wanted type, and within 25% of the wanted size (the server's GAP).
+  const closeEnough = (p: PackageRow) =>
+    p.within_budget !== false && (!data.wanted_kind || p.type === data.wanted_kind) && !!data.wanted_kwp && Math.abs(p.kwp - data.wanted_kwp) / data.wanted_kwp <= 0.25;
+  const best = new Set(sort === "match" && data.wanted_kwp ? real.filter(closeEnough).slice(0, 3).map((p) => p.id) : []);
+  const noneClose = !!data.wanted_kwp && real.length > 0 && !real.some(closeEnough);
   const kwpText = data.wanted_kwp ? num(data.wanted_kwp) : "";
   const want = !data.wanted_kwp ? "All sizes" : data.basis === "usage" ? `Around ${kwpText} kWp, a rough size for your usage` : `Closest to your ${kwpText} kWp design`;
   const budgetText = budgeted ? ` · up to ${peso(data.budget_max as number)}` : "";
@@ -380,6 +384,12 @@ function PackagesPanel({ data, onClose, onAsk }: { data: PackageList; onClose: (
         {nothingFits && (
           <p className="mb-3 rounded-[10px] bg-[#fbf3db] px-3 py-2 text-[12px] leading-snug text-[#956400]">
             Nothing I have is under {peso(data.budget_max as number)}, so these are the closest, all over budget.
+          </p>
+        )}
+        {data.basis === "design" && data.wanted_kwp && real.length > 0 && (
+          <p className="mb-3 rounded-[10px] bg-[#efeeea] px-3 py-2 text-[12px] leading-snug text-[#52514e]">
+            {noneClose ? `No published package is within 25% of your ${kwpText} kWp design, so these are the nearest sizes. ` : ""}
+            Sol's cost for your design is an estimate from demo parts prices. Installers sell fixed bundles at their own published prices, so the two usually differ.
           </p>
         )}
         {real.length > 0 && (

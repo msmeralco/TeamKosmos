@@ -182,59 +182,53 @@ class ScriptedProvider:
         if intent == "brief":
             ctx.call_tool("solar_brief", {})
             return True
-        if intent == "installers" or (s.pending.get("await_installer_location") and nlu.detect_intent(text) is None and slot not in ("roof_address", "roof_pick")
+        if intent == "export":
+            ctx.call_tool("export_plan", {})
+            return True
+        if intent == "recommend" and s.profile.roof and not analysed:
+            ctx.call_tool("recommend_budget", {})
+            return True
+        if intent == "recommend" and analysed:
+            from .summary import analysis_text
+
+            notes.append(analysis_text(s.results["summary"]))  # the numbers already ran: restate the top pick
+            return True
+        if intent == "recommend" and not s.profile.roof:
+            notes.append("I can size a recommendation once I know your installation site and usage.")
+            return True
+        if intent == "installers" or (s.pending.get("await_installer_location") and nlu.detect_intent(text) is None
                                       and (installers.region_for(text) or len(text.split()) <= 4)):
             place = text if installers.region_for(text) or installers.RESET.search(text) or intent != "installers" else ""  # "suggest installers" names no place yet
             ctx.call_tool("find_installers", {"location": place, "show_all": bool(re.search(r"\ball\b|every|more", text, re.I))})
             return True
-        if intent in ("docs", "ask") and slot not in ("roof_address", "roof_pick"):
+        if intent in ("docs", "ask"):
             if intent == "docs" or rag.search(text[:300], k=1):
                 ctx.call_tool("search_docs", {"query": text[:300]})
                 return True
             intent = "explain"  # a general question the library cannot answer: fall back to the assumptions list
-        if intent == "explain" and slot not in ("roof_address", "roof_pick"):
+        if intent == "explain":
             ctx.call_tool("explain_assumptions", {"topic": text[:80]})
             return True
         if intent == "products":
             ctx.call_tool("search_products", {})
             return True
 
-        if slot in ("roof_method", "roof_address", "roof_pick"):
+        if slot == "roof_method":
             # Details given in passing ("my bill is 7000 and I have 400k") are saved and acknowledged first.
-            # A bare city name is not a street address, so it is not sent to the geocoder together with them.
             fields = nlu.extract(text, slot, s.profile.goal)
             if fields:
                 ctx.call_tool("update_profile", fields)
                 return True
-
-        if slot == "roof_method":
             method = nlu.method_from(text)
-            if nlu.looks_like_address(text) or geo.has_demo_match(text):
+            if geo.has_demo_match(text):  # a named synthetic demo site still loads directly (demos and tests)
                 ctx.call_tool("geocode_address", {"query": text})
-                return True
-            if method == "address":
-                ctx.call_tool("request_roof_input", {"mode": "address"})
                 return True
             if method:
                 ctx.call_tool("request_roof_input", {"mode": method})
                 return True
-            return False
-        if slot == "roof_address":
-            method = nlu.method_from(text)
-            if method in ("draw", "sketch") and len(text.split()) <= 8 and not nlu.looks_like_address(text):
-                ctx.call_tool("request_roof_input", {"mode": method})
-                return True
-            if len(text.strip()) >= 3:
-                ctx.call_tool("geocode_address", {"query": text.strip()})
-                return True
-            return False
-        if slot == "roof_pick":
-            idx = self._pick_index(s, text)
-            if idx is not None:
-                ctx.call_tool("get_building_outline", {"candidate_index": idx})
-                return True
             if nlu.looks_like_address(text):
-                ctx.call_tool("geocode_address", {"query": text.strip()})
+                ctx.call_tool("request_roof_input", {"mode": "draw"})
+                notes.append("I can't look up addresses in the chat. Use the search box on the map to jump to your street, then outline your installation site.")
                 return True
             return False
         if slot == "roof_draw":
@@ -279,21 +273,6 @@ class ScriptedProvider:
             return False
         return False
 
-    @staticmethod
-    def _pick_index(s, text: str) -> int | None:
-        cands = s.pending.get("candidates") or []
-        t = text.lower().strip()
-        ordinals = {"first": 0, "1st": 0, "second": 1, "2nd": 1, "third": 2, "3rd": 2, "one": 0, "two": 1, "three": 2}
-        if t.isdigit() and 1 <= int(t) <= len(cands):
-            return int(t) - 1
-        for word, i in ordinals.items():
-            if re.search(rf"\b{word}\b", t) and i < len(cands):
-                return i
-        for i, c in enumerate(cands):
-            if t and t in str(c["label"]).lower():
-                return i
-        return None
-
     # ---- main --------------------------------------------------------------------------------------------------
     def run_turn(self, ctx: TurnContext) -> str:
         ctx.trusted = True  # values below are parsed from the user's own text or a choice button
@@ -330,7 +309,7 @@ class ScriptedProvider:
         if not understood and not first and not ctx.tool_calls:
             parts.append("Sorry, I didn't catch that." if ctx.lang != "taglish" else "Pasensya, hindi ko nakuha.")
         parts.append(question_text(ctx))
-        return " ".join(p for p in parts if p)
+        return "\n\n".join(p for p in parts if p)
 
 
 class FakeProvider:

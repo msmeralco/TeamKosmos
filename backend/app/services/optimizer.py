@@ -23,15 +23,15 @@ def _objective(goal: str, q: dict, capex: float, target_pct: float | None, syste
     pay = q["payback_years"] if q["payback_years"] is not None else 1e9
     if system_type == "off_grid":
         # Off-grid: the most independence from the utility the budget buys, then the lowest cost.
-        return (-round(q["bill_reduction_pct"]), capex, -q["net_25y_php"])
+        return (-round(q["bill_reduction_pct"]), capex, -q["net_10y_php"])
     if goal == "cut_bill":
         met = q["bill_reduction_pct"] >= (target_pct or 0.0)
-        return (0 if met else 1, capex if met else -q["bill_reduction_pct"], -q["net_25y_php"])
+        return (0 if met else 1, capex if met else -q["bill_reduction_pct"], -q["net_10y_php"])
     if goal == "max_savings_10y":
         return (-q["net_10y_php"], pay)
     if goal == "fastest_payback":
-        return (pay, -q["net_25y_php"])
-    return (capex, -q["net_25y_php"])  # backup: cheapest design that meets the battery constraint
+        return (pay, -q["net_10y_php"])
+    return (capex, -q["net_10y_php"])  # backup: cheapest design that meets the battery constraint
 
 
 def optimize(roof: RoofModel, load: LoadProfile, *, budget_max_php: float, goal: str, goal_target_pct: float | None = None,
@@ -125,7 +125,7 @@ def optimize(roof: RoofModel, load: LoadProfile, *, budget_max_php: float, goal:
     if alt is not None:
         finalists.append(("With battery" if not has_bat else "Without battery", alt))
     if goal != "max_savings_10y":
-        top_profit = max(evaluated.values(), key=lambda it: it["q"]["net_25y_php"])
+        top_profit = max(evaluated.values(), key=lambda it: it["q"]["net_10y_php"])
         if all(top_profit["pkg"]["id"] != f[1]["pkg"]["id"] for f in finalists):
             finalists.append(("Max savings", top_profit))
     finalists = finalists[:top]

@@ -1,4 +1,4 @@
-"""25-year cash flow, payback, NPV, IRR and LCOE."""
+"""Cash flow, payback, NPV, IRR and LCOE (the model runs longer than the 10 years shown to users)."""
 from __future__ import annotations
 
 from dataclasses import dataclass

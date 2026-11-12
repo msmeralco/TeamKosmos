@@ -1,4 +1,4 @@
-"""Package construction and the 25-year ROI simulation (3 scenarios, net metering on/off, grid / on-grid / hybrid)."""
+"""Package construction and the ROI simulation (modelled over 25 years internally, shown over 10) (3 scenarios, net metering on/off, grid / on-grid / hybrid)."""
 from __future__ import annotations
 
 from typing import Any
@@ -108,12 +108,13 @@ def _variant_eval(pkg: dict, battery: Battery | None, series: np.ndarray, load: 
         "year1_savings_php": round(float(bills.savings[0]), 0),
         "bill_reduction_pct_year1": round(100.0 * float(bills.savings[0]) / float(bills.baseline[0]), 1) if bills.baseline[0] else 0.0,
         "payback_years": None if pay is None else round(pay, 1),
-        "net_profit_25y_php": round(float(cf.cumulative[-1]), 0),
+        "net_profit_25y_php": round(float(cf.cumulative[-1]), 0),  # internal: Passport records verify against it, never shown
+        "net_profit_10y_php": round(float(cf.cumulative[min(10, len(cf.cumulative) - 1)]), 0),
         "npv_php": round(finance.npv(cf.net, capex, disc), 0),
         "irr_pct": None if irr is None else round(irr, 1),
         "lcoe_php_per_kwh": None if lc is None else round(lc, 2),
         "cashflow_cumulative_php": [round(float(v), 0) for v in cf.cumulative],
-        "co2_avoided_t_25y": round(float(gen.sum()) * A("grid_emission_factor_kg_per_kwh") / 1000.0, 1),
+        "co2_avoided_t_10y": round(float(gen[:10].sum()) * A("grid_emission_factor_kg_per_kwh") / 1000.0, 1),
         "battery_throughput_kwh_year1": round(r1.battery_throughput_kwh, 1),
         "capex_php": round(capex, 0),
         "_baseline_total": float(bills.baseline.sum()),
@@ -151,7 +152,7 @@ def simulate_package(pkg: dict, roof: RoofModel, load: LoadProfile, *, years: in
             on_list.append(on)
             off_list.append(off)
             if grid_only is None and s == "expected":
-                grid_only = {"monthly_bill_php": round(on["_baseline_y1"] / 12.0, 0), "bill_25y_php": round(on["_baseline_total"], 0)}
+                grid_only = {"monthly_bill_php": round(on["_baseline_y1"] / 12.0, 0)}
         out[vname] = {"package_id": pkg["id"], "capex_php": round(capex, 0), "scenarios": on_list}
         out["net_metering_off"][vname] = {"package_id": pkg["id"], "capex_php": round(capex, 0), "scenarios": off_list}
     for v in (out["on_grid"], out["hybrid"], out["net_metering_off"]["on_grid"], out["net_metering_off"]["hybrid"]):
@@ -163,7 +164,7 @@ def simulate_package(pkg: dict, roof: RoofModel, load: LoadProfile, *, years: in
             "system_losses_pct", "inverter_efficiency_pct", "battery_round_trip_eff_pct", "battery_usable_dod_pct",
             "battery_life_years", "inverter_life_years", "inverter_replacement_pct_of_price", "om_pct_of_capex_per_year",
             "install_cost_php_per_kw", "permits_misc_php", "discount_rate_pct", "grid_emission_factor_kg_per_kwh",
-            "net_metering_cap_kw", "analysis_years", "dc_ac_ratio_max"]
+            "net_metering_cap_kw", "dc_ac_ratio_max"]
     keys += [f"{p}_{s}" for s in SCENARIOS for p in ("tariff_growth_pct", "export_credit_growth_pct")]
     used = []
     for k in keys:

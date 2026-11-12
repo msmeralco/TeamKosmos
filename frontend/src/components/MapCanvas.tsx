@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { createPortal } from "react-dom";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { getRoofState, submitRoof, type RoofState, type RoofSubmission } from "../lib/api";
+import { geocode, getRoofState, submitRoof, type GeoCandidate, type RoofState, type RoofSubmission } from "../lib/api";
 import { crossesItself, selfIntersects } from "../lib/geometry";
 import { Icon } from "./icons";
 import { SketchPad } from "./SketchPad";
@@ -29,6 +29,79 @@ const LABEL_URLS = [
   `${REF_BASE}/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}${REF_TOKEN}`,
 ];
 const LABELS_ATTR = "Labels &copy; Esri";
+
+const SEARCH_PIN = L.divIcon({
+  className: "",
+  html: '<div style="width:22px;height:22px;border-radius:50% 50% 50% 0;background:#ea580c;border:2px solid #fff;box-shadow:0 1px 6px rgba(0,0,0,.45);transform:rotate(-45deg)"></div>',
+  iconSize: [22, 22],
+  iconAnchor: [11, 26],
+});
+
+/** Address search that floats on the map: type a street or place, pick a match, and the map flies there so you can outline the site. */
+function MapSearch({ onPick }: { onPick: (c: GeoCandidate) => void }) {
+  const [q, setQ] = useState("");
+  const [results, setResults] = useState<GeoCandidate[] | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+
+  const run = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const term = q.trim();
+    if (term.length < 3 || busy) return;
+    setBusy(true);
+    setNote(null);
+    try {
+      const r = await geocode(term);
+      setResults(r.candidates.slice(0, 5));
+      if (r.candidates.length === 0) setNote(r.degraded ? "Address search is not available right now. Pan and zoom the map to your home instead." : "No match. Try adding the barangay and city.");
+    } catch (err) {
+      setResults(null);
+      setNote(err instanceof Error ? err.message : "Search failed.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const pick = (c: GeoCandidate) => {
+    onPick(c);
+    setResults(null);
+    setNote(null);
+  };
+
+  return (
+    <div className="absolute left-3 top-3 z-[1000] w-[min(300px,calc(100%-72px))]" onKeyDown={(e) => e.key === "Escape" && (setResults(null), setNote(null))}>
+      <form onSubmit={run} role="search" className="flex items-center gap-2 rounded-full border border-[#e5e5e4] bg-white py-1 pl-3 pr-1 shadow-[0_2px_8px_rgba(0,0,0,0.08)] focus-within:ring-2 focus-within:ring-[#ea580c]/40">
+        <span className="shrink-0 text-[#787774]">{Icon.search}</span>
+        <input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Search an address or place"
+          aria-label="Search an address or place on the map"
+          maxLength={200}
+          className="min-w-0 flex-1 bg-transparent text-[13px] text-[#111111] placeholder-[#a3a3a3] outline-none"
+        />
+        <button type="submit" disabled={busy || q.trim().length < 3} className="rounded-full bg-[#111111] px-3 py-1 text-[12px] font-medium text-white transition-colors hover:bg-[#333333] disabled:opacity-40">
+          {busy ? "…" : "Go"}
+        </button>
+      </form>
+      {(results?.length || note) && (
+        <div className="mt-1.5 overflow-hidden rounded-[12px] border border-[#e5e5e4] bg-white shadow-[0_4px_16px_rgba(0,0,0,0.1)]">
+          {note && <p className="px-3 py-2.5 text-[12px] leading-snug text-[#787774]">{note}</p>}
+          {results?.map((c, i) => (
+            <button
+              key={`${c.lat},${c.lon},${i}`}
+              type="button"
+              onClick={() => pick(c)}
+              className="flex w-full items-start gap-2 border-t border-[#f0f0ee] px-3 py-2 text-left text-[12px] leading-snug text-[#111111] first:border-t-0 hover:bg-[#fafaf9]"
+            >
+              <span className="mt-0.5 shrink-0 text-[#ea580c]">{Icon.pin}</span>
+              <span className="min-w-0">{c.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 type Tab = "map" | "sketch";
 type Pt = [number, number]; // [lat, lng]
@@ -192,6 +265,7 @@ export function MapCanvas({
   const [sendError, setSendError] = useState<string | null>(null);
 
   const hostRef = useRef<HTMLDivElement>(null);
+  const searchPinRef = useRef<L.Marker | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const baseRef = useRef<L.TileLayer | null>(null);
   const labelsRef = useRef<L.LayerGroup | null>(null);
@@ -648,6 +722,17 @@ export function MapCanvas({
           <div className="relative isolate min-h-[260px] flex-1 overflow-hidden">
             <div ref={hostRef} className="absolute inset-0 bg-[#f4f4f2]" />
 
+            <MapSearch
+              onPick={(c) => {
+                const map = mapRef.current;
+                if (!map) return;
+                map.invalidateSize();
+                map.setView([c.lat, c.lon], 19, { animate: false });
+                searchPinRef.current?.remove();
+                searchPinRef.current = L.marker([c.lat, c.lon], { icon: SEARCH_PIN, interactive: false, keyboard: false }).addTo(map);
+              }}
+            />
+
             <div className="absolute top-3 right-3 z-[1000] flex flex-col gap-2">
               {consent === "idle" && (
                 <button
@@ -665,7 +750,7 @@ export function MapCanvas({
             {/* Step indicator while outlining: 1 zoom in, 2 click corners, 3 adjust and confirm */}
             {drawing && (
               <div
-                className="pointer-events-none absolute top-3 left-1/2 z-[1000] flex max-w-[calc(100%-112px)] -translate-x-1/2 items-center gap-2 rounded-full border border-[#e5e5e4] bg-white px-3.5 py-1.5 text-[12px] font-medium text-[#111111] shadow-[0_2px_8px_rgba(0,0,0,0.08)]"
+                className="pointer-events-none absolute top-14 left-1/2 z-[1000] flex max-w-[calc(100%-24px)] -translate-x-1/2 items-center gap-2 rounded-full border border-[#e5e5e4] bg-white px-3.5 py-1.5 text-[12px] font-medium text-[#111111] shadow-[0_2px_8px_rgba(0,0,0,0.08)]"
                 role="status"
                 aria-live="polite"
               >

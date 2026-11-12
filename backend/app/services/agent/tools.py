@@ -260,7 +260,7 @@ def _update_profile(ctx: TurnContext, a: UpdateProfileArgs) -> dict:
 
 
 class RoofModeArgs(BaseModel):
-    mode: Literal["address", "draw", "sketch"] = Field(description="address = look up by address; draw = trace on the satellite map; sketch = blank canvas with a metre scale.")
+    mode: Literal["draw", "sketch"] = Field(description="draw = trace on the satellite map (the map has an address search box); sketch = blank canvas with a metre scale.")
 
 
 @tool("request_roof_input", "Switch how the user provides their installation site. draw/sketch opens the map panel for the user.",
@@ -304,7 +304,7 @@ def _geocode(ctx: TurnContext, a: GeocodeArgs) -> dict:
     s = ctx.session
     res = geo.geocode(a.query)
     cands = res["candidates"][:5]
-    intake.apply_updates(s, roof_method="address")
+    intake.apply_updates(s, roof_method="draw")
     if not cands:
         s.pending.pop("candidates", None)
         s.pending.pop("candidate_texts", None)
@@ -339,7 +339,7 @@ class NoArgs(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
 
-@tool("run_analysis", "Run the full analysis: household load, equipment search, optimizer and the 25-year simulation. "
+@tool("run_analysis", "Run the full analysis: household load, equipment search, optimizer and the savings simulation. "
       "Only works once the installation site, usage, budget and goal are set and the user confirmed the summary.", NoArgs, "Running the numbers")
 def _run_analysis(ctx: TurnContext, _a: NoArgs) -> dict:
     s = ctx.session
@@ -402,10 +402,10 @@ def _compare(ctx: TurnContext, a: CompareArgs) -> dict:
 
     def pick(variant: dict) -> dict:
         sc = {x["name"]: x for x in variant["scenarios"]}
-        return {"payback_years": {"bad_year": sc["pessimistic"]["payback_years"], "expected": sc["expected"]["payback_years"],
-                                  "best_case": sc["optimistic"]["payback_years"]},
-                "net_profit_25y_php": {"bad_year": sc["pessimistic"]["net_profit_25y_php"], "expected": sc["expected"]["net_profit_25y_php"],
-                                       "best_case": sc["optimistic"]["net_profit_25y_php"]},
+        return {"payback_years": {"bad_year": summary.within10(sc["pessimistic"]["payback_years"]), "expected": summary.within10(sc["expected"]["payback_years"]),
+                                  "best_case": summary.within10(sc["optimistic"]["payback_years"])},
+                "net_profit_10y_php": {"bad_year": sc["pessimistic"]["net_profit_10y_php"], "expected": sc["expected"]["net_profit_10y_php"],
+                                       "best_case": sc["optimistic"]["net_profit_10y_php"]},
                 "year1_savings_php": sc["expected"]["year1_savings_php"]}
 
     out = {"package": item["package"]["label"], "package_index": i, "variant": vname,
@@ -531,6 +531,35 @@ def top_option(s) -> tuple[float | None, str | None]:
     return top["kwp"], ("hybrid" if top.get("battery") else "grid-tied")
 
 
+@tool("recommend_budget", "Recommend a system size and a budget range from the installation site's area and the household's usage, before the numbers have run. "
+      "Call it when the user asks what you recommend, what to pick, or how much budget they need.", NoArgs, "Sizing a budget for your site")
+def _recommend_budget(ctx: TurnContext, _a: NoArgs) -> dict:
+    s = ctx.session
+    p = s.profile
+    if not p.roof:
+        return {"error": "no_roof", "message": "I need your installation site first.", "hint": "Show me the site and I can size a budget for it."}
+    usage_kwp = rough_kwp(s)
+    if usage_kwp is None:
+        return {"error": "no_usage", "message": "I need your usage first.", "hint": "Tell me your monthly bill or kWh and I can size a budget."}
+    roof = RoofModel.model_validate(p.roof)
+    panels = [x for x in products.list_products() if x["category"] == "panel"]
+    site_kwp = round(max(layout.panel_capacity(roof, *x["dims_m"]) * x["watts"] for x in panels) / 1000.0, 1)
+    kwp = round(min(usage_kwp, site_kwp), 1)
+    kwh = p.monthly_kwh or load_svc.bill_to_kwh(p.monthly_bill_php)
+    kind = SYSTEM_KIND.get(p.system_type or "", "grid-tied")
+    near = [r for r in market_packages.match(kwp, kind, market_region(s))["rows"] if not r.get("synthetic") and abs(r["kwp"] - kwp) / kwp <= 0.25]
+    if near:
+        low, high, basis = min(r["price_php"] for r in near), max(r["price_php"] for r in near), "published"
+    else:
+        panel = min(panels, key=lambda x: abs(x["watts"] - 450))
+        est = -(-kwp * 1000 // panel["watts"]) * panel["price_php"] + A("install_cost_php_per_kw") * kwp + A("permits_misc_php")
+        low, high, basis = round(est * 0.9, -3), round(est * 1.1, -3), "estimate"
+    bucket = next((b for b in intake.BUDGETS if high <= b[2]), intake.BUDGETS[-1])
+    return {"kwp": kwp, "usage_kwp": usage_kwp, "site_kwp": site_kwp, "limit": "site" if site_kwp < usage_kwp else "usage", "monthly_kwh": round(kwh),
+            "roof_area_m2": roof.area_m2, "usable_area_m2": roof.usable_area_m2, "system_kind": kind, "price_low_php": low, "price_high_php": high,
+            "price_basis": basis, "budget_label": bucket[3]}
+
+
 @tool("find_packages", "Show real, ready-made home solar packages that installers publish on their own websites, with photos, what is included, the "
       "published price and a link, nearest to the user's recommended system. Call it when the user asks for real packages, package prices or "
       "wants to compare packages. The app shows them in a side panel itself, so do not list packages in your text.", PackageArgs, "Finding real packages")
@@ -561,6 +590,9 @@ def _package_details(ctx: TurnContext, a: PackageInfoArgs) -> dict:
     p = market_packages.find(f"{a.name} {a.installer or ''}")
     if p is None:
         return {"found": False, "message": "I don't have a package with that name. Ask which one they mean, or offer to show the packages again."}
+    s.results["picked_package"] = p["id"]  # the export includes the package the user looked at
+    if "summary" in s.results:
+        ctx.cards.append({"type": "export", "data": {"package_index": s.results.get("analysis", {}).get("selected_index", 0), "label": f"{p['name']}"}})
     kwp, _kind = top_option(s)
     basis = "design" if kwp else "usage"
     kwp = kwp or rough_kwp(s)
@@ -570,6 +602,25 @@ def _package_details(ctx: TurnContext, a: PackageInfoArgs) -> dict:
     return {"found": True, "markdown": md, "id": p["id"], "name": p["name"], "installer": p["installer"], "synthetic": p["synthetic"],
             "price_php": p["price_php"], "kwp": p["kwp"],
             "message": "The app shows the full details and the installer's contacts. Write one short sentence: the price is what they published, not a quote. Do not repeat the details."}
+
+
+class ExportArgs(BaseModel):
+    package_index: int | None = Field(None, description="Which analysed option to export (0 is the top one). Omit for the selected one.")
+
+
+@tool("export_plan", "Let the user download their plan: installation area, budget, chosen package and the numbers. Call it when they ask to export, download "
+      "or save their details or plan. The app shows a download button itself, so just say it is ready.", ExportArgs, "Preparing your plan")
+def _export_plan(ctx: TurnContext, a: ExportArgs) -> dict:
+    s = ctx.session
+    summ = s.results.get("summary")
+    if not summ or not summ.get("packages"):
+        return {"error": "not_ready", "message": "There are no numbers to export yet.", "hint": "Run the numbers first, then I can export your plan."}
+    i = (s.results.get("analysis") or {}).get("selected_index", 0) if a.package_index is None else a.package_index
+    if not 0 <= i < len(summ["packages"]):
+        return {"error": "invalid_package", "message": f"Package index must be between 0 and {len(summ['packages']) - 1}."}
+    label = summ["packages"][i]["label"]
+    ctx.cards.append({"type": "export", "data": {"package_index": i, "label": label}})
+    return {"ready": True, "package_index": i, "label": label}
 
 
 class InstallerArgs(BaseModel):

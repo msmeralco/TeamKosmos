@@ -2,14 +2,14 @@
 
 ## Tier 1: Core
 
-- [x] Address search and building outline (Nominatim, OpenStreetMap)
+- [x] Map search box (Nominatim) to jump to an address, then outline the site; no typed-address option in the chat
 - [x] Draw the roof on a satellite map (drag corners, add corners, undo, no self-crossing)
 - [x] Roof type, tilt and direction, usable area
 - [x] Household load estimate from kWh or bill (3 templates)
 - [x] Hourly solar simulation (PVGIS-ERA5, bundled Metro Manila data)
 - [x] Net-metering billing, on/off toggle
 - [x] ROI table: grid only, solar, solar with battery, with bad-year, expected and best-case ranges
-- [x] 25-year cash flow, payback, NPV, IRR
+- [x] Cash flow, payback and net profit over 10 years
 - [x] System type choice: grid-tied, hybrid or off-grid, which changes what the optimizer builds (no battery, always a battery, most grid power replaced)
 - [x] Chat agent with tool calls (Gemini, rule-based fallback)
 - [x] Results block in chat: headline table, option comparison table, "Good to know" list

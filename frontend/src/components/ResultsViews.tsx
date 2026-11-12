@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import {
+  exportPlan,
   getAssumptions,
   getPassportRecord,
   getSessionResults,
@@ -17,7 +18,7 @@ import {
 
 const php = (v: number | null | undefined) =>
   v === null || v === undefined ? "n/a" : `₱${Math.round(v).toLocaleString("en-PH")}`;
-const years = (v: number | null) => (v === null ? "not within 25 years" : `${v.toFixed(1)} yrs`);
+const years = (v: number | null) => (v === null ? "not within 10 years" : `${v.toFixed(1)} yrs`);
 const errText = (e: unknown) => (e instanceof Error ? e.message : "Something went wrong.");
 
 const SCENARIOS = [
@@ -76,7 +77,7 @@ function MathDrawer({ open, onClose, summary }: { open: boolean; onClose: () => 
             <li>Hourly solar output for 16 weather years (PVGIS-ERA5, a modelled estimate), scaled to your system size.</li>
             <li>Each hour: sun covers the load first, extra charges the battery or is exported, any shortfall comes from the grid.</li>
             <li>Net metering: exports earn a credit of about {php(summary.export_credit_php_per_kwh)} per kWh. Credits are banked month to month, offset energy charges only, and are never paid out.</li>
-            <li>Savings = bill without solar minus bill with solar. Payback, NPV, IRR and LCOE come from the 25-year cash flow after O&amp;M and replacements.</li>
+            <li>Savings = bill without solar minus bill with solar. Payback, NPV, IRR and LCOE come from the cash flow after O&amp;M and replacements.</li>
           </ul>
           {summary.weather_is_approximate && <p className="mt-2 text-[#b45309]">Sunlight data is an approximate typical year because PVGIS could not be reached.</p>}
         </section>
@@ -185,7 +186,7 @@ export function OverviewView({ conversationId, onNewChat }: { conversationId: st
       </div>
       {summary.target_met === false && <p className="mt-3 text-[12px] text-[#b45309]">No option within your budget reaches your bill-cut target. This is the closest one.</p>}
       <div className="mt-4 grid gap-3 lg:grid-cols-3">
-        {summary.packages.map((p) => (
+        {summary.packages.map((p, i) => (
           <article key={p.package_id} className={card}>
             <div className="text-[11px] font-medium uppercase tracking-wide text-[#ea580c]">{p.label}</div>
             <div className="mt-1 text-[20px] font-semibold">{php(p.capex_php)}</div>
@@ -195,11 +196,18 @@ export function OverviewView({ conversationId, onNewChat }: { conversationId: st
             {p.battery && <div className="text-[12px]">{p.battery}</div>}
             <div className="mt-2 text-[12px]">Bill now about {php(p.grid_only_monthly_bill_php)} a month, down about {p.bill_reduction_pct_year1}% in year 1</div>
             <RangeRow label="Payback" r={p.payback_years} fmt={years} />
-            <RangeRow label="25-year net profit" r={p.net_profit_25y_php} fmt={php} />
+            <RangeRow label="10-year net profit" r={p.net_profit_10y_php} fmt={php} />
             <div className="mt-2 text-[11px] text-[#787774]">
-              Year 1: {Math.round(p.year1_generation_kwh).toLocaleString()} kWh · LCOE {p.lcoe_php_per_kwh ?? "n/a"} ₱/kWh · CO₂ avoided {p.co2_avoided_t_25y} t over 25 years
+              Year 1: {Math.round(p.year1_generation_kwh).toLocaleString()} kWh · LCOE {p.lcoe_php_per_kwh ?? "n/a"} ₱/kWh · CO₂ avoided {p.co2_avoided_t_10y} t over 10 years
             </div>
             {p.readiness && <Readiness checks={p.readiness} />}
+            <button
+              type="button"
+              className={`mt-3 ${btnGhost}`}
+              onClick={() => conversationId && exportPlan(conversationId, i).catch((e) => window.alert(errText(e)))}
+            >
+              Export plan
+            </button>
           </article>
         ))}
       </div>

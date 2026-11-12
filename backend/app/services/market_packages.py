@@ -83,6 +83,10 @@ def panel(kwp: float | None = None, kind: str | None = None, region: str | None 
             "budget_max": budget_max, "checked_on": d["checked_on"], "note": d["note"], "rows": rows}
 
 
+def get(package_id: str) -> dict | None:
+    return next((p for p in _data()["packages"] if p["id"] == package_id), None)
+
+
 def _norm(s: str) -> str:
     return "".join(c for c in s.lower() if c.isalnum())
 

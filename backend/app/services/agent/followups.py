@@ -115,6 +115,8 @@ def suggestions(ctx, base: list[dict], limit: int) -> list[dict]:
             continue
         seen.add(n)
         fu.append(_pill(label, text))
+    if "summary" in s.results and intake.next_slot(s) == "done" and not inst and intake.norm("Can I export my plan?") not in asked:
+        fu = [_pill("Export my plan", "Can I export my plan?")] + [x for x in fu if x["id"] != "q_can_i_export_my_plan"]  # an action, not a library question
     out = base + fu[: 3 if inst else 2]
     for lid in LOW_PRIORITY:
         if len(out) <= limit:

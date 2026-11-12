@@ -49,7 +49,7 @@ A monthly generation reading from a REC meter would be added to the Passport, an
 It can't calculate. Numbers come from tools, and a check compares the AI's text against the tool results.
 
 **Why 10 years?**
-Ten years is the headline so the comparison is easy to read. The 25-year cash flow sits behind it for payback and lifetime profit.
+Ten years is the horizon for every figure, so the comparison is easy to read. A payback longer than 10 years shows as "not within 10 years".
 
 **Does the battery pay for itself?**
 Not within 10 years in our example. The battery adds ₱89k to ₱155k and saves roughly ₱50k to ₱110k of bills, so solar alone is cheaper. The battery buys backup power. The 80% self-use share with a battery is our assumption, and it decides this result.

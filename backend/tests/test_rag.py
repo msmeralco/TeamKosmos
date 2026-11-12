@@ -64,7 +64,7 @@ def test_pills_follow_the_topic_and_do_not_repeat(client):
     reply(client, "I want to install solar", cid=cid)
     first = reply(client, "Do I need a building permit for a micro solar system?", cid=cid)["reply"]["next"]
     ids = [n["id"] for n in first]
-    assert {"roof_address", "roof_draw", "roof_sketch"} <= set(ids) and len(first) <= 5
+    assert {"roof_draw", "roof_sketch"} <= set(ids) and "roof_address" not in ids and len(first) <= 5
     extra = [n for n in first if n["id"].startswith("q_")]
     assert extra and all(n["text"] != "Do I need a building permit for a micro solar system?" for n in extra)
     again = reply(client, extra[0]["text"], cid=cid)["reply"]["next"]

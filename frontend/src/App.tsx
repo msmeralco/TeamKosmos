@@ -18,7 +18,7 @@ import { MapCanvas } from "./components/MapCanvas";
 import { OverviewView, SavedView } from "./components/ResultsViews";
 import { ListingPanel } from "./components/ListingPanel";
 import { RewardsView } from "./components/RewardsView";
-import { RichText } from "./components/RichText";
+import { RichText, paragraphize } from "./components/RichText";
 import { AnimatedSol } from "./components/SolMascotLazy";
 import {
   ApiError,
@@ -30,6 +30,8 @@ import {
   logout,
   onUnauthorized,
   listingsOf,
+  exportOf,
+  exportPlan,
   streamChat,
   type Language,
   type Listing,
@@ -95,6 +97,8 @@ type AgentMsg = {
     next?: Suggestion[];
     /** Lists (installers, packages) that open in the side panel */
     listings?: Listing[];
+    /** a ready download of the plan for this option */
+    exportCard?: { package_index: number; label: string } | null;
   };
 };
 
@@ -178,7 +182,8 @@ function upsertStep(steps: AgentStep[], s: StepEvent): AgentStep[] {
 
 /** Reveals a reply word by word so it reads like someone answering. Plays once per message. */
 const typed = new Set<number>();
-function TypedText({ id, text, animate }: { id: number; text: string; animate: boolean }) {
+function TypedText({ id, text: raw, animate }: { id: number; text: string; animate: boolean }) {
+  const text = useMemo(() => paragraphize(raw), [raw]);
   const words = useMemo(() => text.split(/(\s+)/), [text]);
   const [play] = useState(() => animate && !typed.has(id)); // decided once: later renders must not cancel the animation
   const [shown, setShown] = useState(play ? 0 : words.length);
@@ -396,7 +401,7 @@ export default function App() {
             ...m,
             phase: "done",
             steps: allDone(m.steps),
-            reply: { text: reply.text, hasMapArtifact: reply.hasMapArtifact, next: reply.next, listings: listingsOf(reply.cards) },
+            reply: { text: reply.text, hasMapArtifact: reply.hasMapArtifact, next: reply.next, listings: listingsOf(reply.cards), exportCard: exportOf(reply.cards) },
           }));
           // A list the user asked for opens in the side panel. Lists the app only offers stay as a link in the chat.
           const asked = listingsOf(reply.cards).find((l) => l.data.open);
@@ -864,6 +869,7 @@ export default function App() {
                   openListingData={canvasOpen && panelView === "listing" ? listing?.data : undefined}
                   onToggleCanvas={toggleCanvas}
                   onOpenListing={openListing}
+                  onExport={(i) => currentId && exportPlan(currentId, i).catch((e) => window.alert(e instanceof Error ? e.message : "Something went wrong."))}
                   onAsk={ask}
                   onStop={stopTurn}
                   lang={lang}
@@ -988,6 +994,23 @@ function MapArtifactCard({
   );
 }
 
+function ExportArtifactCard({ label, onExport }: { label: string; onExport: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onExport}
+      className="row-btn press flex w-full max-w-[380px] items-center gap-3 rounded-[12px] border border-[#f0f0ee] bg-white p-3 text-left shadow-[0_1px_4px_rgba(0,0,0,0.04)] transition-all hover:bg-[#fafaf9]"
+    >
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[9px] bg-[#fff7ed] text-[#ea580c]">{Icon.doc}</span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[13px] font-semibold text-[#111111]">Download your plan</span>
+        <span className="block truncate text-[11px] text-[#787774]">PDF · {label} · site, budget, package and numbers</span>
+      </span>
+      <span className="text-[#a3a3a3]">{Icon.chevronRight}</span>
+    </button>
+  );
+}
+
 function ListingArtifactCard({ listing, open, onOpen }: { listing: Listing; open: boolean; onOpen: () => void }) {
   const installers = listing.type === "installers";
   const title = installers ? `Registered installers · ${listing.data.region_name}` : "Ready-made packages";
@@ -1042,6 +1065,7 @@ function ChatView({
   openListingData,
   onToggleCanvas,
   onOpenListing,
+  onExport,
   onAsk,
   onStop,
   lang,
@@ -1057,6 +1081,7 @@ function ChatView({
   openListingData?: unknown;
   onToggleCanvas: () => void;
   onOpenListing: (l: Listing) => void;
+  onExport: (packageIndex: number) => void;
   onAsk: (text: string, files?: string[], previews?: (string | null)[], rawFiles?: File[]) => void;
   onStop: () => void;
   lang: LangLabel;
@@ -1066,7 +1091,6 @@ function ChatView({
   const [files, setFiles] = useState<File[]>([]);
 
   const fileRef = useRef<HTMLInputElement>(null);
-  const [addressMode, setAddressMode] = useState(false);
   const autoSendPick = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLDivElement>(null);
@@ -1135,7 +1159,6 @@ function ChatView({
     const currentFiles = overrideFiles ?? files;
     const message = overrideText ?? input;
     if (busy || (!message.trim() && !currentFiles.length)) return;
-    setAddressMode(false);
     const previews = currentFiles.map((f) =>
       f.type.startsWith("image/") ? URL.createObjectURL(f) : null,
     );
@@ -1184,12 +1207,6 @@ function ChatView({
       if (busy) return;
       autoSendPick.current = true;
       fileRef.current?.click();
-      return;
-    }
-    /* "Type my address" chip: skip the round trip and focus the composer so the user types it */
-    if (n.id === "roof_address") {
-      setAddressMode(true);
-      textRef.current?.focus();
       return;
     }
     submit(undefined, n.text);
@@ -1350,6 +1367,12 @@ function ChatView({
                         </div>
                       ))}
 
+                      {m.reply.exportCard && (
+                        <div className="mt-3.5">
+                          <ExportArtifactCard label={m.reply.exportCard.label} onExport={() => onExport(m.reply!.exportCard!.package_index)} />
+                        </div>
+                      )}
+
                     </div>
                   )}
 
@@ -1417,11 +1440,7 @@ function ChatView({
             onKeyDown={onKey}
             onPaste={onPaste}
             placeholder={
-              addressMode
-                ? "Type your address, e.g. 123 Rizal St, Pasig…"
-                : empty
-                  ? "Ask about your installation site, monthly bill, or solar options…"
-                  : "Reply to Sol…"
+              empty ? "Ask about your installation site, monthly bill, or solar options…" : "Reply to Sol…"
             }
             className="w-full resize-none bg-transparent px-1 py-1 text-[14px] leading-relaxed text-[#111111] placeholder-[#a3a3a3] outline-none"
           />

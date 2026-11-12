@@ -1,0 +1,212 @@
+"""Synthesises the music and sound design for the two Sol reels (120 BPM, seeded, so the files are reproducible).
+
+Usage:  ../.venv/bin/python make_audio.py      (writes sol-reel/assets/intro.wav and outro.wav)
+"""
+import math
+import wave
+from pathlib import Path
+
+import numpy as np
+
+SR = 44100
+OUT = Path(__file__).resolve().parent / "sol-reel" / "assets"
+BEAT = 0.5  # 120 BPM
+
+
+class Mix:
+    def __init__(self, seconds):
+        self.n = int(seconds * SR)
+        self.buf = np.zeros((self.n, 2), dtype=np.float64)
+        self.rng = np.random.default_rng(2026)
+
+    def add(self, t, sig, gain=1.0, pan=0.0):
+        i = int(t * SR)
+        if i >= self.n or i < 0:
+            return
+        sig = sig[: self.n - i]
+        l, r = math.cos((pan + 1) * math.pi / 4), math.sin((pan + 1) * math.pi / 4)
+        self.buf[i : i + len(sig), 0] += sig * gain * l * 1.414
+        self.buf[i : i + len(sig), 1] += sig * gain * r * 1.414
+
+    def noise(self, dur):
+        return self.rng.uniform(-1, 1, int(dur * SR))
+
+    def save(self, path, fade_out=0.6, peak=0.89):
+        b = self.buf.copy()
+        b = np.tanh(b * 0.9)  # gentle glue so stacked hits never clip
+        fo = int(fade_out * SR)
+        b[-fo:] *= np.linspace(1, 0, fo)[:, None]
+        b *= peak / max(1e-9, np.abs(b).max())
+        data = (b * 32767).astype("<i2")
+        with wave.open(str(path), "wb") as w:
+            w.setnchannels(2); w.setsampwidth(2); w.setframerate(SR); w.writeframes(data.tobytes())
+
+
+def env(n, attack=0.002, decay=0.2):
+    t = np.arange(n) / SR
+    return np.minimum(1, t / max(attack, 1e-5)) * np.exp(-t / decay)
+
+
+def kick(dur=0.38, f0=130, f1=44, decay=0.12):
+    n = int(dur * SR); t = np.arange(n) / SR
+    f = f1 + (f0 - f1) * np.exp(-t / 0.035)
+    ph = 2 * np.pi * np.cumsum(f) / SR
+    return np.sin(ph) * env(n, 0.001, decay) * 1.0
+
+
+def hat(m, dur=0.07, open_=False):
+    n = int(dur * (4 if open_ else 1) * SR); x = m.noise(n / SR)
+    x = np.diff(x, prepend=0)  # crude high-pass
+    return x * env(n, 0.001, 0.025 if not open_ else 0.09) * 0.5
+
+
+def clap(m):
+    n = int(0.2 * SR); x = m.noise(0.2); x = np.diff(x, prepend=0) * 0.7 + x * 0.3
+    e = env(n, 0.001, 0.06) + 0.7 * np.roll(env(n, 0.001, 0.05), int(0.012 * SR))
+    return x * e * 0.8
+
+
+def boom(dur=0.9, f=52):
+    n = int(dur * SR); t = np.arange(n) / SR
+    return (np.sin(2 * np.pi * f * (1 + 0.4 * np.exp(-t / 0.06)) * t) * env(n, 0.002, 0.28)) * 1.0
+
+
+def blip(freq, dur=0.12, vol=0.6):
+    n = int(dur * SR); t = np.arange(n) / SR
+    return (np.sin(2 * np.pi * freq * t) + 0.25 * np.sin(2 * np.pi * freq * 2 * t)) * env(n, 0.002, dur / 3.2) * vol
+
+
+def riser(m, dur, f0=300, f1=5000):
+    n = int(dur * SR); x = m.noise(dur); t = np.arange(n) / SR
+    f = f0 * (f1 / f0) ** (t / dur)
+    y = x * np.sin(2 * np.pi * np.cumsum(f) / SR)
+    return y * (t / dur) ** 2.2 * 0.5
+
+
+def whoosh(m, dur=0.5, up=True):
+    n = int(dur * SR); x = m.noise(dur); t = np.arange(n) / SR
+    c = np.sin(np.pi * (t / dur if up else 1 - t / dur)) ** 1.5
+    return np.diff(x, prepend=0) * c * 0.5
+
+
+def chord(freqs, dur, attack=0.5, vol=0.35):
+    n = int(dur * SR); t = np.arange(n) / SR; y = np.zeros(n)
+    for i, f in enumerate(freqs):
+        y += np.sin(2 * np.pi * f * t + i) + 0.3 * np.sin(2 * np.pi * f * 2.003 * t) + 0.12 * np.sin(2 * np.pi * f * 3 * t)
+    e = np.minimum(1, t / attack) * np.exp(-np.maximum(0, t - dur * 0.55) / (dur * 0.3))
+    return y / len(freqs) * e * vol
+
+
+def chime(freq, dur=1.4, vol=0.4):
+    n = int(dur * SR); t = np.arange(n) / SR
+    return (np.sin(2 * np.pi * freq * t) + 0.5 * np.sin(2 * np.pi * freq * 2.76 * t) + 0.25 * np.sin(2 * np.pi * freq * 5.4 * t)) * env(n, 0.002, dur / 5) * vol
+
+
+def bass(freq, dur, vol=0.5):
+    n = int(dur * SR); t = np.arange(n) / SR
+    return np.sin(2 * np.pi * freq * t) * env(n, 0.01, dur * 0.6) * vol
+
+
+PENTA = [523.25, 587.33, 659.25, 783.99, 880.0, 987.77, 1046.5]
+
+
+def arp(m, t0, t1, step=0.125, vol=0.16, seed=3):
+    r = np.random.default_rng(seed); k = 0
+    t = t0
+    while t < t1 - 1e-6:
+        m.add(t, blip(PENTA[int(r.integers(0, len(PENTA)))], 0.18, 1.0), vol, pan=float(r.uniform(-0.6, 0.6)))
+        t += step; k += 1
+
+
+def intro():
+    m = Mix(16.0)
+    g, tf = 5200.0, math.sqrt(2 * 500 / 5200)
+    # squash and stretch: ticks on the ball's impacts (same physics as the picture)
+    t, v, f = 0.12 + tf, g * tf * 0.62, 760.0
+    m.add(0.12 + tf, blip(f, 0.14), 0.5); f *= 0.82
+    while True:
+        air = 2 * v / g
+        if air < 0.06: break
+        t += air; v *= 0.62; m.add(t, blip(f, 0.12), 0.42); f *= 0.86
+    # the pulse: kicks on every beat from the first bar, hats and claps join as the reel builds
+    for k in range(0, 24):
+        t0 = k * BEAT
+        if t0 >= 12.3: break
+        m.add(t0, kick(), 0.82 if t0 >= 2.0 else 0.55)
+    for k in range(int(2.0 / 0.25), int(12.25 / 0.25)):
+        t0 = k * 0.25
+        if k % 2 == 1: m.add(t0, hat(m), 0.30, pan=0.35)
+        elif t0 >= 4.0: m.add(t0, hat(m, open_=False), 0.12, pan=-0.3)
+    t0 = 4.5
+    while t0 < 12.0:
+        m.add(t0, clap(m), 0.5); t0 += 1.0
+    # bass line under the grid and the photons
+    for k, t0 in enumerate(np.arange(4.0, 12.0, 0.5)):
+        m.add(float(t0), bass([55.0, 55.0, 65.41, 49.0][k % 4], 0.45), 0.55)
+    # hits on the cuts
+    for t0, gain in ((2.0, 0.7), (4.0, 0.8), (7.0, 0.8), (10.0, 0.8)):
+        m.add(t0, boom(), gain); m.add(t0, whoosh(m, 0.35, up=False), 0.35)
+    # kinetic type: slam on ROOF, then the glitch and the blue screen
+    m.add(2.5, boom(0.5, 70), 0.6); m.add(2.5, whoosh(m, 0.3), 0.3)
+    m.add(3.0, riser(m, 0.55), 0.7)
+    for k in range(8):
+        m.add(3.4 + k * 0.045, blip(300 + 170 * (k % 3), 0.04, 1.0), 0.28, pan=(-1) ** k * 0.7)
+    m.add(3.55, boom(0.7, 62), 0.85); m.add(3.55, hat(m, open_=True), 0.5)
+    # grid: arpeggio that opens up as the pillars rise
+    arp(m, 4.25, 7.0, 0.125, 0.14)
+    m.add(5.35, riser(m, 0.95, 400, 4200), 0.55)
+    m.add(6.3, boom(0.6, 60), 0.55)
+    # photons: the sun bursts, then the loop re-forms
+    m.add(7.0, chime(880, 1.0), 0.5); m.add(7.55, whoosh(m, 0.55), 0.8); m.add(7.55, boom(0.9, 46), 0.9)
+    arp(m, 7.75, 9.0, 0.25, 0.1, seed=9)
+    m.add(9.0, riser(m, 1.0, 250, 5200), 0.7)
+    # windows pop in
+    for i in range(6):
+        m.add(10.0 + i * 0.125, blip(660 + i * 110, 0.09, 1.0), 0.3, pan=-0.7 + i * 0.28)
+    m.add(11.2, boom(0.4, 90), 0.5)  # the seal stamps
+    m.add(12.05, whoosh(m, 0.5), 0.7)
+    # dawn: the wipe, then a warm chord under the title card
+    m.add(12.3, boom(1.2, 48), 0.95); m.add(12.3, whoosh(m, 0.4, up=False), 0.5)
+    m.add(12.55, chord([261.63, 329.63, 392.0, 493.88, 659.25], 3.4, 0.35), 1.0)
+    m.add(12.62, chime(1318.5, 1.6), 0.5); m.add(13.0, chime(987.77, 1.4), 0.3)
+    for k, f in enumerate((523.25, 659.25, 783.99, 987.77)):
+        m.add(13.5 + k * 0.125, blip(f, 0.2, 1.0), 0.16, pan=0.4 - 0.25 * k)
+    m.save(OUT / "intro.wav", fade_out=0.9)
+
+
+def outro():
+    m = Mix(10.0)
+    for k in range(0, 18):
+        t0 = k * BEAT
+        m.add(t0, kick(), 0.7)
+    for k in range(2, 36):
+        t0 = k * 0.25
+        if k % 2 == 1: m.add(t0, hat(m), 0.2, pan=0.3)
+    for t0 in np.arange(1.5, 7.0, 1.0): m.add(float(t0), clap(m), 0.4)
+    for k, t0 in enumerate(np.arange(0.0, 7.5, 0.5)): m.add(float(t0), bass([65.41, 65.41, 73.42, 49.0][k % 4], 0.45), 0.45)
+    # five words slam on the first five beats
+    for k in range(5):
+        m.add(k * BEAT, boom(0.4, 90 - k * 8), 0.55); m.add(k * BEAT, blip(520 + 130 * k, 0.1, 1.0), 0.3, pan=-0.6 + k * 0.3)
+    m.add(2.0, riser(m, 0.5, 400, 3500), 0.5)
+    # passport: the cover opens, the seal stamps, four vouchers are stamped one by one
+    m.add(2.55, whoosh(m, 0.7), 0.7)
+    m.add(3.5, boom(0.9, 56), 1.0); m.add(3.5, clap(m), 0.7); m.add(3.52, chime(1174.7, 1.5), 0.45)
+    for k, t0 in enumerate((3.75, 4.25, 4.75, 5.25)):
+        m.add(t0, boom(0.35, 100 - 6 * k), 0.7); m.add(t0, blip(900 + 150 * k, 0.12, 1.0), 0.3)
+    arp(m, 3.75, 5.5, 0.125, 0.1, seed=4)
+    # the plan: click, then the page slides out
+    m.add(5.9, blip(1400, 0.05, 1.0), 0.5); m.add(6.0, blip(900, 0.06, 1.0), 0.5)
+    m.add(6.1, whoosh(m, 0.5), 0.8)
+    for k in range(4): m.add(6.5 + k * 0.125, blip(780 + 120 * k, 0.07, 1.0), 0.2)
+    # resolve
+    m.add(7.35, riser(m, 0.15, 800, 6000), 0.4)
+    m.add(7.5, boom(1.3, 46), 1.0)
+    m.add(7.5, chord([261.63, 329.63, 392.0, 493.88, 659.25], 2.5, 0.2), 1.0)
+    m.add(7.6, chime(1318.5, 1.8), 0.55); m.add(8.0, chime(987.77, 1.5), 0.3)
+    m.save(OUT / "outro.wav", fade_out=0.9)
+
+
+if __name__ == "__main__":
+    OUT.mkdir(parents=True, exist_ok=True)
+    intro(); outro()
+    print("wrote", OUT / "intro.wav", OUT / "outro.wav")

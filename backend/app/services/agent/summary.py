@@ -10,8 +10,13 @@ from .intake import goal_label, php
 CAVEAT = "These are estimates for a licensed installer to confirm, and prices are suggestions from demo or public listings, so confirm with the seller."
 
 
+def within10(v):
+    """Payback is only shown inside the 10-year window."""
+    return v if v is not None and v <= 10 else None
+
+
 def _yrs(v) -> str:
-    return "not within 25 years" if v is None else f"about {v:g} years"
+    return "not within 10 years" if v is None else f"about {v:g} years"
 
 
 def _headline_variant(roi: dict, net_metering: bool) -> tuple[str, dict]:
@@ -48,14 +53,14 @@ def summarize_analysis(optimize_res: dict, net_metering: bool = True, system_typ
             "capex_php": variant["capex_php"],
             "grid_only_monthly_bill_php": roi["grid_only"]["monthly_bill_php"],
             "bill_reduction_pct_year1": sc["expected"]["bill_reduction_pct_year1"],
-            "payback_years": {"bad_year": sc["pessimistic"]["payback_years"], "expected": sc["expected"]["payback_years"],
-                              "best_case": sc["optimistic"]["payback_years"]},
-            "net_profit_25y_php": {"bad_year": sc["pessimistic"]["net_profit_25y_php"], "expected": sc["expected"]["net_profit_25y_php"],
-                                   "best_case": sc["optimistic"]["net_profit_25y_php"]},
+            "payback_years": {"bad_year": within10(sc["pessimistic"]["payback_years"]), "expected": within10(sc["expected"]["payback_years"]),
+                              "best_case": within10(sc["optimistic"]["payback_years"])},
+            "net_profit_10y_php": {"bad_year": sc["pessimistic"]["net_profit_10y_php"], "expected": sc["expected"]["net_profit_10y_php"],
+                                   "best_case": sc["optimistic"]["net_profit_10y_php"]},
             "year1_savings_php": sc["expected"]["year1_savings_php"],
             "lcoe_php_per_kwh": sc["expected"]["lcoe_php_per_kwh"],
             "year1_generation_kwh": sc["expected"]["year1_generation_kwh"],
-            "co2_avoided_t_25y": sc["expected"]["co2_avoided_t_25y"],
+            "co2_avoided_t_10y": sc["expected"]["co2_avoided_t_10y"],
         })
         if roof is not None:
             pkgs[-1]["readiness"] = readiness(roof, p, pkgs[-1], sc["expected"], net_metering, system_type)
@@ -89,14 +94,14 @@ def _range(lo, hi, fmt) -> str:
 
 
 def _pb(v) -> str:
-    return "over 25 years" if v is None else f"{v:g} years"
+    return "over 10 years" if v is None else f"{v:g} years"
 
 
 def analysis_markdown(s: dict) -> str:
     """Customer-facing results block (headline table, comparison table, caveats) built only from tool results."""
     top = s["packages"][0]
     off_grid = s.get("system_type") == "off_grid"
-    pb, pf = top["payback_years"], top["net_profit_25y_php"]
+    pb, pf = top["payback_years"], top["net_profit_10y_php"]
     kind = SYSTEM_NAMES.get(s.get("system_type") or "") or ("Hybrid (solar + storage)" if top["battery"] else "Grid-tied (on-grid)")
     cap = top.get("roof_capacity_panels")
     rows = [
@@ -115,16 +120,16 @@ def analysis_markdown(s: dict) -> str:
         ("Grid power replaced, year 1" if off_grid else "Bill cut, year 1", f"**about {top['bill_reduction_pct_year1']:g}%**"),
         ("Payback compared with grid bills" if off_grid else "Payback",
          f"**{_pb(pb['expected'])}** (best case {_pb(pb['best_case'])}, bad weather year {_pb(pb['bad_year'])})"),
-        ("25-year net profit", f"**{php(pf['expected'])}** (range {_range(pf['bad_year'], pf['best_case'], php)})"),
+        ("10-year net profit", f"**{php(pf['expected'])}** (range {_range(pf['bad_year'], pf['best_case'], php)})"),
     ]
     out = [f"### Recommended: {top['label']}", "", "| | |", "|---|---|"]
     out += [f"| {k} | {v} |" for k, v in rows]
     if len(s["packages"]) > 1:
-        out += ["", "**Compare the options**", "", "| Option | Panels | Cost | Bill cut | Payback | 25-year profit |", "|---|---|---|---|---|---|"]
+        out += ["", "**Compare the options**", "", "| Option | Panels | Cost | Bill cut | Payback | 10-year profit |", "|---|---|---|---|---|---|"]
         for p in s["packages"]:
             extra = f" + {p['battery_kwh']:g} kWh battery" if p.get("battery_kwh") else ""
             out.append(f"| {p['label']}{extra} | {p['panel_count']} ({p['kwp']:g} kWp) | {php(p['capex_php'])} | "
-                       f"{p['bill_reduction_pct_year1']:g}% | {_pb(p['payback_years']['expected'])} | {php(p['net_profit_25y_php']['expected'])} |")
+                       f"{p['bill_reduction_pct_year1']:g}% | {_pb(p['payback_years']['expected'])} | {php(p['net_profit_10y_php']['expected'])} |")
     notes = _caveats(s)
     if notes:
         out += ["", "**Good to know**", ""] + [f"- {n}" for n in notes]
@@ -159,8 +164,8 @@ def _caveats(s: dict) -> list[str]:
 
 def compare_nm_text(r: dict) -> str:
     on, off = r["net_metering_on"], r["net_metering_off"]
-    return (f"With net metering, the expected 25-year net profit is about {php(on['net_profit_25y_php']['expected'])} and payback is {_yrs(on['payback_years']['expected'])}. "
-            f"Without it, profit falls to about {php(off['net_profit_25y_php']['expected'])} and payback is {_yrs(off['payback_years']['expected'])}. "
+    return (f"With net metering, the expected 10-year net profit is about {php(on['net_profit_10y_php']['expected'])} and payback is {_yrs(on['payback_years']['expected'])}. "
+            f"Without it, profit falls to about {php(off['net_profit_10y_php']['expected'])} and payback is {_yrs(off['payback_years']['expected'])}. "
             f"Exports are credited at about {php(r['export_credit_php_per_kwh'])} per kWh, an editable approximation of Meralco's generation charge that still needs to be verified.")
 
 
@@ -252,6 +257,19 @@ def roof_text(roof: dict) -> str:
             f"with {roof['usable_area_m2']:g} m² usable after the edge setback.{extra}")
 
 
+def recommend_text(r: dict) -> str:
+    why = (f"That is about all your site has room for (up to {r['site_kwp']:g} kWp), though your usage could use about {r['usage_kwp']:g} kWp."
+           if r["limit"] == "site" else f"That covers your usage, and your site has room for up to {r['site_kwp']:g} kWp.")
+    lo, hi = r["price_low_php"], r["price_high_php"]
+    span = php(lo) if lo == hi else f"{php(lo)} to {php(hi)}"
+    price = (f"Published {r['system_kind']} packages near that size cost about {span}."
+             if r["price_basis"] == "published" else
+             f"I have no published package that close in size, so my rough estimate is {span}, and real quotes can differ.")
+    return (f"For your installation site (about {r['usable_area_m2']:g} m² usable) and about {r['monthly_kwh']:g} kWh a month, I'd aim for a "
+            f"**{r['system_kind']} system of about {r['kwp']:g} kWp**. {why}\n\n{price}\n\n"
+            f"So **{r['budget_label']}** looks like the right budget range. This is a rough size, and running the numbers will fine-tune it.")
+
+
 def docs_text(r: dict) -> str:
     """Scripted-mode answer: the best passage, trimmed to whole sentences, with its source."""
     if not r.get("passages"):
@@ -261,7 +279,8 @@ def docs_text(r: dict) -> str:
     body = ". ".join(sents[:3]).strip()
     body += "" if body.endswith(".") else "."
     us = " (a US example, not Philippine rules)" if top.get("region") == "US" else ""
-    return f"From {top['publisher'] or top['title']}{us}: {body} Source: {top['source_url']}" if top["source_url"] else f"{body}"
+    who = top["publisher"] or top["title"]
+    return f"**From {who}**{us}: {body}\n\nSource: [{who}]({top['source_url']})" if top["source_url"] else f"{body}"
 
 
 def installers_text(r: dict) -> str:
@@ -293,6 +312,11 @@ def render_tool_result(name: str, result: dict) -> str:
         return analysis_text(result["summary"])
     if name == "compare_net_metering":
         return compare_nm_text(result)
+    if name == "export_plan":
+        return (f"Your plan for **{result['label']}** is ready. It has your installation site, budget, the package and the numbers. "
+                "Tap the button below to download it as a PDF.")
+    if name == "recommend_budget":
+        return recommend_text(result)
     if name == "search_docs":
         return docs_text(result)
     if name == "find_installers":
