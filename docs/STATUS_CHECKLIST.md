@@ -10,14 +10,17 @@
 - [x] Net-metering billing, on/off toggle
 - [x] ROI table: grid only, solar, solar with battery, with bad-year, expected and best-case ranges
 - [x] 25-year cash flow, payback, NPV, IRR
+- [x] System type choice: grid-tied, hybrid or off-grid, which changes what the optimizer builds (no battery, always a battery, most grid power replaced)
 - [x] Chat agent with tool calls (Gemini, rule-based fallback)
+- [x] Results block in chat: headline table, option comparison table, "Good to know" list
 - [x] Number guard (the AI never states numbers the tools did not produce)
 - [x] "Before you invest" checks on every option, from Meralco's four points:
   - [x] Right size: share of solar used at home, transformer hosting limit
   - [x] Right location: roof direction, outline confidence, sketch scale; structure and shading flagged for the installer
   - [x] Right provider: exact parts to quote, what to ask the installer
   - [x] Know the requirements: Net Metering steps and fees, or Micro Solar and Zero-Export when not exporting
-  - [x] Shown on the Overview page and stated by the agent
+  - [x] Off-grid systems get their own size and requirements text (no transformer limit, no Meralco application)
+  - [x] Shown on the Overview page and in the chat "Good to know" list
   - [ ] Optimizer ranking uses the checks (today they only warn)
   - [ ] Real installer list (the provider check has no vetted names)
 
@@ -26,7 +29,7 @@
 - [x] Goal- and budget-driven optimizer
 - [~] Live product price fetch with cache: scraper code exists, no retailer source is enabled, prices come from the seed catalog
 - [x] 2D panel layout on the roof
-- [x] Blank-canvas sketch with scale correction
+- [x] Blank-canvas sketch with scale correction, floating tools, and an uploaded picture to trace by hand
 - [x] Solar Passport: issue, sign, verify, shareable page, QR code
 - [ ] Install confirmation by an installer (Passport stage: installed)
 - [ ] Solar Rewards: voucher catalog and issue
@@ -43,10 +46,11 @@
 - [ ] Real product specs and prices (the catalog is synthetic)
 - [ ] Meralco forms and checklists (PDFs, not downloaded)
 - [ ] Embedding search (keyword search only)
+- [ ] Confirm live Gemini actually calls `search_docs` (only the rule-based mode was tested)
 
 ## Tier 3: Stretch
 
-- [ ] Photo or blueprint auto-outline
+- [~] Photo or blueprint auto-outline: you can trace over an uploaded picture by hand; automatic outlining is not built
 - [ ] Battery polish
 - [ ] 3D view
 
@@ -59,3 +63,7 @@
 - [x] Saved Records page: Passport view and paste-to-verify
 - [x] Assumptions register shown in the app (`ASSUMPTIONS.yaml`)
 - [x] Mac and Windows dev scripts (`scripts/dev.sh`, `scripts/dev.ps1`)
+- [ ] Fix `backend/scripts/demo_run.py`: the new system-type question stops it before the analysis
+- [ ] Set a real `CONTACT_EMAIL` in `backend/.env` (address search fails with 403 until then)
+- [ ] Fix the `frontendv2` mention in the root `README.md` (the folder is `frontend/`)
+- [ ] Real bill photos in `tests/` (private repo only): replace with fake bills before the repo goes public
