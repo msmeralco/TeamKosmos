@@ -94,6 +94,12 @@ _DOCS = re.compile(r"permit|\bfees?\b|zero[- ]?export|micro[- ]?solar|\bmss\b|sg
 _QUESTION = re.compile(r"\?|^\s*(?:what|how|why|when|who|where|do|does|can|could|is|are|will|should|paano|ano)\b", re.I)
 
 
+# Asking for installers (a list), as opposed to asking how to choose one, which goes to the document library.
+_INSTALLER = re.compile(r"installer|contractor|solar compan|who can install|where can i (?:buy|get|find)", re.I)
+_INSTALLER_ASK = re.compile(r"suggest|recommend|list|show|find|which|any\b|who\b|where|contact|near|registered|options?|give me|looking for|\bneed\b|can you", re.I)
+_INSTALLER_NOT = re.compile(r"endorse|should i ask|what to ask|\bask an\b|how (?:do|to|can) (?:i )?(?:pick|choose|select|vet|check)|what makes|difference", re.I)
+
+
 def detect_intent(text: str) -> str | None:
     t = text.lower()
     if re.search(r"passport|verify|verification|sign(?:ed)? record", t):
@@ -102,6 +108,8 @@ def detect_intent(text: str) -> str | None:
         return "nm_compare"
     if re.search(r"assumption|where do .* come from|\bsources?\b", t):
         return "explain"
+    if _INSTALLER.search(t) and _INSTALLER_ASK.search(t) and not _INSTALLER_NOT.search(t):
+        return "installers"
     if re.search(r"\bprices?\b|how much (?:is|are|for|does|do) .*(?:panel|inverter|batter|brand)|panel brand|equipment|product", t):
         return "products"
     if _DOCS.search(t) and _QUESTION.search(t):

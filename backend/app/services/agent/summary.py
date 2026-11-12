@@ -264,6 +264,15 @@ def docs_text(r: dict) -> str:
     return f"From {top['publisher'] or top['title']}{us}: {body} Source: {top['source_url']}" if top["source_url"] else f"{body}"
 
 
+def installers_text(r: dict) -> str:
+    if r.get("needs_location"):
+        return r["message"]
+    if not r.get("total"):
+        return f"The DOE registry has no solar installers listed for {r['region_name']}. Tell me another area and I'll check it."
+    return (f"Here are the solar installers registered with the DOE in {r['region_name']} ({r['shown']} of {r['total']}). The DOE does not endorse them and "
+            "I haven't vetted them, so compare at least two written quotes.")
+
+
 def render_tool_result(name: str, result: dict) -> str:
     """Plain sentence for a tool result (used by the scripted agent and the number-guard fallback)."""
     if not isinstance(result, dict) or result.get("error"):
@@ -276,6 +285,8 @@ def render_tool_result(name: str, result: dict) -> str:
         return compare_nm_text(result)
     if name == "search_docs":
         return docs_text(result)
+    if name == "find_installers":
+        return installers_text(result)
     if name == "explain_assumptions":
         return assumptions_text(result)
     if name == "issue_passport":

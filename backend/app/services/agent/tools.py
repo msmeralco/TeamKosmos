@@ -15,7 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from ...config import Settings
 from ...errors import ApiError
 from ...models import PanelSpec, RoofModel
-from .. import geo, layout, load as load_svc, optimizer, passport, products, rag, simulate
+from .. import geo, installers, layout, load as load_svc, optimizer, passport, products, rag, simulate
 from ..assumptions import A, all_assumptions
 from ..scraper import search as product_search
 from . import intake, nlu, summary
@@ -469,6 +469,39 @@ def _search_docs(ctx: TurnContext, a: DocsArgs) -> dict:
         return {"passages": [], "message": "No source in the library covers this. Say you do not have a source and suggest asking Meralco or an installer. Do not guess."}
     return {"passages": hits, "message": "Quote or paraphrase only these passages and name the source. Passages marked region US are general background, not Philippine rules: "
                                          "prefer Meralco and policy sources, and say when something is a US example."}
+
+
+class InstallerArgs(BaseModel):
+    location: str | None = Field(None, max_length=120, description="Where the home is: a city, province or region, exactly as the user said it. Omit if they have not said.")
+    show_all: bool = Field(False, description="True when the user asks to see every installer in the area, not just the first few.")
+
+
+ASK_WHERE = ("I haven't vetted any installer, but I can show the ones registered with the Department of Energy (DOE). "
+             "Where is your home? Tell me your city or province, or pick an area.")
+
+
+@tool("find_installers", "Show solar installers registered with the DOE, as a table with contacts and links, for the area where the user lives. "
+      "Call it whenever the user asks for, or about, installers. If the result says needs_location, ask where their home is. "
+      "The app shows the table itself, so do not list installers in your text. Registered is not recommended.", InstallerArgs, "Finding registered installers")
+def _find_installers(ctx: TurnContext, a: InstallerArgs) -> dict:
+    s = ctx.session
+    asked = (a.location or "").strip()
+    region = installers.region_for(asked) if asked and not installers.RESET.search(asked) else None
+    if installers.RESET.search(asked):
+        s.pending.pop("installer_region", None)
+    region = region or (None if asked else s.pending.get("installer_region"))
+    if not region:
+        s.pending["await_installer_location"] = True
+        msg = ASK_WHERE if not asked or installers.RESET.search(asked) else (
+            "I couldn't match that place to a region. Tell me your city or province (for example Cebu City, Davao, Iloilo or Pasig), or pick an area.")
+        return {"found": False, "needs_location": True, "message": msg, "household_city": s.persona.city}
+    s.pending["installer_region"] = region
+    if asked:
+        s.pending["installer_near"] = asked
+    s.pending.pop("await_installer_location", None)
+    return {"found": True, **installers.find(region, a.show_all, asked or s.pending.get("installer_near", "")),
+            "message": "The app is showing the table. In one or two sentences say how many are registered in this area, that the DOE does not endorse them and "
+                       "Sol has not vetted them, and suggest comparing at least two written quotes. Do not list installers."}
 
 
 class PassportArgs(BaseModel):

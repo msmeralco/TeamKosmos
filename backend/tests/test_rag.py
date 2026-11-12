@@ -39,3 +39,33 @@ def test_chat_answers_a_rules_question_from_sources(client):
     r = reply(client, "How much does net metering application cost?", cid="rag-conv-0001-0123456789")
     text = r["reply"]["text"]
     assert "meralco.com.ph" in text
+
+
+def test_registry_lists_firms_with_the_no_endorsement_warning():
+    hits = rag.search("which solar installers are registered in Metro Manila with the DOE")
+    text = " ".join(h["text"] for h in hits)
+    assert "MSpectrum" in text or "Aces Solar" in text
+    assert any("does not endorse" in h["text"] for h in rag.search("does the DOE endorse the registered solar installers"))
+
+
+def test_every_follow_up_question_routes_to_the_library_and_finds_an_answer():
+    from app.services.agent import followups
+
+    asked = {q for qs in followups.FOLLOW.values() for _, q in qs} | {t for _, t in followups.after_analysis(
+        {"system_type": None, "packages": [{"readiness": [{"id": "size", "status": "watch"}], "battery": None}]})}
+    for q in asked:
+        assert nlu.detect_intent(q) in ("docs", "installers"), q
+        assert nlu.detect_intent(q) == "installers" or rag.search(q), q
+    assert set(followups.FOLLOW) <= {m["id"] for m in rag.library()}
+
+
+def test_pills_follow_the_topic_and_do_not_repeat(client):
+    cid = "pill-conv-0001-0123456789"
+    reply(client, "I want to install solar", cid=cid)
+    first = reply(client, "Do I need a building permit for a micro solar system?", cid=cid)["reply"]["next"]
+    ids = [n["id"] for n in first]
+    assert {"roof_address", "roof_draw", "roof_sketch"} <= set(ids) and len(first) <= 5
+    extra = [n for n in first if n["id"].startswith("q_")]
+    assert extra and all(n["text"] != "Do I need a building permit for a micro solar system?" for n in extra)
+    again = reply(client, extra[0]["text"], cid=cid)["reply"]["next"]
+    assert extra[0]["text"] not in [n["text"] for n in again]

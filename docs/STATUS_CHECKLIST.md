@@ -22,7 +22,7 @@
   - [x] Off-grid systems get their own size and requirements text (no transformer limit, no Meralco application)
   - [x] Shown on the Overview page and in the chat "Good to know" list
   - [ ] Optimizer ranking uses the checks (today they only warn)
-  - [ ] Real installer list (the provider check has no vetted names)
+  - [ ] Show DOE-registered firms in the provider check (today only the chat can list them)
 
 ## Tier 2: Full product
 
@@ -42,7 +42,8 @@
 - [x] `search_docs` agent tool with source links (keyword search, works offline)
 - [x] "Ask the rules" in chat, in both Gemini and rule-based modes
 - [x] `scripts/build_corpus.py` downloads the listed pages, respecting robots.txt
-- [ ] Vetted installer list (only MSpectrum is listed, as Meralco's own solar unit)
+- [x] DOE Solar PV Installer Registry in the library (Jan 31 and Jul 13, 2026 lists; 77 firms in Metro Manila, Central Luzon and CALABARZON), always shown as registered, not endorsed
+- [ ] Vetted installer list (the DOE registry is a start, but the DOE states it endorses no one; no prices, reviews or service checks)
 - [ ] Real product specs and prices (the catalog is synthetic)
 - [ ] Meralco forms and checklists (PDFs, not downloaded)
 - [ ] Embedding search (keyword search only)
@@ -58,6 +59,7 @@
 
 - [x] Sign up, login, logout, seeded demo users
 - [x] Saved chats: recents list, new chat, delete
+- [x] Suggestion pills only under the latest message; after a rules answer they offer new, answerable follow-up questions, and after an analysis they depend on its warnings
 - [x] Bill photo reading in chat
 - [x] Overview page: package comparison and math drawer
 - [x] Saved Records page: Passport view and paste-to-verify

@@ -1,0 +1,2073 @@
+{
+ "source": "DOE Official Solar PV Installer Registry",
+ "disclaimer": "The DOE publishes this registry as a reference for government entities and states that it does not endorse any listed firm.",
+ "lists": [
+  {
+   "label": "Jan 31, 2026",
+   "as_of": "2026-01-31",
+   "url": "https://prod-cms.doe.gov.ph/documents/d/eumb/list-of-solar-pv-installer-registry-as-of-31-january-2026-pdf",
+   "installers": 92,
+   "escos": 14
+  },
+  {
+   "label": "Jul 13, 2026",
+   "as_of": "2026-07-13",
+   "url": "https://d24qbtp4vooyzi.cloudfront.net/api/media/file/Official%20DOE%20Solar%20PV%20Installer%20Registry%20as%20of%2013%20July%202026.pdf?prefix=dev%2Fmedia",
+   "installers": 36,
+   "escos": 15
+  }
+ ],
+ "firms": [
+  {
+   "lists": [
+    "Jan 31, 2026",
+    "Jul 13, 2026"
+   ],
+   "name": "Aces Solar Corporation",
+   "type": "Corporation",
+   "region": "NCR",
+   "address": "Tionquiao Street, BF Martinville Manuyo II, Las Pinas City",
+   "phones": [
+    "(02) 7008283"
+   ],
+   "emails": [
+    "sales@acessolarcorp.com"
+   ],
+   "website": "www.acessolarcorp.com",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026",
+    "Jul 13, 2026"
+   ],
+   "name": "Aceser Corporation",
+   "type": "Corporation",
+   "region": "NCR",
+   "address": "BGEN FELIX T PESTANA RET BLDG BLK 2 LOT 8 DIEGO SILANG ST AFPOVAI PH 1, Taguig, Metro Manila",
+   "phones": [
+    "9053701571"
+   ],
+   "emails": [
+    "acesercorp@aceserph.com"
+   ],
+   "website": "",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "Advanced Energy Technologies Renewables Plus Co., Inc",
+   "type": "Corporation",
+   "region": "NCR",
+   "address": "Unit 1237, City and Land Mega Plaza, ADB Avenue corner Garnet Road, Ortigas Center, Pasig City, Metro Manila",
+   "phones": [
+    "(+63) 9452471325"
+   ],
+   "emails": [
+    "info@aet-rp.com"
+   ],
+   "website": "www.aet-rp.com",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026",
+    "Jul 13, 2026"
+   ],
+   "name": "Advancing Sustainability and Clean Energy Technologies (ASCENT), Inc.",
+   "type": "Registered",
+   "region": "NCR",
+   "address": "1109 ASEANA II Building, Bradco Avenue, ASEANA City, Paranaque City",
+   "phones": [
+    "63288382010"
+   ],
+   "emails": [
+    "info@ascent.ph"
+   ],
+   "website": "www.ascent.ph",
+   "esco": true
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "Advantec Philippines, Inc.",
+   "type": "Corporation",
+   "region": "NCR",
+   "address": "3rd Floor, LTA Bldg. 118 Perea St. Legaspi Village, Makati City, Metro Manila",
+   "phones": [
+    "(02) 8805 - 2836"
+   ],
+   "emails": [
+    "a.inso@ph.advantec-global.com"
+   ],
+   "website": "https://www.facebook.com/AdvantechPhilippines/",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026",
+    "Jul 13, 2026"
+   ],
+   "name": "AI Technology and Services",
+   "type": "Sole roprietorship",
+   "region": "XII",
+   "address": "Gate 2 PM-ZE-0103 Public Market, Kalawag III, Isulan, Sultan Kudarat",
+   "phones": [
+    "09076869229"
+   ],
+   "emails": [
+    "aits.ph@yahoo.com"
+   ],
+   "website": "",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "Aibishter Engineering Services",
+   "type": "Sole Proprietorship",
+   "region": "IV-A",
+   "address": "Purol Ipil-ipil, Citta Grande Isabang, Lucena City, Quezon",
+   "phones": [
+    "(04) 2373 - 8841"
+   ],
+   "emails": [
+    "sales.aibishter@gmail.com"
+   ],
+   "website": "https://aibishter.co",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "Alectric Engineering Services",
+   "type": "Sole Proprietorship",
+   "region": "XII",
+   "address": "Purok 10, Lagao, General Santos City, South Cotabato",
+   "phones": [
+    "(083) 887-0624"
+   ],
+   "emails": [
+    "solaralectric@gmail.com"
+   ],
+   "website": "https://www.facebook.com/solaralectric",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "AlphaSolar, Inc.",
+   "type": "Corporation",
+   "region": "III",
+   "address": "101-1, FRDC Bldg., Greenfield Square, MacArthur Highway, Sinadalan, San Fernando City, Pampanga",
+   "phones": [
+    "9690365668"
+   ],
+   "emails": [
+    "info@alphasolarinc.com"
+   ],
+   "website": "https://www.alphasolarinc.com/",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "Bandacorp Solar Inc.",
+   "type": "Corporation",
+   "region": "III",
+   "address": "Unit A G/F SBHD Bldg., Blk 8 Lot 2B, Waterfront Road, Subic Bay Freeport Zone, Subic, Zambales",
+   "phones": [
+    "(+63) 9088772832"
+   ],
+   "emails": [
+    "makeithappen@bandasolar.com",
+    "admin2@bandasolar.com"
+   ],
+   "website": "https://bandasolar.com/",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jul 13, 2026"
+   ],
+   "name": "BDLS Core Energy and Construction Solutions, Inc.",
+   "type": "Corporation",
+   "region": "IV-B",
+   "address": "Poblacion 06, Mamburao, Occidental Mindoro",
+   "phones": [
+    "9171341482"
+   ],
+   "emails": [
+    "bdlscoreenergy@gmail.com"
+   ],
+   "website": "",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "Beavers Engineering and Architectural Services",
+   "type": "Sole Proprietorship",
+   "region": "III",
+   "address": "Hangga St., Anta Rita, Guiguinto, Bulacan",
+   "phones": [
+    "(+63) 9397676133"
+   ],
+   "emails": [
+    "beavers.mepf@gmail.com"
+   ],
+   "website": "https://www.facebook.com/JFTRSales/",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026",
+    "Jul 13, 2026"
+   ],
+   "name": "Bohol Solar Supply & Services",
+   "type": "Sole roprietorship",
+   "region": "IV-A",
+   "address": "Blk 6 Lot 11 Santana Village, San Isidro, Antipolo City, Rizal",
+   "phones": [
+    "(+63) 9190047860"
+   ],
+   "emails": [
+    "solarbohol@gmail.com"
+   ],
+   "website": "https://www.facebook.com/BoholSolarSAS",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "BRAVE ENERGY INC",
+   "type": "Corporation",
+   "region": "IV-A",
+   "address": "2nd Floor, CVM Realty Bldg., Manila East Road, Taytay, Rizal",
+   "phones": [
+    "9567038857"
+   ],
+   "emails": [
+    "bravecompliance@braveenergy.com"
+   ],
+   "website": "",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "Cantones Solar Power Engineering Services",
+   "type": "Sole Proprietorship",
+   "region": "VII",
+   "address": "Purok 2 Pig-Ot, Brgy. Loon, Loon, Bohol",
+   "phones": [
+    "(+63) 9060717962"
+   ],
+   "emails": [
+    "slcantones@gmail.com"
+   ],
+   "website": "",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026",
+    "Jul 13, 2026"
+   ],
+   "name": "Caresystem Technology Solution Co., Inc.",
+   "type": "Registered",
+   "region": "XI",
+   "address": "Dr. 1 LS Bros Bldg. KM. 5, Buhangin Rd., Davao City, Davao Del Sur",
+   "phones": [
+    "082 308-0894"
+   ],
+   "emails": [
+    "caresystem_technologysolution@yahoo.com"
+   ],
+   "website": "www.caresystemtechnologysolutioncoinc.com",
+   "esco": true
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "CENAG SOLAR INC",
+   "type": "Corporation",
+   "region": "NCR",
+   "address": "2570 Rubi St., San Andres Bukid, Brgy. 763, Manila, Metro Manila",
+   "phones": [
+    "9177960329"
+   ],
+   "emails": [
+    "info@cenag-solar.com"
+   ],
+   "website": "www.cenag-solar.ph",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026",
+    "Jul 13, 2026"
+   ],
+   "name": "Communications and Renewable Energy Infrastructure CREI Phils Inc.",
+   "type": "Registered",
+   "region": "NCR",
+   "address": "Unit 7A, Clipp Center, 39th St. Cor 11th Avenue, BGC, Taguig City",
+   "phones": [
+    "(028)732-2093"
+   ],
+   "emails": [
+    "fbartolome@creicapital.com",
+    "mcotelo@creicapital.com"
+   ],
+   "website": "",
+   "esco": true
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "CSP Electronics System",
+   "type": "Sole Proprietorship",
+   "region": "I",
+   "address": "San Blas, Villasis, Pangasinan, Villasis, Pangasinan",
+   "phones": [
+    "02 75770747"
+   ],
+   "emails": [
+    "csp.esystemphil@gmail.com"
+   ],
+   "website": "",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "DAJ Builders",
+   "type": "Sole Proprietorship",
+   "region": "III",
+   "address": "35 Gomez Street, Balanga City, Bataan",
+   "phones": [
+    "09925988966"
+   ],
+   "emails": [
+    "dajbuildersinfo@gmail.com"
+   ],
+   "website": "",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026",
+    "Jul 13, 2026"
+   ],
+   "name": "De Leon Solar Power Installation Services",
+   "type": "Sole roprietorship",
+   "region": "III",
+   "address": "164 HYPERION ST, APOLLO, Orani, Bataan",
+   "phones": [
+    "9175673251"
+   ],
+   "emails": [
+    "deleonsolarpower@gmail.com"
+   ],
+   "website": "www.facebook.com/deleonsolarpower",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "Domerald Construction and Supply",
+   "type": "Sole Proprietorship",
+   "region": "XI",
+   "address": "72 Fronting Panorama Homes Tigatto Rd Buhangin District, Davao City, Davao del Sur",
+   "phones": [
+    "(082) 241-2431"
+   ],
+   "emails": [
+    "domeraldconstrdc@gmail.com"
+   ],
+   "website": "",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "Don Solar Solar Power Engineering Services",
+   "type": "Sole Proprietorship",
+   "region": "XIII",
+   "address": "FT Emporium Bldg., Narciso Street, Surigao City, Surigao del Norte",
+   "phones": [
+    "+63 939 983 2491"
+   ],
+   "emails": [
+    "donsolarsurigao@gmail.com"
+   ],
+   "website": "https://www.facebook.com/DonSolarSurigao/",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026",
+    "Jul 13, 2026"
+   ],
+   "name": "Ecoplus Solar Inc",
+   "type": "Corporation",
+   "region": "IV-A",
+   "address": "Town’s Delight Catering and Events Commissary, Tanza-Trece Rd, Brgy. De Ocampo, Trece Martires City, Cavite",
+   "phones": [
+    "(+63) 9762234048"
+   ],
+   "emails": [
+    "ask@ecoplus.ph"
+   ],
+   "website": "www.ecoplus.ph",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "Ecosense Technologies",
+   "type": "Sole Proprietorship",
+   "region": "II",
+   "address": "2D Tomtor Bldg, Luna Street, Ugac Norte, Tuguegarao, Cagayan",
+   "phones": [
+    "(+63) 9174504843"
+   ],
+   "emails": [
+    "ecosense.ventures@yahoo.com"
+   ],
+   "website": "",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026",
+    "Jul 13, 2026"
+   ],
+   "name": "EEI Power Corporation",
+   "type": "Registered",
+   "region": "NCR",
+   "address": "12 Manggahan St. Bagumbayan Quezon City",
+   "phones": [
+    "09951886997"
+   ],
+   "emails": [
+    "jdsales@eei.com.ph"
+   ],
+   "website": "www.eeipower.com",
+   "esco": true
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "El'Sol Wealth Phils Engineering Services",
+   "type": "Sole Proprietorship",
+   "region": "III",
+   "address": "Paltao, Pulilan, Bulacan, Pulilan, Bulacan",
+   "phones": [
+    "(+63) 9777774065"
+   ],
+   "emails": [
+    "inquiries.solarwealth@gmail.com"
+   ],
+   "website": "",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026",
+    "Jul 13, 2026"
+   ],
+   "name": "Electricity Solutions, Inc.",
+   "type": "Corporation",
+   "region": "XI",
+   "address": "COR. BLUEBELL AND GOLDEN ROD ST. MIDLAND VILLAGE, BUGAC MAA, DAVAO CITY",
+   "phones": [
+    "(082) 244-1806"
+   ],
+   "emails": [
+    "esi.sales@gmail.com"
+   ],
+   "website": "",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026",
+    "Jul 13, 2026"
+   ],
+   "name": "Energisto Philippines Renewable Energy Development Corporation",
+   "type": "Corporation",
+   "region": "XII",
+   "address": "Maduramente Building, National Highway, City Heights,, General Santos City, South Cotabato",
+   "phones": [
+    "(083) 520 6489"
+   ],
+   "emails": [
+    "enquiry@energisto.com"
+   ],
+   "website": "www.energisto.ph",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026",
+    "Jul 13, 2026"
+   ],
+   "name": "Energy Integrated Systems and Support Services Inc. (EISSS)",
+   "type": "Registered",
+   "region": "IV-A",
+   "address": "B7 L11 Ph1-C Annex SLS Subd. Brgy. Dita, Sta. Rosa, Laguna, Philippines 4026",
+   "phones": [
+    "(02) 7-369-7062",
+    "(049) 530-2791",
+    "09175069879"
+   ],
+   "emails": [
+    "nong.fuentes@energyiserve.com",
+    "elaine.casabuena@energyiserve.com"
+   ],
+   "website": "www.energyiserve.com",
+   "esco": true
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "Equator Energy Corporation",
+   "type": "Corporation",
+   "region": "NCR",
+   "address": "Lot 4 Block 88 Bayani Road, Western Bicutan, Taguig City, Metro Manila",
+   "phones": [
+    "(02) 8856-4311"
+   ],
+   "emails": [
+    "sales@equatorenergypinoy.com.ph"
+   ],
+   "website": "www.equatorenergypinoy.com.ph",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026",
+    "Jul 13, 2026"
+   ],
+   "name": "First Gen Energy Solutions (FGES)",
+   "type": "Registered",
+   "region": "NCR",
+   "address": "6F Rockwell Business Center Tower 3, Ortigas Avenue, Pasig City 1604, Philippines",
+   "phones": [
+    "(632) 3449-6400",
+    "+639178180963"
+   ],
+   "emails": [
+    "rcoafges@firstgen.com.ph",
+    "power_economics@firstgen.com.ph"
+   ],
+   "website": "www.firstgen.com.ph",
+   "esco": true
+  },
+  {
+   "lists": [
+    "Jan 31, 2026",
+    "Jul 13, 2026"
+   ],
+   "name": "GC Tech",
+   "type": "Sole roprietorship",
+   "region": "XI",
+   "address": "Gellangarin Bldg., Prk. 8-C, Curvada, Magdum, Tagum City, Davao del Norte",
+   "phones": [
+    "9177168186"
+   ],
+   "emails": [
+    "sgellangarin@gmail.com"
+   ],
+   "website": "https://www.facebook.com/p/GC-TECH-100063650032428/",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "GenWATT Energy Solutions Corp.",
+   "type": "Corporation",
+   "region": "NCR",
+   "address": "38A Maayusin St. UP Village, Quezon City, Metro Manila",
+   "phones": [
+    "02-8735-5403"
+   ],
+   "emails": [
+    "admin@genwattph.com",
+    "genwattph@gmail.com"
+   ],
+   "website": "www.genwattph.com",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "GLDC Solar Power Installation Services",
+   "type": "Sole Proprietorship",
+   "region": "IV-A",
+   "address": "Poblacion A., Rosario, Batangas",
+   "phones": [
+    "433415110"
+   ],
+   "emails": [
+    "guillergian987@gmail.com"
+   ],
+   "website": "www.facebook.com/GLDCSolarpowerInstallationServic",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "GoPrime Technology Corp.",
+   "type": "Corporation",
+   "region": "NCR",
+   "address": "2nd Floor, Earn Building, Alabang-Zapote Road, Pamplona Uno, Las Piñas, Metro Manila",
+   "phones": [
+    "8711-2379"
+   ],
+   "emails": [
+    "admin@goprime.ph"
+   ],
+   "website": "https://goprime.ph/",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026",
+    "Jul 13, 2026"
+   ],
+   "name": "Greenergy Development Corp.",
+   "type": "Corporation",
+   "region": "XI",
+   "address": "Oro Chamber Business Development Centre, Macapagal Drive, Pueblo de Oro Business Park, Cagayan de Oro City, Misamis Oriental",
+   "phones": [
+    "(+63) 88 881 5250"
+   ],
+   "emails": [
+    "info@greenergydev.net"
+   ],
+   "website": "http://greenergydev.net/",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026",
+    "Jul 13, 2026"
+   ],
+   "name": "Greenheat Corporation",
+   "type": "Corporation",
+   "region": "NCR",
+   "address": "MTC Building, Arzobispo St., Intramuros, Manila, Metro Manila",
+   "phones": [
+    "02 82510857",
+    "09178869585"
+   ],
+   "emails": [
+    "obeth.martin@greenheat.ph"
+   ],
+   "website": "https://greenheat.com.ph/",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "Grey Electrical Engineering Services",
+   "type": "Sole Proprietorship",
+   "region": "III",
+   "address": "53 Masantol, Orani, Bataan",
+   "phones": [
+    "9175969048"
+   ],
+   "emails": [
+    "admin@greyelectrical.com"
+   ],
+   "website": "https://www.greyelectrical.com/",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "HHO Trading",
+   "type": "Sole Proprietorship",
+   "region": "IV-A",
+   "address": "7 30 Jordan Estates Subd., Brgy. San Antonio I, Noveleta, Cavite",
+   "phones": [
+    "(+63) 9153271810"
+   ],
+   "emails": [
+    "hhotsolar@gmail.com"
+   ],
+   "website": "www.hhotsolar.com",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "Hive Energy OPC",
+   "type": "Corporation",
+   "region": "IV-B",
+   "address": "A&N Building Bonifacio Drive Ilaya, Calapan City, Calapan City, Oriental Mindoro",
+   "phones": [
+    "437382948"
+   ],
+   "emails": [
+    "hiveenergyopc@outlook.com"
+   ],
+   "website": "fb.com/hiveenergyph",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "ITDC Systems Development Services",
+   "type": "Sole Proprietorship",
+   "region": "IV-B",
+   "address": "Ilaya, Calapan City, Oriental Mindoro",
+   "phones": [
+    "043 441 8267"
+   ],
+   "emails": [
+    "office@itdcsystems.com"
+   ],
+   "website": "https://itdcsystems.com/",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "J Powertek Engineering Services",
+   "type": "Sole Proprietorship",
+   "region": "VII",
+   "address": "Purok 1, Brgy. Cambanay, Danao City, Cebu",
+   "phones": [
+    "(+63) 9171397278"
+   ],
+   "emails": [
+    "jpa.jpowertek@gmail.com"
+   ],
+   "website": "",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026",
+    "Jul 13, 2026"
+   ],
+   "name": "JECO Distributor Co., Inc.",
+   "type": "Corporation",
+   "region": "VI",
+   "address": "Zurich St., Helvetia Heights Subd., Villamonte, Bacolod City",
+   "phones": [
+    "032-3502243"
+   ],
+   "emails": [
+    "aflores@sheridanphilippines.com"
+   ],
+   "website": "www.sheridanphilippines.com",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026",
+    "Jul 13, 2026"
+   ],
+   "name": "JRB Mechanical and Electrical Engineering Services",
+   "type": "Sole roprietorship",
+   "region": "IV-A",
+   "address": "Bangkal Street, Zone 4 Socorro, Socorro, Oriental Mindoro",
+   "phones": [
+    "(+63)9493231308"
+   ],
+   "emails": [
+    "jesserey.bustamante@gmail.com"
+   ],
+   "website": "",
+   "esco": true
+  },
+  {
+   "lists": [
+    "Jan 31, 2026",
+    "Jul 13, 2026"
+   ],
+   "name": "LABB Construction Development Inc.",
+   "type": "Corporation",
+   "region": "VII",
+   "address": "MARIVELES, DAUIS, BOHOL",
+   "phones": [],
+   "emails": [
+    "labbconstruction@yahoo.com.ph"
+   ],
+   "website": "",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "LLA Electrical and Communication Engineering Services",
+   "type": "Sole Proprietorship",
+   "region": "II",
+   "address": "Brgy. Centro (Pob.), Santa Ana, Cagayan",
+   "phones": [
+    "(+63) 9260482196"
+   ],
+   "emails": [
+    "lla.engineering15@gmail.com"
+   ],
+   "website": "",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026",
+    "Jul 13, 2026"
+   ],
+   "name": "MacGuyver Enterprises",
+   "type": "Sole roprietorship",
+   "region": "IV-A",
+   "address": "5817 Sitio Matahimik, Brgy. Duhat, Santa Cruz, Laguna",
+   "phones": [
+    "0915 198 0929"
+   ],
+   "emails": [
+    "macguyver.enterprises2019@gmail.com"
+   ],
+   "website": "https://www.facebook.com/Macguyver2019/",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "Macspower Construction Supply and Services Corporation",
+   "type": "Corporation",
+   "region": "III",
+   "address": "848 PUROK 3, MALAMIG, BUSTOS, BULACAN",
+   "phones": [
+    "044 617 8931"
+   ],
+   "emails": [
+    "mcperez@macspower.net"
+   ],
+   "website": "https://www.macspower.net/",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "Magis Innovations Inc.",
+   "type": "Registered",
+   "region": "NCR",
+   "address": "3F Hamilton Center, 9598 Kamagong St. San Antonio Village, Makati City",
+   "phones": [
+    "(02) 8713-1599 09688970211"
+   ],
+   "emails": [
+    "magis.innov@gmail.com",
+    "info@magisinov.com"
+   ],
+   "website": "",
+   "esco": true
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "Maxtec Solutions Philippines Inc",
+   "type": "Corporation",
+   "region": "NCR",
+   "address": "498A. BONI AVENUE, Mandaluyong, Metro Manila",
+   "phones": [
+    "70015013"
+   ],
+   "emails": [
+    "arvin.regino@maxtecnetworks.com"
+   ],
+   "website": "maxtecsolutions.ph",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "MDC ELECTRICAL SUPPLIES AND SERVICES",
+   "type": "Sole Proprietorship",
+   "region": "VI",
+   "address": "Camansi, Brgy. Tiza, Roxas City, Capiz, Roxas, Capiz",
+   "phones": [
+    "0998-547-0912"
+   ],
+   "emails": [
+    "mdc_1023@yahoo.com"
+   ],
+   "website": "",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "Meralco Energy, Inc. (MSERV)",
+   "type": "Certified",
+   "region": "NCR",
+   "address": "17th & 18th Floor, Marco Polo, Ortigas, Manila, Sapphire Road, Barangay San Antonio, Ortigas Center, Pasig City",
+   "phones": [
+    "+632 8672 8100 09568405489 09190019531"
+   ],
+   "emails": [
+    "corporateaffairs@meralcoenergy.com",
+    "cgmarvilla@meralcoenergy.com",
+    "ccsansebastian@meralcoenergy.com",
+    "jlmirando@meralcoenergy.com",
+    "jpibe@meralcoenergy.com"
+   ],
+   "website": "www.mserv.com.ph",
+   "esco": true
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "Metrogreen Technologies Corporation",
+   "type": "Corporation",
+   "region": "III",
+   "address": "0016 – A Unit 2 Little Baguio, Malhacan, Meycauayan, Bulacan",
+   "phones": [
+    "(+63) 9190076122"
+   ],
+   "emails": [
+    "sales@metrogreentech.com"
+   ],
+   "website": "www.metrogreentech.com",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "MissionPH Renewables Corporation",
+   "type": "Corporation",
+   "region": "IV-A",
+   "address": "JE Business Center Pinesville Road Dolores, Taytay, Rizal",
+   "phones": [
+    "(+63) 287279001"
+   ],
+   "emails": [
+    "info@missionphrenewables.com"
+   ],
+   "website": "https://missionphrenewables.com/",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026",
+    "Jul 13, 2026"
+   ],
+   "name": "MOBI SOLAR PHILIPPINES INC.",
+   "type": "Corporation",
+   "region": "NCR",
+   "address": "6th Flr Kings Court 2 Bldg 2129 Chino Roces Ave. Pio Del Pilar, Makati City",
+   "phones": [
+    "9497091860"
+   ],
+   "emails": [
+    "mobisolarphilippines@gmail.com"
+   ],
+   "website": "",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026",
+    "Jul 13, 2026"
+   ],
+   "name": "MSpectrum, Inc.",
+   "type": "Corporation",
+   "region": "NCR",
+   "address": "3/F Business Solution Center, Meralco Comp. Ortigas Ave., Ugong, Pasig City, Metro Manila",
+   "phones": [
+    "(02) 8887-6527"
+   ],
+   "emails": [
+    "lmzamora@spectrum.net.ph"
+   ],
+   "website": "www.spectrum.net.ph",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jul 13, 2026"
+   ],
+   "name": "N.D.M Construction Services",
+   "type": "Sole roprietorship",
+   "region": "VI",
+   "address": "Maybato Norte, San Jose de Buenavista, Antique",
+   "phones": [
+    "9178274066"
+   ],
+   "emails": [
+    "nesmacavinta@gmail.com"
+   ],
+   "website": "",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "Namkoo Power Solar Panel Trading",
+   "type": "Sole Proprietorship",
+   "region": "NCR",
+   "address": "620 Pag-asa St., Caniogan, Pasig City, Pasig City, Metro Manila",
+   "phones": [
+    "0917-628-2676"
+   ],
+   "emails": [
+    "namkoopower@yahoo.com"
+   ],
+   "website": "",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "Nativ Techniks Inc.",
+   "type": "Corporation",
+   "region": "NCR",
+   "address": "Room 213, J&L Building, 215 EDSA, Brgy. Importer, Wack Wack Greenhills, Mandaluyong City, Metro Manila",
+   "phones": [
+    "+632 8284 8789"
+   ],
+   "emails": [
+    "wecare@nativtechniks.com"
+   ],
+   "website": "https://nativtechniks.com/",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "NCO General Merchandise",
+   "type": "Sole Proprietorship",
+   "region": "I",
+   "address": "National Highway, Brgy. San Marcos, San Nicolas, Ilocos Norte",
+   "phones": [
+    "077 677 1334"
+   ],
+   "emails": [
+    "ncogenmdse@yahoo.com"
+   ],
+   "website": "https://www.facebook.com/NCOgeneralmdse/",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jul 13, 2026"
+   ],
+   "name": "Nem Construction Supplies & Services",
+   "type": "Sole roprietorship",
+   "region": "VI",
+   "address": "5A Zamora-Melliza, Iloilo City",
+   "phones": [
+    "326-031-6"
+   ],
+   "emails": [
+    "nemcon2018@yahoo.com"
+   ],
+   "website": "",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "Netsolar Incorporated",
+   "type": "Corporation",
+   "region": "NCR",
+   "address": "302 Centerpoint Bldg. Julia Vargas cor. Garnet Road, Ortigas Center, San Antonio, Pasig City, Metro Manila",
+   "phones": [
+    "9177162304"
+   ],
+   "emails": [
+    "pconcio@netsolar.ph"
+   ],
+   "website": "www.netsolar.com.ph",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "Next-Gen Solar Panel Installation Services",
+   "type": "Sole Proprietorship",
+   "region": "NCR",
+   "address": "Block 13 Lot 13 Road 8A UPS 5, San Isidro, Parañaque City, Metro Manila",
+   "phones": [
+    "(+63) 9052132210",
+    "9979286464"
+   ],
+   "emails": [
+    "nextgensolarph@gmail.com"
+   ],
+   "website": "www.facebook.com/NextgenSolar",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jul 13, 2026"
+   ],
+   "name": "OEM Industrial Parts and Construction Services",
+   "type": "Corporation",
+   "region": "NCR",
+   "address": "878 Unit B. Himlayan Road Pantranco Comp. Pasong Tamo, Quezon City",
+   "phones": [
+    "9065065271"
+   ],
+   "emails": [
+    "fernando.desamito@oicsc.com.ph"
+   ],
+   "website": "",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "PAVI Green Renewable Energy, Inc.",
+   "type": "Corporation",
+   "region": "NCR",
+   "address": "4th Floor Starmall I.T. Hub C.V. STARR, Phil-Am Life Village, Pamplona Dos, Piñas City, Las Piñas, Metro Manila",
+   "phones": [],
+   "emails": [
+    "contactus@pavigreen.com.ph"
+   ],
+   "website": "",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026",
+    "Jul 13, 2026"
+   ],
+   "name": "PEP-G Electrical Supplies",
+   "type": "Registered",
+   "region": "IV-B",
+   "address": "Brgy. Labangan, Poblacion San Jose, Occidental Mindoro",
+   "phones": [
+    "043-491-1716"
+   ],
+   "emails": [
+    "pepguild@gmail.com"
+   ],
+   "website": "",
+   "esco": true
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "Philippine Nihon JEPS Corporation",
+   "type": "Corporation",
+   "region": "IV-A",
+   "address": "9054 Emilio Aguinaldo Hi-way, Bayan Luma 2, Imus, Cavite",
+   "phones": [
+    "9267503103"
+   ],
+   "emails": [
+    "nihonjeps@yahoo.com"
+   ],
+   "website": "www.jeps.jp/en/philippines.php",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jul 13, 2026"
+   ],
+   "name": "Photovoltaic Solar Centre",
+   "type": "Sole roprietorship",
+   "region": "IV-B",
+   "address": "Lustre Bldg., Rizal Ave., San Miguel, Puerto Princesa City, Palawan",
+   "phones": [
+    "09088937191"
+   ],
+   "emails": [
+    "castretimbreza@gmail.com"
+   ],
+   "website": "https://facebook.com.ph/photovoltaicsolarcentre.ph",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026",
+    "Jul 13, 2026"
+   ],
+   "name": "Physics Research - Sales & Services Corp.",
+   "type": "Corporation",
+   "region": "VII",
+   "address": "Unit 4 Krystall Mall, San Isidro, Talisay, Cebu",
+   "phones": [
+    "(03) 2462 - 5499",
+    "(+63) 9177107469"
+   ],
+   "emails": [
+    "admin@prcebu.com",
+    "prsearch2000@gmail.com"
+   ],
+   "website": "www.prcebu.com",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026",
+    "Jul 13, 2026"
+   ],
+   "name": "Pi Energy Inc.",
+   "type": "Certified",
+   "region": "NCR",
+   "address": "6/F Floor, Rockwell Business Center Tower 3, Ortigas Avenue, Pasig",
+   "phones": [
+    "(02) 3449 6498",
+    "+639052147375"
+   ],
+   "emails": [
+    "customer.support@pienergy.com.ph",
+    "gjbmalit@pienergy.com.ph",
+    "icmtorres@pienergy.com.ph"
+   ],
+   "website": "ph.linkedin.com/company/pi-energy-inc",
+   "esco": true
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "Piao Solar Energy Shop",
+   "type": "Sole Proprietorship",
+   "region": "III",
+   "address": "Blk. 4. Brgy. San Jose, Tarlac City, Tarlac",
+   "phones": [
+    "459255522"
+   ],
+   "emails": [
+    "leopiao2011@yahoo.com"
+   ],
+   "website": "",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jul 13, 2026"
+   ],
+   "name": "Plaswealth Philippines Corporation",
+   "type": "Corporation",
+   "region": "V",
+   "address": "497 National Road, Zone 7, Batang, Ligao City, Albay",
+   "phones": [
+    "09178100586"
+   ],
+   "emails": [
+    "plaswealth2@gmail.com"
+   ],
+   "website": "",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "Power 4 All, Inc.",
+   "type": "Corporation",
+   "region": "NCR",
+   "address": "7F Estancia Offices, West Wing, Meralco Ave., Capitol Commons, Brgy. Oranbo, Pasig City, Metro Manila",
+   "phones": [
+    "(02) 8252-0547",
+    "09062398000"
+   ],
+   "emails": [
+    "support@power4all.org"
+   ],
+   "website": "www.power4all.org.ph",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "Prismatech Solar Enterprise Incorporated",
+   "type": "Corporation",
+   "region": "III",
+   "address": "Roman Super Hi Way, Ala-uli, Pilar, Bataan",
+   "phones": [
+    "(+63) 977 380 6090"
+   ],
+   "emails": [
+    "prismatechsolarinfo@gmail.com"
+   ],
+   "website": "https://www.facebook.com/prismatechsolar/",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jul 13, 2026"
+   ],
+   "name": "Priume Philippines Manufacturing Corporation",
+   "type": "Corporation",
+   "region": "VII",
+   "address": "Room 202,Veloso Building San Isidro City of Talisay Cebu",
+   "phones": [
+    "09672202022"
+   ],
+   "emails": [
+    "sandieveloso@priume.com"
+   ],
+   "website": "",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026",
+    "Jul 13, 2026"
+   ],
+   "name": "R.K.I. Building Technologies Inc.",
+   "type": "Corporation",
+   "region": "VIII",
+   "address": "Abucay, Brgy.91, Tacloban City, Leyte",
+   "phones": [
+    "(053) 530 7337"
+   ],
+   "emails": [
+    "rkindustriesph@gmail.com"
+   ],
+   "website": "",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026",
+    "Jul 13, 2026"
+   ],
+   "name": "RITSCO Electrical and Solar Inc.",
+   "type": "Corporation",
+   "region": "NCR",
+   "address": "Benita St., Gagalangin, 725 F, Barangay 168, Tondo, Metro Manila",
+   "phones": [
+    "02 79559405"
+   ],
+   "emails": [
+    "richard.salvador@ritsco.com.ph"
+   ],
+   "website": "http://ritsco.com.ph/",
+   "esco": true
+  },
+  {
+   "lists": [
+    "Jul 13, 2026"
+   ],
+   "name": "ROSEJEL CONSTRUCTION",
+   "type": "Sole roprietorship",
+   "region": "IV-A",
+   "address": "Unit 10, Lot 2, Block 2, Crocus St., Greenland Executive Village, Brgy. Santa Ana, Taytay, Rizal",
+   "phones": [
+    "09998201153"
+   ],
+   "emails": [
+    "rosejelconstruction2025@gmail.com"
+   ],
+   "website": "",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jul 13, 2026"
+   ],
+   "name": "Sedibus Industrial and Facilities Management Corporation",
+   "type": "Corporation",
+   "region": "VII",
+   "address": "Purok 7, Mariveles, Dauis, Bohol",
+   "phones": [
+    "09173285830"
+   ],
+   "emails": [
+    "rventero@sedibusengineering.com"
+   ],
+   "website": "www.sedibusengineering.com",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "Sen Tek Energy Solutions Inc.",
+   "type": "Registered",
+   "region": "NCR",
+   "address": "Unit 811, Tytana Plaza Bld, 611 V Tytana St., Manila",
+   "phones": [
+    "8257 0406"
+   ],
+   "emails": [
+    "director.projects@sentekenergy.com",
+    "sheena.cl@sentekenergy.com"
+   ],
+   "website": "www.sentekenergy.com",
+   "esco": true
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "Silver Hammer Construction and Supplies",
+   "type": "Sole Proprietorship",
+   "region": "XII",
+   "address": "# 60 Sampaguita St., Purok Bagong Silang, Labangal, General Santos City, South Cotabato",
+   "phones": [
+    "0838874574"
+   ],
+   "emails": [
+    "silverhammercs@gmail.com"
+   ],
+   "website": "",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "SJ Renewable Energy",
+   "type": "Sole Proprietorship",
+   "region": "III",
+   "address": "Zone 6, Pinagcuartelan, Sto. Niño, San Jose City, Nueva Ecija",
+   "phones": [
+    "(+63) 9171475268"
+   ],
+   "emails": [
+    "sjrenergy3121@gmail.com"
+   ],
+   "website": "https://www.facebook.com/sjrenergy/",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "Skipper's Electronics Engineering Services",
+   "type": "Sole Proprietorship",
+   "region": "NCR",
+   "address": "9 Magnolia DRJ Village, Sauyo, Novaliches, Metro Manila",
+   "phones": [
+    "(+63) 9565620189"
+   ],
+   "emails": [
+    "skips.hyperion@gmail.com"
+   ],
+   "website": "https://www.facebook.com/SOLARHYPERION/",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "SkyBright Solar PH",
+   "type": "Corporation",
+   "region": "VI",
+   "address": "Unit 6, Solid Bldg., Donato Pison Avenue., Brgy. San Rafael, Mandurriao, Iloilo",
+   "phones": [
+    "033 323 57 61"
+   ],
+   "emails": [
+    "GOGREEN@sbne.energy"
+   ],
+   "website": "https://www.sbne.energy/",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "Smart Save Ventures Corp",
+   "type": "Corporation",
+   "region": "IV-A",
+   "address": "Tiaong Lipa Rd., Antipolo Del Sur, Lipa City, Batangas",
+   "phones": [
+    "(+63) 9278834666"
+   ],
+   "emails": [
+    "info.smartsaveventures@gmail.com"
+   ],
+   "website": "www.smartsavessolar.com",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026",
+    "Jul 13, 2026"
+   ],
+   "name": "SmartPower Solutions Corporation",
+   "type": "Corporation",
+   "region": "NCR",
+   "address": "#9 Illinois St., Silangan, Cubao, Quezon City, Metro Manila",
+   "phones": [
+    "(02) 8519-9638"
+   ],
+   "emails": [
+    "mrgbathan@smartpowerph.com"
+   ],
+   "website": "https://smartpowerph.com/",
+   "esco": true
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "Solamax Marketing",
+   "type": "Sole Proprietorship",
+   "region": "IV-A",
+   "address": "#42 National Highway, Brgy. Platero, Biñan City, Laguna",
+   "phones": [
+    "(049) 5018-117"
+   ],
+   "emails": [
+    "solamax.customerservice@gmail.com"
+   ],
+   "website": "https://www.facebook.com/solamax.renewable.energy",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "Solar Energy Systems, Inc. doing business under the name and style of PHILERGY German Solar",
+   "type": "Corporation",
+   "region": "NCR",
+   "address": "Unit 803, 8F, Magnitude Bldg. III, 186 E. Rodriguez Jr. Ave., Bagumbayan District Quezon City, Metro Manila",
+   "phones": [
+    "8638 8277"
+   ],
+   "emails": [
+    "philergygermansolar.sesi@gmail.com"
+   ],
+   "website": "https://philergy.com/",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "Solar Surveying Corporation",
+   "type": "Corporation",
+   "region": "NCR",
+   "address": "1453 Governor Forbes, Lacson Ave., Sampaloc, Manila, Metro Manila",
+   "phones": [
+    "9985965761"
+   ],
+   "emails": [
+    "solarsurvey_corp@yahoo.com"
+   ],
+   "website": "",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jul 13, 2026"
+   ],
+   "name": "SolarAll New Energy Corporation",
+   "type": "Corporation",
+   "region": "VII",
+   "address": "Lot 2537 M.C Briones St., Subangdaku, Mandaue City Cebu",
+   "phones": [
+    "0951-314-0053 0926-845-7149"
+   ],
+   "emails": [
+    "clifford.solarall@gmail.com",
+    "solarall.solarenergy@gmail.com"
+   ],
+   "website": "",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026",
+    "Jul 13, 2026"
+   ],
+   "name": "Solaren Renewable Energy Solutions Corporation",
+   "type": "Corporation",
+   "region": "III",
+   "address": "127 Sta Rosa Road, Caramutan, La Paz, Tarlac",
+   "phones": [
+    "(+63) 9178796037"
+   ],
+   "emails": [
+    "sales@solaren-power.com"
+   ],
+   "website": "https://solaren-power.com/",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "Solargy Solutions",
+   "type": "Sole Proprietorship",
+   "region": "V",
+   "address": "B-15, L-5 Deca Homes Grandvale, San Felipe, Naga City, Camarines Sur",
+   "phones": [
+    "(+63) 9178384742"
+   ],
+   "emails": [
+    "solargysolutions@yahoo.com"
+   ],
+   "website": "www.facebook.com/solargysolutions",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "Solaric Corp",
+   "type": "Corporation",
+   "region": "NCR",
+   "address": "2320 Chino Roces Avenue Extension, Makati, Metro Manila",
+   "phones": [
+    "(+63) 9178603141"
+   ],
+   "emails": [
+    "info@solaric.com.ph"
+   ],
+   "website": "www.solaric.com.ph",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "SolaRIC Power & Services",
+   "type": "Sole Proprietorship",
+   "region": "IV-B",
+   "address": "Brgy. Tawiran, Calapan City, Oriental Mindoro",
+   "phones": [
+    "(+63) 9176225086"
+   ],
+   "emails": [
+    "solaric.calapan@gmail.com"
+   ],
+   "website": "https://www.facebook.com/Solarific/",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "Solarius Energy",
+   "type": "Sole Proprietorship",
+   "region": "II",
+   "address": "2B Shell San Antonio North, Bambang, Nueva Vizcaya",
+   "phones": [
+    "9498822125"
+   ],
+   "emails": [
+    "jocelyn@solarius.com.ph"
+   ],
+   "website": "http://www.solarius.com.ph",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026",
+    "Jul 13, 2026"
+   ],
+   "name": "Solarix Enterprise",
+   "type": "Sole roprietorship",
+   "region": "NCR",
+   "address": "Unit 103 & 104 Firenza Place, Rainbow corner Azure Street, Concepcion II, Marikina City, Metro Manila",
+   "phones": [
+    "(02) 86937291",
+    "09615490780"
+   ],
+   "emails": [
+    "solarix2014@yahoo.com"
+   ],
+   "website": "www.solarixph.com",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "Solarized Incorporated",
+   "type": "Corporation",
+   "region": "NCR",
+   "address": "Unit 301 Marose Place III Bldg., Victoria Avenue, Victoria Homes Subdivision, Tunasan , Muntinlupa, Metro Manila",
+   "phones": [
+    "(02) 7959-7610"
+   ],
+   "emails": [
+    "solarizedinc@gmail.com"
+   ],
+   "website": "http://www.solarizedinc.com/",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "Solarlife Engineering Builders OPC",
+   "type": "Corporation",
+   "region": "IV-A",
+   "address": "B-13 L-18 Valle Verde, Dasmariñas, Cavite",
+   "phones": [
+    "0956 081 1604"
+   ],
+   "emails": [
+    "solarlife.eeeco@gmail.com"
+   ],
+   "website": "www.facebook.com/SOLARLIFE.EEECO",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "Sonnelink Green Builders and Trading Corporation",
+   "type": "Corporation",
+   "region": "III",
+   "address": "Lot 1 Block 939 Kamagong Drive Phase 9 Heritage Homes Loma de Gato, Marilao, Bulacan",
+   "phones": [
+    "(044) 307 5967"
+   ],
+   "emails": [
+    "sonnelinksolar@gmail.com"
+   ],
+   "website": "www.sonnelink.com",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "SPE Energy & Builders, Inc.",
+   "type": "Corporation",
+   "region": "NCR",
+   "address": "2F Liwasang Kalayaan Street, C&B Circle Mall, Marikina Heights, Marikina City, Metro Manila",
+   "phones": [
+    "0917 180 5048"
+   ],
+   "emails": [
+    "speenergybuilders@gmail.com"
+   ],
+   "website": "https://www.speenergy.tech/",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "SRR Renewables",
+   "type": "Sole Proprietorship",
+   "region": "IV-A",
+   "address": "7 San Isidro Drive, San Isidro, Lipa City, Batangas",
+   "phones": [
+    "(+63) 9381504822"
+   ],
+   "emails": [
+    "srrrenewables@gmail.com"
+   ],
+   "website": "https://www.facebook.com/SRRrenewables",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "Sunstruck Solar Solutions, Inc.",
+   "type": "Corporation",
+   "region": "XI",
+   "address": "Door 209 & 210 BGP Commercial Complex Building II McArthur Highway Talomo District, Matina Crossing, Davao City, Davao del Sur",
+   "phones": [
+    "(082) 291 4950"
+   ],
+   "emails": [
+    "sunstrucksolarsolution@gmail.com"
+   ],
+   "website": "https://www.facebook.com/sunstrucksolarsolutions/",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "Sunwatt Corporation",
+   "type": "Corporation",
+   "region": "NCR",
+   "address": "No. 1472-1476, Quezon Avenue, Quezon City",
+   "phones": [
+    "(02) 70008685"
+   ],
+   "emails": [
+    "info@sunwattcorp.com"
+   ],
+   "website": "www.sunwattcorp.com",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026",
+    "Jul 13, 2026"
+   ],
+   "name": "Superserve Corporation",
+   "type": "Corporation",
+   "region": "NCR",
+   "address": "No. 18 Mother Ignacia Ave., Brgy. Paligsahan Quezon City",
+   "phones": [
+    "(02) 8332 1220"
+   ],
+   "emails": [
+    "msraquizel@superservecorp.com"
+   ],
+   "website": "www.superservecorp.com",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "Surge Electrical Supply and Contracting Corp",
+   "type": "Corporation",
+   "region": "NCR",
+   "address": "8280 Dr. A. Santos Avenue., Brgy. San Isidro, Parañaque City, Metro Manila",
+   "phones": [
+    "(02) 7004 1747"
+   ],
+   "emails": [
+    "drexpanti@sescocorp.com"
+   ],
+   "website": "www.sescocorp.com.ph",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026",
+    "Jul 13, 2026"
+   ],
+   "name": "Taneko Trading Corporation",
+   "type": "Corporation",
+   "region": "NCR",
+   "address": "4088C Yague Street, Brgy. Singkamas, Makati City, Metro Manila",
+   "phones": [
+    "02 8518 8868"
+   ],
+   "emails": [
+    "info@taneko.net"
+   ],
+   "website": "https://taneko.net/",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026",
+    "Jul 13, 2026"
+   ],
+   "name": "Total Renewable Energy Efficiency Solutions Corp.",
+   "type": "Certified",
+   "region": "NCR",
+   "address": "Unit A, 6th Floor, Glass Tower Bldg., 115, Palanca St., Makati City, Metro Manila",
+   "phones": [
+    "+632 8856 2010 +632 8856 1196"
+   ],
+   "emails": [
+    "trees@trees-kaltimex.com.ph",
+    "maelabuguin@kaltimex-energy.ph"
+   ],
+   "website": "https://trees-kaltimex.com.ph/#management",
+   "esco": true
+  },
+  {
+   "lists": [
+    "Jan 31, 2026",
+    "Jul 13, 2026"
+   ],
+   "name": "Trademaster Resources Corporation",
+   "type": "Corporation",
+   "region": "NCR",
+   "address": "Lot E, Implex Compound, Alabang-Zapote Road, Las Piñas, Metro Manila",
+   "phones": [
+    "9190735634"
+   ],
+   "emails": [
+    "melvinzabala@greenpower.com.ph"
+   ],
+   "website": "www.trademasterph.com",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "Uno Engineering & Construction",
+   "type": "Sole Proprietorship",
+   "region": "VI",
+   "address": "Brgy. Bolilao, Mandurriao, Iloilo",
+   "phones": [
+    "09209552316",
+    "(033) 5019238"
+   ],
+   "emails": [
+    "unoengineering@yahoo.com.ph"
+   ],
+   "website": "https://unoengineering.com/",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026",
+    "Jul 13, 2026"
+   ],
+   "name": "Upgrade Energy Philippines, Inc",
+   "type": "Corporation",
+   "region": "NCR",
+   "address": "Unit 2604, 88 Corporate Center Sedeño cor. Valero Street, Salcedo Village, Bel- Air Makati City",
+   "phones": [
+    "02-7001-6583"
+   ],
+   "emails": [
+    "upgrade.energyphils@gmail.com"
+   ],
+   "website": "ugep-energy.com",
+   "esco": true
+  },
+  {
+   "lists": [
+    "Jan 31, 2026",
+    "Jul 13, 2026"
+   ],
+   "name": "Vega Energy Services Corp",
+   "type": "Corporation",
+   "region": "NCR",
+   "address": "L24, Philippine Stock Exchange Tower, One Bonifacio High Street, 5th Ave. cor. 28th St, Bonifacio Global City, Taguig City, Metro Manila",
+   "phones": [
+    "02 7001 5080"
+   ],
+   "emails": [
+    "hello@vega.ph"
+   ],
+   "website": "https://www.vega.ph/",
+   "esco": true
+  },
+  {
+   "lists": [
+    "Jan 31, 2026",
+    "Jul 13, 2026"
+   ],
+   "name": "Villanueva-Ong Electrical Lights Trading",
+   "type": "Sole roprietorship",
+   "region": "XII",
+   "address": "Millan St., Brgy. General P. Santos, Koronadal City, South Cotabato",
+   "phones": [
+    "9688615090"
+   ],
+   "emails": [
+    "johnzoepogee2015@gmail.com"
+   ],
+   "website": "",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026"
+   ],
+   "name": "Wegen Laudato Si’ Inc",
+   "type": "Corporation",
+   "region": "NCR",
+   "address": "Units 2802D & 2803A West Tower Philippine Stock Exchange Center, Exchange Road, Ortigas, Metro Manila",
+   "phones": [
+    "+632 5304600"
+   ],
+   "emails": [
+    "info@wegen-energy.com"
+   ],
+   "website": "www.wegen-energy.com",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026",
+    "Jul 13, 2026"
+   ],
+   "name": "Weld Powertools and Construction Corporation",
+   "type": "Corporation",
+   "region": "VII",
+   "address": "Weld Corporate Building S.B. Cabahug Street Ibabao-Estancia, Mandaue City, Cebu",
+   "phones": [
+    "(032) 4206233"
+   ],
+   "emails": [
+    "weldaudit.aulene8805@gmail.com"
+   ],
+   "website": "https://weldpowertools.com",
+   "esco": false
+  },
+  {
+   "lists": [
+    "Jan 31, 2026",
+    "Jul 13, 2026"
+   ],
+   "name": "WWC Yellow Bumblebee Corporation",
+   "type": "Registered",
+   "region": "NCR",
+   "address": "Unit 3A 8101 Pearl Plaza, Pearl Drive, Ortigas Center, San Antonio, Pasig City",
+   "phones": [
+    "7933-5943"
+   ],
+   "emails": [
+    "yellowbumblebeewwc@gmail.com"
+   ],
+   "website": "",
+   "esco": true
+  },
+  {
+   "lists": [
+    "Jul 13, 2026"
+   ],
+   "name": "Wyn Power Corporation",
+   "type": "Corporation",
+   "region": "IV-A",
+   "address": "KM 84 Pres JP Laurel National Highway Banay-Banay, Lipa City, Batangas",
+   "phones": [
+    "9175907641"
+   ],
+   "emails": [
+    "CEO@wynpower.net"
+   ],
+   "website": "",
+   "esco": false
+  }
+ ]
+}

@@ -10,4 +10,4 @@ What MSpectrum's website says about itself: MSpectrum is a solar power company b
 
 It also publishes articles on choosing a solar company and on why the lowest quote does not always mean lower energy costs.
 
-Sol note: this entry only records who the company says it is. Sol has not checked its prices, quality or customer reviews, and does not have its rates. Ask it for a written quote like any other installer, and compare.
+Sol note: MSpectrum, Inc. also appears on both versions of the DOE Solar PV Installer Registry (Metro Manila). This entry only records who the company says it is. Sol has not checked its prices, quality or customer reviews, and does not have its rates. Ask it for a written quote like any other installer, and compare.

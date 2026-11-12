@@ -110,7 +110,7 @@ def search(query: str, k: int = 4, kinds: list[str] | None = None) -> list[dict]
             continue
         seen.add(p.text)
         m = p.meta
-        out.append({"text": p.text, "title": m.get("title", ""), "publisher": m.get("publisher", ""), "kind": m.get("kind", ""),
+        out.append({"id": m.get("id", ""), "text": p.text, "title": m.get("title", ""), "publisher": m.get("publisher", ""), "kind": m.get("kind", ""),
                     "region": m.get("region", "PH"), "source_url": m.get("source_url", ""), "fetched_at": str(m.get("fetched_at", "")),
                     "score": round(s, 1)})
         if len(out) == k:

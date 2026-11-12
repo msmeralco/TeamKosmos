@@ -12,9 +12,9 @@ from typing import Iterator
 from ...config import Settings, get_settings
 from ...errors import ApiError
 from ...models import FinalizeRequest, FromAddressRequest, LatLon, RoofModel, SketchRequest
-from .. import geo, roof as roof_svc
-from . import guard, intake, summary as summary_svc
-from .providers import Provider, ProviderUnavailable, ScriptedProvider, tool_sentences
+from .. import geo, installers as installers_svc, roof as roof_svc
+from . import followups, guard, intake, summary as summary_svc
+from .providers import Provider, ProviderUnavailable, ScriptedProvider, question_text, tool_sentences
 from .session import Session, load_session, save_session
 from .tools import TurnContext, jsonable, layout_for_selected, profile_view, roof_summary
 
@@ -138,7 +138,7 @@ def allowed_numbers(ctx: TurnContext) -> guard.Allowed:
 def safe_text(ctx: TurnContext) -> str:
     """Template reply built only from tool results and the next question."""
     parts = tool_sentences(ctx)
-    parts.append(intake.question_for(intake.next_slot(ctx.session), ctx.session, ctx.lang))
+    parts.append(question_text(ctx))
     return " ".join(p for p in parts if p)
 
 
@@ -149,7 +149,7 @@ def _build_reply(ctx: TurnContext, text: str) -> dict:
     return {
         "text": text,
         "hasMapArtifact": bool(ctx.flags["open_map"] or slot == "roof_draw"),
-        "next": intake.choices_for(slot, s)[:MAX_CHOICES],
+        "next": followups.suggestions(ctx, intake.choices_for(slot, s), MAX_CHOICES),
         "cards": jsonable(ctx.cards),
         "slot": slot,
     }
@@ -207,6 +207,9 @@ def _worker(req: ChatRequest, settings: Settings, out: "queue.Queue", ctx_box: l
         for res in ctx.results_of("issue_passport")[-1:]:
             if isinstance(res, dict) and res.get("id"):
                 blocks.append(summary_svc.passport_markdown(res))
+        for res in ctx.results_of("find_installers")[-1:]:
+            if isinstance(res, dict) and res.get("found"):
+                blocks.append(installers_svc.table_markdown(res))
         for res in ctx.results_of("toggle_roof_fill")[-1:]:
             if isinstance(res, dict) and res.get("mode") == "full":
                 blocks.append(summary_svc.roof_fill_markdown(res))

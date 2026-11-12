@@ -6,7 +6,7 @@ import re
 import time
 from typing import Protocol
 
-from .. import geo, rag
+from .. import geo, installers, rag
 from . import intake, nlu
 from .summary import render_tool_result
 from .tools import TurnContext
@@ -36,6 +36,8 @@ def tool_sentences(ctx: TurnContext) -> list[str]:
 
 def question_text(ctx: TurnContext) -> str:
     s = ctx.session
+    if any(isinstance(r, dict) and r.get("needs_location") for r in ctx.results_of("find_installers")):
+        return ""  # we just asked where the home is; a second question about the roof would bury it
     return intake.question_for(intake.next_slot(s), s, ctx.lang)
 
 
@@ -90,6 +92,11 @@ class ScriptedProvider:
             return True
         if intent == "nm_compare" and analysed:
             ctx.call_tool("compare_net_metering", {})
+            return True
+        if intent == "installers" or (s.pending.get("await_installer_location") and nlu.detect_intent(text) is None and slot not in ("roof_address", "roof_pick")
+                                      and (installers.region_for(text) or len(text.split()) <= 4)):
+            place = text if installers.region_for(text) or installers.RESET.search(text) or intent != "installers" else ""  # "suggest installers" names no place yet
+            ctx.call_tool("find_installers", {"location": place, "show_all": bool(re.search(r"\ball\b|every|more", text, re.I))})
             return True
         if intent in ("docs", "ask") and slot not in ("roof_address", "roof_pick"):
             if intent == "docs" or rag.search(text[:300], k=1):
