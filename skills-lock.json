@@ -1,0 +1,29 @@
+{
+  "version": 2,
+  "skills": {
+    "apple-ui-designer": {
+      "source": "heyman333/atelier-ui",
+      "sourceType": "github",
+      "skillPath": "skills/apple-ui-designer/SKILL.md",
+      "computedHash": "d7afa0d151750a2b7af64566886bca2cd8428c02adcc12a4d3465fc695db0bac"
+    },
+    "design-taste-frontend": {
+      "source": "Leonxlnx/taste-skill",
+      "sourceType": "github",
+      "skillPath": "skills/taste-skill/SKILL.md",
+      "computedHash": "b10eab0a9684cd09cf34c31ef04a3bf530a5f4404422f9c520d42372d670c7fc"
+    },
+    "framer-motion": {
+      "source": "pproenca/dot-skills",
+      "sourceType": "github",
+      "skillPath": "skills/.experimental/framer-motion/SKILL.md",
+      "computedHash": "b2a92f636b9f2746522845d9ebc27fb223b787c70f6d145789cd1e06e7295ee1"
+    },
+    "minimalist-ui": {
+      "source": "shashidharbabu/claude-design-skills",
+      "sourceType": "github",
+      "skillPath": "skills/minimalist-skill/SKILL.md",
+      "computedHash": "876ff5e232d428f852e3d4a6fb06b283fd7a1db8c5f25becfb88e38b5a804fc7"
+    }
+  }
+}

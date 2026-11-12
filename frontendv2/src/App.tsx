@@ -12,15 +12,11 @@ import {
 } from "react";
 import { AnimatePresence, domAnimation, LazyMotion, m } from "framer-motion";
 import { Icon } from "./components/icons";
+import { MapCanvas, type SolarZone } from "./components/MapCanvas";
 import {
-  btn,
   ConfirmDialog,
-  Group,
-  Logo,
   MenuItem,
   Popover,
-  Separator,
-  Spinner,
   ThinkingSteps,
   useReducedMotion,
   type AgentStep,
@@ -38,35 +34,35 @@ type Persona = {
   id: PersonaId;
   initials: string;
   name: string;
-  first: string;
   subtitle: string;
   location: string;
+  first: string;
 };
 
 const PERSONAS: Record<PersonaId, Persona> = {
   reyes: {
     id: "reyes",
-    initials: "RF",
-    name: "Reyes Family",
+    initials: "RR",
+    name: "Reyes Household",
+    subtitle: "Typical residential · 450 kWh/mo",
+    location: "Quezon City, Metro Manila",
     first: "Reyes Family",
-    subtitle: "450 kWh/mo · Balanced",
-    location: "Quezon City",
   },
   maria: {
     id: "maria",
-    initials: "AM",
-    name: "Ate Maria",
+    initials: "MC",
+    name: "Maria Santos",
+    subtitle: "High daytime usage · 780 kWh/mo",
+    location: "Pasig City, Metro Manila",
     first: "Maria",
-    subtitle: "250 kWh/mo · Night-heavy",
-    location: "Pasig City",
   },
   wfh: {
     id: "wfh",
-    initials: "WC",
-    name: "WFH Couple",
-    first: "Alex & Sam",
-    subtitle: "700 kWh/mo · Day-heavy",
-    location: "Makati City",
+    initials: "DL",
+    name: "David Lim",
+    subtitle: "WFH professional · 320 kWh/mo",
+    location: "Taguig, Metro Manila",
+    first: "David",
   },
 };
 
@@ -86,12 +82,18 @@ type AgentMsg = {
   reply?: {
     text: string;
     hasMapArtifact?: boolean;
-    next: Suggestion[];
+    selectedZone?: SolarZone;
+    next?: Suggestion[];
   };
 };
 
 type ChatMsg = UserMsg | AgentMsg;
-type Conversation = { id: string; title: string; messages: ChatMsg[] };
+
+type Conversation = {
+  id: string;
+  title: string;
+  messages: ChatMsg[];
+};
 
 type Notice = {
   id: string;
@@ -99,19 +101,6 @@ type Notice = {
   when: string;
   read: boolean;
 };
-
-const DESKTOP = "(min-width: 768px)";
-function useIsDesktop() {
-  return useSyncExternalStore(
-    (cb) => {
-      const mql = window.matchMedia(DESKTOP);
-      mql.addEventListener("change", cb);
-      return () => mql.removeEventListener("change", cb);
-    },
-    () => window.matchMedia(DESKTOP).matches,
-    () => true,
-  );
-}
 
 const noopSubscribe = () => () => {};
 function useGreeting() {
@@ -144,66 +133,41 @@ function titleFor(text: string, files: string[]) {
 
 function FileThumb({ file }: { file: File }) {
   const [url, setUrl] = useState<string | null>(null);
-  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     if (!file.type.startsWith("image/")) return;
     const u = URL.createObjectURL(file);
     setUrl(u);
-    setFailed(false);
     return () => URL.revokeObjectURL(u);
   }, [file]);
 
-  if (!url || failed) {
+  if (!url) {
     return (
-      <span className="flex h-10 w-10 items-center justify-center rounded-[7px] bg-white text-[var(--label-2)] shadow-[0_0_0_1px_var(--hairline)]">
-        {Icon.docLg}
+      <span className="flex h-5 w-5 items-center justify-center rounded-[4px] bg-[#f0f0ee] text-[#787774]">
+        {Icon.doc}
       </span>
     );
   }
-  return (
-    <img
-      src={url}
-      alt={`Preview of ${file.name}`}
-      onError={() => setFailed(true)}
-      className="h-10 w-10 rounded-[7px] object-cover shadow-[0_0_0_1px_var(--hairline)]"
-    />
-  );
+  return <img src={url} alt={file.name} className="h-5 w-5 rounded-[4px] object-cover" />;
 }
 
-const navBtn = "row-btn press flex h-8 w-full items-center gap-2.5 rounded-[8px] px-2.5 text-left text-[14px]";
-
 /* ------------------------------------------------------------------ */
-/* App                                                                 */
+/* Main App Component                                                  */
 /* ------------------------------------------------------------------ */
 
 export default function App() {
   const [personaId, setPersonaId] = useState<PersonaId>("reyes");
   const [view, setView] = useState<View>("chat");
-  const [collapsed, setCollapsed] = useState(false);
-  const [mobileNav, setMobileNav] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
-  /* Claude-style right-side Map Canvas state */
+  /* Roof Map view state: true = side-by-side view; false = centered 100% workspace */
   const [canvasOpen, setCanvasOpen] = useState(false);
+  const [selectedZone, setSelectedZone] = useState<SolarZone | null>(null);
 
-  /* Auto close sidebar whenever roof map canvas is opened */
-  useEffect(() => {
-    if (canvasOpen) {
-      setCollapsed(true);
-      setMobileNav(false);
-    }
-  }, [canvasOpen]);
-
-  const toggleCanvas = useCallback(() => {
-    setCanvasOpen((prev) => {
-      const next = !prev;
-      if (next) {
-        setCollapsed(true);
-        setMobileNav(false);
-      }
-      return next;
-    });
-  }, []);
+  /* Adjustable split state: default 40% chat / 60% map */
+  const [splitPercent, setSplitPercent] = useState(40);
+  const [isDragging, setIsDragging] = useState(false);
+  const workspaceRef = useRef<HTMLDivElement>(null);
 
   const [convos, setConvos] = useState<Conversation[]>([]);
   const [currentId, setCurrentId] = useState<string | null>(null);
@@ -215,7 +179,7 @@ export default function App() {
   const [notices, setNotices] = useState<Notice[]>([
     {
       id: "n1",
-      message: "Sol UI shell ready. Select a starter prompt or type a message below.",
+      message: "Sol UI shell ready. Select a starter prompt or explore the roof map.",
       when: "Just now",
       read: false,
     },
@@ -223,21 +187,77 @@ export default function App() {
 
   const nextMsg = useRef(1);
   const busyRef = useRef(false);
-  const isDesktop = useIsDesktop();
+  const abortRef = useRef<(() => void) | null>(null);
   const reduced = useReducedMotion();
   const persona = PERSONAS[personaId];
+
+  const stopTurn = useCallback(() => {
+    if (abortRef.current) {
+      abortRef.current();
+      abortRef.current = null;
+    }
+    busyRef.current = false;
+    setBusy(false);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (abortRef.current) abortRef.current();
+    };
+  }, []);
+
+  /* Smooth pointer tracking for adjustable chat/map split */
+  const handlePointerDown = (e: React.PointerEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handlePointerMove = (e: PointerEvent) => {
+      if (!workspaceRef.current) return;
+      const rect = workspaceRef.current.getBoundingClientRect();
+      const rawX = e.clientX - rect.left;
+      const pct = (rawX / rect.width) * 100;
+      // Clamp split between 25% and 75%
+      const clamped = Math.min(Math.max(pct, 25), 75);
+      setSplitPercent(clamped);
+    };
+
+    const handlePointerUp = () => {
+      setIsDragging(false);
+    };
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+  }, [isDragging]);
 
   const appendMsg = useCallback((cid: string, msg: ChatMsg) => {
     setConvos((cs) => cs.map((c) => (c.id === cid ? { ...c, messages: [...c.messages, msg] } : c)));
   }, []);
 
-  /* Pure UI-only local turn simulation */
+  /* Pure UI-only local turn simulation with contextual map triggers */
   const runUiTurn = useCallback(
-    (cid: string, _promptText: string, isNew: boolean) => {
+    (cid: string, promptText: string, isNew: boolean, zone?: SolarZone) => {
       if (busyRef.current) return;
       busyRef.current = true;
       setBusy(true);
       const mid = nextMsg.current++;
+
+      const isRoofQuery = Boolean(
+        zone ||
+        /roof|map|satellite|cluster|area|rooftop|orientation|tilt|kwp|panel/i.test(promptText)
+      );
 
       const patch = (fn: (m: AgentMsg) => AgentMsg) =>
         setConvos((cs) =>
@@ -248,8 +268,8 @@ export default function App() {
 
       const stepLabels = [
         "Reading household parameters",
-        "Preparing roof map canvas",
-        "Formatting summary",
+        isRoofQuery ? "Preparing roof map canvas" : "Analyzing consumption profile",
+        isRoofQuery ? "Calculating rooftop solar yield" : "Calculating Meralco solar ROI",
       ];
 
       appendMsg(cid, {
@@ -265,7 +285,7 @@ export default function App() {
           phase: "working",
           steps: [{ id: "s1", label: stepLabels[0], status: "running" }],
         }));
-      }, 280);
+      }, 260);
 
       const t2 = setTimeout(() => {
         patch((m) => ({
@@ -276,7 +296,7 @@ export default function App() {
             { id: "s2", label: stepLabels[1], status: "running" },
           ],
         }));
-      }, 720);
+      }, 680);
 
       const t3 = setTimeout(() => {
         patch((m) => ({
@@ -288,9 +308,44 @@ export default function App() {
             { id: "s3", label: stepLabels[2], status: "running" },
           ],
         }));
-      }, 1150);
+      }, 1080);
 
       const t4 = setTimeout(() => {
+        let replyText = "";
+        let nextSuggestions: Suggestion[] = [];
+
+        if (zone) {
+          replyText = `Inspecting ${zone.name}. Usable roof area is estimated at ${zone.area} with a peak solar capacity of ${zone.capacity}. Projected bill reduction is ${zone.savings}.`;
+          nextSuggestions = [
+            { id: "quote", label: "Request installer quote", text: "Request installer quote for this zone" },
+            { id: "tilt", label: "Adjust azimuth & tilt", text: "Adjust azimuth and roof tilt angle" },
+          ];
+        } else if (isRoofQuery) {
+          replyText = `Here is the roof analysis for ${persona.name} (${persona.subtitle} · ${persona.location}). The interactive map displays high-suitability rooftop clusters in your area.`;
+          nextSuggestions = [
+            { id: "bill", label: "Compare monthly bill options", hint: "On-grid vs hybrid solar overview", text: "Compare monthly bill options" },
+            { id: "roof", label: "Adjust roof area & orientation", hint: "Enter roof type, tilt, and usable area", text: "Adjust roof area & orientation" },
+          ];
+        } else if (/bill|meralco|cost|tariff|kwh|pesos|₱/i.test(promptText)) {
+          replyText = `Based on a 450 kWh monthly consumption at ~₱12.45/kWh Meralco residential tariff, an on-grid 4.5 kWp solar array offsets up to 68% of daytime charges, saving ~₱5,800/month with an estimated 3.9-year payback period.`;
+          nextSuggestions = [
+            { id: "map-open", label: "View rooftop suitability map", text: "Help me estimate my roof size and solar capacity" },
+            { id: "packages", label: "Compare on-grid and hybrid", text: "Compare on-grid and hybrid solar packages" },
+          ];
+        } else if (/package|grid|hybrid|battery|compare/i.test(promptText)) {
+          replyText = `Solar package comparison for ${persona.name}:\n• On-Grid (₱180k – ₱230k): Fastest ROI, exports excess daytime power to Meralco via Net-Metering.\n• Hybrid with Battery (₱310k – ₱390k): Includes 5kWh LFP storage, provides seamless blackout protection during brownouts.`;
+          nextSuggestions = [
+            { id: "map-open", label: "Check roof size for packages", text: "Help me estimate my roof size and solar capacity" },
+            { id: "quote", label: "Get verified quote", text: "How do I get verified installer quotes?" },
+          ];
+        } else {
+          replyText = `I have updated your clean energy recommendations for ${persona.name}. You can review the rooftop map, inspect zone clusters, or compare monthly bill savings.`;
+          nextSuggestions = [
+            { id: "roof", label: "Check roof size", text: "Help me estimate my roof size and solar capacity" },
+            { id: "bill", label: "Analyze monthly bill", text: "Analyze a ₱6,780 monthly electricity bill" },
+          ];
+        }
+
         patch((m) => ({
           ...m,
           phase: "done",
@@ -300,31 +355,43 @@ export default function App() {
             { id: "s3", label: stepLabels[2], status: "done" },
           ],
           reply: {
-            text: `Here is the roof map canvas for ${persona.name} (${persona.subtitle} · ${persona.location}). You can toggle the map canvas anytime from the card below or the top-right toolbar.`,
+            text: replyText,
             hasMapArtifact: true,
+            selectedZone: zone,
+            next: nextSuggestions,
+          },
+        }));
+
+        /* Contextual Auto-Open: only open when the query specifically relates to roof / map / zone */
+        if (isRoofQuery) {
+          setCanvasOpen(true);
+        }
+        setDrawerOpen(false);
+        abortRef.current = null;
+        busyRef.current = false;
+        setBusy(false);
+      }, 1450);
+
+      abortRef.current = () => {
+        clearTimeout(t1);
+        clearTimeout(t2);
+        clearTimeout(t3);
+        clearTimeout(t4);
+        patch((m) => ({
+          ...m,
+          phase: "done",
+          steps: m.steps.map((s) => (s.status === "running" ? { ...s, status: "done" } : s)),
+          reply: {
+            text: "Generation stopped.",
+            hasMapArtifact: isRoofQuery,
+            selectedZone: zone,
             next: [
-              {
-                id: "bill",
-                label: "Compare monthly bill options",
-                hint: "On-grid vs hybrid solar overview",
-                text: "Compare monthly bill options",
-              },
-              {
-                id: "roof",
-                label: "Adjust roof area & orientation",
-                hint: "Enter roof type, tilt, and usable area",
-                text: "Adjust roof area & orientation",
-              },
+              { id: "retry", label: "Retry analysis", text: promptText },
+              { id: "roof", label: "Check roof size", text: "Help me estimate my roof size and solar capacity" },
             ],
           },
         }));
-        /* Auto-open the Claude-style right Map Canvas when the turn finishes */
-        setCanvasOpen(true);
-        setCollapsed(true);
-        setMobileNav(false);
-        busyRef.current = false;
-        setBusy(false);
-      }, 1500);
+      };
 
       return () => {
         clearTimeout(t1);
@@ -337,7 +404,7 @@ export default function App() {
   );
 
   const ask = useCallback(
-    (text: string, files: string[] = [], previews?: (string | null)[]) => {
+    (text: string, files: string[] = [], previews?: (string | null)[], zone?: SolarZone) => {
       const t = text.trim();
       if ((!t && !files.length) || busyRef.current) return;
       let cid = currentId;
@@ -355,30 +422,47 @@ export default function App() {
         files: files.length ? files : undefined,
         previews: files.length ? previews : undefined,
       });
-      runUiTurn(cid, t, isNew);
+      runUiTurn(cid, t, isNew, zone);
     },
     [currentId, appendMsg, runUiTurn],
   );
 
+  const toggleCanvas = useCallback(() => {
+    setCanvasOpen((prev) => {
+      const next = !prev;
+      if (next) {
+        setDrawerOpen(false);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleZoneSelect = (zone: SolarZone) => {
+    setSelectedZone(zone);
+    ask(`Inspect solar potential for ${zone.name}`, [], undefined, zone);
+  };
+
   const newChat = () => {
+    stopTurn();
     setCurrentId(null);
     setView("chat");
     setCanvasOpen(false);
-    setMobileNav(false);
+    setDrawerOpen(false);
   };
 
   const deleteChat = (id: string) => {
     setDeleteOpen(false);
-    setConvos((cs) => cs.filter((c) => c.id !== id));
     if (currentId === id) {
+      stopTurn();
       setCurrentId(null);
       setCanvasOpen(false);
     }
+    setConvos((cs) => cs.filter((c) => c.id !== id));
   };
 
   const go = (v: View) => {
     setView(v);
-    setMobileNav(false);
+    setDrawerOpen(false);
   };
 
   const current = convos.find((c) => c.id === currentId);
@@ -391,372 +475,458 @@ export default function App() {
 
   return (
     <LazyMotion features={domAnimation} strict>
-      <div className="shell h-dvh bg-white" data-collapsed={collapsed}>
-        {/* ---------------- Sidebar ---------------- */}
+      <div className="relative flex h-dvh w-screen overflow-hidden bg-white text-[#111111]">
+        {/* ---------------- 1. Slim Icon Navigation Rail (Hover to Auto-Expand) ---------------- */}
         <aside
-          className="sidebar bg-[var(--sidebar)]"
-          data-mobile-open={mobileNav}
-          inert={isDesktop ? collapsed : !mobileNav}
-          aria-label="Sidebar"
+          className="group/rail flex h-full w-14 hover:w-52 shrink-0 flex-col justify-between border-r border-[#f0f0ee] bg-white py-3 z-40 select-none transition-[width] duration-300 ease-[cubic-bezier(0.25,1,0.5,1)] overflow-hidden"
+          aria-label="App Navigation"
         >
-          <div className="sidebar-inner flex h-full flex-col">
-            <div className="flex h-12 items-center gap-2 px-3">
-              <Logo size={24} />
-              <span className="flex-1 text-[14px] font-semibold tracking-tight">Sol</span>
-              <button
-                type="button"
-                className={btn.icon}
-                onClick={() => (isDesktop ? setCollapsed(true) : setMobileNav(false))}
-                aria-label="Hide sidebar"
-              >
-                {Icon.sidebar}
-              </button>
-            </div>
+          {/* Top Icons & Labels */}
+          <div className="flex flex-col gap-1 px-2">
+            {/* Sol Sun Logo */}
+            <button
+              type="button"
+              onClick={newChat}
+              className="flex h-10 w-full items-center rounded-[10px] text-left transition-colors hover:bg-[#fafaf9]"
+              title="Sol Clean Energy"
+            >
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center">
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-tr from-[#f59e0b] to-[#ea580c] text-white shadow-sm">
+                  {Icon.sun}
+                </span>
+              </span>
+              <span className="min-w-0 flex-1 truncate pl-1.5 opacity-0 group-hover/rail:opacity-100 transition-opacity duration-200">
+                <span className="block text-[13px] font-semibold text-[#111111]">Sol</span>
+                <span className="block text-[10px] text-[#ea580c] font-medium">Clean Energy</span>
+              </span>
+            </button>
 
-            <nav className="grid gap-0.5 px-2 pt-1" aria-label="Primary">
-              <NavItem icon={Icon.chat} label="New chat" active={view === "chat" && currentId === null} onClick={newChat} />
-              <NavItem icon={Icon.overview} label="Overview" active={view === "overview"} onClick={() => go("overview")} />
-              <NavItem icon={Icon.saved} label="Saved" active={view === "saved"} onClick={() => go("saved")} />
-            </nav>
+            <div className="my-1 h-px w-full bg-[#f0f0ee]" />
 
-            <div className="mx-4 my-3 h-px bg-[var(--hairline)]" aria-hidden="true" />
+            {/* 1. Home / Agent Chat */}
+            <button
+              type="button"
+              onClick={() => go("chat")}
+              className={`flex h-10 w-full items-center rounded-[10px] text-left transition-colors ${
+                view === "chat"
+                  ? "bg-[#fafaf9] text-[#ea580c] font-medium"
+                  : "text-[#787774] hover:bg-[#fafaf9] hover:text-[#111111]"
+              }`}
+              title="Agent Chat"
+            >
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center">
+                {Icon.home}
+              </span>
+              <span className="min-w-0 flex-1 truncate pl-1.5 opacity-0 group-hover/rail:opacity-100 transition-opacity duration-200 text-[13px]">
+                Agent Chat
+              </span>
+            </button>
 
-            <div className="flex items-center justify-between px-4 pb-1">
-              <span className="text-[12px] font-medium text-[var(--label-2)]">Recents</span>
-              <button type="button" onClick={newChat} className={`${btn.icon} h-6 w-6`} aria-label="New chat">
-                {Icon.plus}
-              </button>
-            </div>
+            {/* 2. Recent Chats & History */}
+            <button
+              type="button"
+              onClick={() => setDrawerOpen((o) => !o)}
+              className={`flex h-10 w-full items-center rounded-[10px] text-left transition-colors ${
+                drawerOpen
+                  ? "bg-[#fafaf9] text-[#ea580c] font-medium"
+                  : "text-[#787774] hover:bg-[#fafaf9] hover:text-[#111111]"
+              }`}
+              title={drawerOpen ? "Close chat history" : "Chat history & recents"}
+            >
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center">
+                {Icon.history}
+              </span>
+              <span className="min-w-0 flex-1 truncate pl-1.5 opacity-0 group-hover/rail:opacity-100 transition-opacity duration-200 text-[13px]">
+                History & Recents
+              </span>
+            </button>
 
-            <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
-              {convos.length === 0 ? (
-                <p className="px-2.5 py-1.5 text-[13px] text-[var(--label-3)]">No chats yet</p>
-              ) : (
-                <ul className="grid grid-cols-[minmax(0,1fr)] gap-0.5">
-                  {convos.map((c) => {
-                    const active = view === "chat" && currentId === c.id;
-                    return (
-                      <li key={c.id} className="enter min-w-0">
-                        <div
-                          className={`row-btn flex h-8 min-w-0 items-center gap-1 rounded-[8px] pr-1.5 ${
-                            active ? "bg-[var(--fill-2)]" : ""
-                          }`}
-                        >
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setCurrentId(c.id);
-                              go("chat");
-                            }}
-                            aria-current={active ? "page" : undefined}
-                            title={c.title}
-                            className={`flex h-full min-w-0 flex-1 items-center rounded-[8px] pl-2.5 text-left text-[13px] ${
-                              active ? "font-medium" : ""
-                            }`}
-                          >
-                            <span className="truncate">{c.title}</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setPendingDelete({ id: c.id, title: c.title });
-                              setDeleteOpen(true);
-                            }}
-                            aria-label={`Delete chat "${c.title}"`}
-                            aria-haspopup="dialog"
-                            className="press flex h-6 w-6 shrink-0 items-center justify-center rounded-[7px] text-[var(--label-3)] hover:bg-[var(--fill-2)] hover:text-[var(--fg)]"
-                          >
-                            {Icon.trash}
-                          </button>
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </div>
+            {/* 3. Roof Map Toggle Button */}
+            <button
+              type="button"
+              onClick={toggleCanvas}
+              className={`flex h-10 w-full items-center rounded-[10px] text-left transition-colors ${
+                canvasOpen
+                  ? "bg-[#fafaf9] text-[#ea580c] font-medium"
+                  : "text-[#787774] hover:bg-[#fafaf9] hover:text-[#111111]"
+              }`}
+              title={canvasOpen ? "Close map view" : "Open roof map"}
+            >
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center">
+                {Icon.map}
+              </span>
+              <span className="min-w-0 flex-1 truncate pl-1.5 opacity-0 group-hover/rail:opacity-100 transition-opacity duration-200 text-[13px]">
+                {canvasOpen ? "Close Roof Map" : "Roof Map"}
+              </span>
+            </button>
 
-            {/* Household profile switcher */}
-            <div className="px-2 pb-2">
-              <div className="mb-2 h-px bg-[var(--hairline)]" aria-hidden="true" />
-              <Popover
-                label="Household profile"
-                placement="top-start"
-                className="w-[244px]"
-                trigger={({ open, toggle }) => (
-                  <button type="button" onClick={toggle} aria-expanded={open} className={`${navBtn} h-auto py-2`}>
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--fg)] text-[12px] font-medium text-white">
+            <div className="my-1 h-px w-full bg-[#f0f0ee]" />
+
+            {/* 5. Overview & Settings */}
+            <button
+              type="button"
+              onClick={() => go("overview")}
+              className={`flex h-10 w-full items-center rounded-[10px] text-left transition-colors ${
+                view === "overview"
+                  ? "bg-[#fafaf9] text-[#ea580c] font-medium"
+                  : "text-[#787774] hover:bg-[#fafaf9] hover:text-[#111111]"
+              }`}
+              title="Overview & Settings"
+            >
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center">
+                {Icon.settings}
+              </span>
+              <span className="min-w-0 flex-1 truncate pl-1.5 opacity-0 group-hover/rail:opacity-100 transition-opacity duration-200 text-[13px]">
+                Overview
+              </span>
+            </button>
+          </div>
+
+          {/* Bottom User Profile Avatar */}
+          <div className="px-2">
+            <Popover
+              label="Household Profile"
+              placement="right-end"
+              className="w-[250px] max-w-[calc(100vw-70px)]"
+              trigger={({ open, toggle }) => (
+                <button
+                  type="button"
+                  onClick={toggle}
+                  aria-expanded={open}
+                  className="flex h-10 w-full items-center rounded-[10px] text-left transition-colors hover:bg-[#fafaf9]"
+                  title={`${persona.name} (${persona.location})`}
+                >
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#111111] text-[10px] font-semibold text-white">
                       {persona.initials}
                     </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[13px] font-medium">{persona.name}</span>
-                      <span className="block truncate text-[12px] text-[var(--label-2)]">{persona.subtitle}</span>
-                    </span>
-                    <span className="text-[var(--label-3)]">{Icon.chevronDown}</span>
-                  </button>
-                )}
-              >
-                {(close) => (
-                  <div role="menu" aria-label="Switch household">
-                    <p className="px-2.5 pt-1.5 pb-1 text-[12px] font-medium text-[var(--label-2)]">Household profile</p>
-                    {(Object.keys(PERSONAS) as PersonaId[]).map((pid) => {
-                      const p = PERSONAS[pid];
-                      return (
-                        <MenuItem
-                          key={pid}
-                          checked={personaId === pid}
-                          onSelect={() => {
-                            setPersonaId(pid);
-                            close();
-                          }}
-                        >
-                          <span className="block font-medium">{p.name}</span>
-                          <span className="block text-[12px] text-[var(--label-2)]">
-                            {p.subtitle} · {p.location}
-                          </span>
-                        </MenuItem>
-                      );
-                    })}
-                  </div>
-                )}
-              </Popover>
-            </div>
+                  </span>
+                  <span className="min-w-0 flex-1 truncate pl-1.5 opacity-0 group-hover/rail:opacity-100 transition-opacity duration-200">
+                    <span className="block text-[12px] font-semibold text-[#111111] truncate">{persona.name}</span>
+                    <span className="block text-[10px] text-[#787774] truncate">{persona.location}</span>
+                  </span>
+                </button>
+              )}
+            >
+              {(close) => (
+                <div role="menu" aria-label="Switch household profile">
+                  <p className="px-2.5 pt-1.5 pb-1 text-[11px] font-medium text-[#787774]">Household profile</p>
+                  {(Object.keys(PERSONAS) as PersonaId[]).map((pid) => {
+                    const p = PERSONAS[pid];
+                    return (
+                      <MenuItem
+                        key={pid}
+                        checked={personaId === pid}
+                        onSelect={() => {
+                          setPersonaId(pid);
+                          close();
+                        }}
+                      >
+                        <span className="block font-medium text-[#111111]">{p.name}</span>
+                        <span className="block text-[11px] text-[#787774]">
+                          {p.subtitle} · {p.location}
+                        </span>
+                      </MenuItem>
+                    );
+                  })}
+                </div>
+              )}
+            </Popover>
           </div>
         </aside>
 
-        <div className="mobile-backdrop" data-open={mobileNav} onClick={() => setMobileNav(false)} aria-hidden="true" />
-
-        {/* ---------------- Main Workspace (Chat + Right-Side Claude Map Canvas) ---------------- */}
-        <div className="relative flex min-w-0 flex-1 overflow-hidden">
-          {/* Left / Main Chat Column */}
-          <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
-            <header className="flex h-12 shrink-0 items-center gap-1 px-3">
-              <button
-                type="button"
-                className={`${btn.icon} md:hidden`}
-                onClick={() => setMobileNav(true)}
-                aria-label="Open sidebar"
-              >
-                {Icon.menu}
-              </button>
-              <button
-                type="button"
-                className={`${btn.icon} max-md:hidden ${collapsed ? "" : "pointer-events-none opacity-0"}`}
-                onClick={() => setCollapsed(false)}
-                aria-label="Show sidebar"
-                tabIndex={collapsed ? 0 : -1}
-                aria-hidden={!collapsed}
-              >
-                {Icon.sidebar}
-              </button>
-              <div className="flex-1" />
-
-              {/* Toggle Map Canvas button in header */}
-              <button
-                type="button"
-                onClick={toggleCanvas}
-                aria-pressed={canvasOpen}
-                title={canvasOpen ? "Hide roof map canvas" : "Open roof map canvas"}
-                className={`row-btn press flex h-8 items-center gap-1.5 rounded-[8px] px-2.5 text-[13px] font-medium ${
-                  canvasOpen ? "bg-[var(--brand-soft)] text-[var(--brand)]" : "text-[var(--label-2)]"
-                }`}
-              >
-                {Icon.map}
-                <span className="max-sm:hidden">Roof map</span>
-              </button>
-
-              <Popover
-                label="Notifications"
-                placement="bottom-end"
-                className="w-[300px] max-w-[calc(100vw-24px)]"
-                trigger={({ open, toggle }) => (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      toggle();
-                      if (!open) markRead();
-                    }}
-                    aria-expanded={open}
-                    className={`${btn.icon} relative text-[var(--fg)]`}
-                    aria-label={unread ? `Notifications, ${unread} unread` : "Notifications"}
-                  >
-                    {Icon.bell}
-                    <span
-                      className="badge absolute top-1 right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--accent)] px-1 text-[10px] font-semibold text-[var(--fg)] shadow-[0_0_0_2px_#fff]"
-                      data-show={unread > 0}
-                      aria-hidden="true"
-                    >
-                      <span key={unread} className="pop">
-                        {unread || 1}
-                      </span>
-                    </span>
-                  </button>
-                )}
-              >
-                {() => (
-                  <div>
-                    <p className="px-2.5 pt-1.5 pb-1 text-[13px] font-medium">Notifications</p>
-                    <ul className="grid gap-0.5">
-                      {notices.map((n) => (
-                        <li key={n.id} className="flex gap-2 rounded-[10px] px-2.5 py-2">
-                          <span
-                            className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${
-                              n.read ? "bg-transparent" : "bg-[var(--accent)]"
-                            }`}
-                            aria-hidden="true"
-                          />
-                          <span>
-                            <span className="block text-[13px] leading-snug">{n.message}</span>
-                            <span className="mt-0.5 block text-[12px] text-[var(--label-2)]">{n.when}</span>
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </Popover>
-            </header>
-
-            {view === "chat" && (
-              <ChatView
-                messages={current?.messages ?? []}
-                busy={busy}
-                first={persona.first}
-                subtitle={`${persona.subtitle} · ${persona.location}`}
-                canvasOpen={canvasOpen}
-                onToggleCanvas={toggleCanvas}
-                onAsk={ask}
+        {/* ---------------- 2. Overlay Flyout Drawer for Recent Chats (NEVER Slices the Layout) ---------------- */}
+        <AnimatePresence initial={false}>
+          {drawerOpen && (
+            <>
+              {/* Invisible click-outside dismiss backdrop */}
+              <div
+                className="fixed inset-0 z-40 bg-black/5"
+                onClick={() => setDrawerOpen(false)}
+                aria-hidden="true"
               />
-            )}
-            {view === "overview" && (
-              <PlaceholderView
-                title="Overview"
-                subtitle="Clean placeholder view for solar sizing, roof summary, and ROI comparison cards."
-                onNewChat={newChat}
-              />
-            )}
-            {view === "saved" && (
-              <PlaceholderView
-                title="Saved"
-                subtitle="Clean placeholder view for saved solar packages and records."
-                onNewChat={newChat}
-              />
-            )}
-          </main>
 
-          {/* ---------------- Right-Side Claude-Style Map Canvas ---------------- */}
-          <AnimatePresence initial={false}>
-            {canvasOpen && (
+              {/* Floating Slide-Over Drawer */}
               <m.aside
-                key="map-canvas"
-                initial={reduced ? { opacity: 0 } : { width: 0, opacity: 0 }}
-                animate={reduced ? { opacity: 1 } : { width: "48%", opacity: 1 }}
-                exit={reduced ? { opacity: 0 } : { width: 0, opacity: 0 }}
-                transition={{ duration: 0.32, ease: [0.25, 1, 0.5, 1] }}
-                aria-label="Roof Map Canvas"
-                className="flex h-full shrink-0 flex-col overflow-hidden border-l border-[var(--hairline)] bg-[var(--sidebar)] max-md:fixed max-md:inset-0 max-md:z-50 max-md:!w-full"
+                key="recents-drawer"
+                initial={reduced ? { opacity: 0 } : { x: -20, opacity: 0 }}
+                animate={reduced ? { opacity: 1 } : { x: 0, opacity: 1 }}
+                exit={reduced ? { opacity: 0 } : { x: -20, opacity: 0 }}
+                transition={{ duration: 0.22, ease: [0.25, 1, 0.5, 1] }}
+                className="absolute left-14 top-0 bottom-0 w-64 z-50 flex flex-col bg-white shadow-[4px_0_24px_rgba(0,0,0,0.06)] border-r border-[#f0f0ee]"
               >
-                <div className="flex h-12 shrink-0 items-center justify-between border-b border-[var(--hairline)] bg-white px-4">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <span className="text-[var(--brand)]">{Icon.map}</span>
-                    <span className="truncate text-[14px] font-medium">Roof Map</span>
-                  </div>
+                <div className="flex h-12 shrink-0 items-center justify-between px-3 border-b border-[#f0f0ee]">
+                  <span className="text-[13px] font-semibold text-[#111111]">Recents</span>
                   <button
                     type="button"
-                    onClick={() => setCanvasOpen(false)}
-                    className={`${btn.icon} row-btn`}
-                    aria-label="Close map canvas"
+                    onClick={newChat}
+                    className="flex h-6 w-6 items-center justify-center rounded-[6px] text-[#787774] hover:bg-[#fafaf9] hover:text-[#ea580c] transition-colors"
+                    title="New chat"
                   >
-                    {Icon.close}
+                    {Icon.plus}
                   </button>
                 </div>
 
-                <div className="flex min-h-0 flex-1 p-4">
-                  <div className="flex flex-1 items-center justify-center rounded-[14px] bg-[var(--fill)] text-[14px] font-medium text-[var(--label-3)] shadow-[0_0_0_1px_var(--hairline)]">
-                    Map Placeholder
-                  </div>
+                <div className="min-h-0 flex-1 overflow-y-auto p-2">
+                  {convos.length === 0 ? (
+                    <p className="px-2.5 py-2 text-[12px] text-[#a3a3a3]">No conversations yet</p>
+                  ) : (
+                    <ul className="grid gap-0.5">
+                      {convos.map((c) => {
+                        const active = currentId === c.id;
+                        return (
+                          <li key={c.id}>
+                            <div
+                              className={`flex h-8 items-center justify-between rounded-[7px] px-2 text-[12px] transition-colors ${
+                                active ? "bg-[#fafaf9] font-medium text-[#ea580c]" : "text-[#787774] hover:bg-[#fafaf9]"
+                              }`}
+                            >
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setCurrentId(c.id);
+                                  go("chat");
+                                }}
+                                className="truncate text-left flex-1"
+                              >
+                                {c.title}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setPendingDelete({ id: c.id, title: c.title });
+                                  setDeleteOpen(true);
+                                }}
+                                className="ml-1 text-[#a3a3a3] hover:text-[#111111]"
+                                title="Delete conversation"
+                              >
+                                {Icon.trash}
+                              </button>
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
                 </div>
               </m.aside>
+            </>
+          )}
+        </AnimatePresence>
+
+        {/* ---------------- 3. Main Workspace Area (Adjustable Chat / Map Split) ---------------- */}
+        <div ref={workspaceRef} className="relative flex min-w-0 flex-1 h-full overflow-hidden">
+          {/* Main / Side Chat Column (Smoothly glides between 100% and splitPercent) */}
+          <m.div
+            className="relative flex h-full flex-col overflow-hidden bg-white shrink-0 min-w-0"
+            animate={{ width: canvasOpen ? `${splitPercent}%` : "100%" }}
+            transition={isDragging ? { duration: 0 } : { duration: 0.36, ease: [0.32, 0.72, 0, 1] }}
+          >
+            {/* Top Workspace Header (Minimal, clean hairline) */}
+            <header className="flex h-12 shrink-0 items-center justify-between border-b border-[#f0f0ee] px-4">
+              <div className="flex items-center gap-2">
+                <span className="text-[14px] font-semibold tracking-tight text-[#111111]">Sol</span>
+                <span className="text-[12px] text-[#787774]">· {persona.name}</span>
+              </div>
+
+              {/* Header Right Actions */}
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={toggleCanvas}
+                  className={`row-btn press flex h-7 items-center gap-1.5 rounded-[7px] px-2.5 text-[12px] font-medium transition-colors ${
+                    canvasOpen
+                      ? "bg-[#fafaf9] text-[#ea580c]"
+                      : "text-[#787774] hover:text-[#ea580c]"
+                  }`}
+                  title={canvasOpen ? "Close map view" : "Open roof map on right"}
+                >
+                  {Icon.map}
+                  <span>{canvasOpen ? "Close Map" : "Roof Map"}</span>
+                </button>
+
+                {/* Notifications Bell in Top Workspace Header */}
+                <Popover
+                  label="Notifications"
+                  placement="bottom-end"
+                  className="w-[280px] max-w-[calc(100vw-70px)]"
+                  trigger={({ open, toggle }) => (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        toggle();
+                        if (!open) markRead();
+                      }}
+                      className="row-btn press flex h-7 w-7 items-center justify-center rounded-[7px] text-[#787774] hover:bg-[#fafaf9] hover:text-[#111111] transition-colors relative"
+                      title={unread ? `${unread} unread notifications` : "Notifications"}
+                    >
+                      {Icon.bell}
+                      {unread > 0 && (
+                        <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-[#ea580c]" />
+                      )}
+                    </button>
+                  )}
+                >
+                  {() => (
+                    <div>
+                      <p className="px-2.5 pt-1.5 pb-1 text-[12px] font-semibold text-[#111111]">Notifications</p>
+                      <ul className="grid gap-1 mt-1">
+                        {notices.map((n) => (
+                          <li key={n.id} className="flex gap-2 rounded-[8px] px-2.5 py-2 hover:bg-[#fafaf9]">
+                            <span
+                              className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${
+                                n.read ? "bg-transparent" : "bg-[#ea580c]"
+                              }`}
+                            />
+                            <span>
+                              <span className="block text-[12px] leading-snug text-[#111111]">{n.message}</span>
+                              <span className="mt-0.5 block text-[10px] text-[#787774]">{n.when}</span>
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </Popover>
+              </div>
+            </header>
+
+            {/* Chat Views */}
+            <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+              {view === "chat" && (
+                <ChatView
+                  messages={current?.messages ?? []}
+                  busy={busy}
+                  persona={persona}
+                  canvasOpen={canvasOpen}
+                  onToggleCanvas={toggleCanvas}
+                  onAsk={ask}
+                  onStop={stopTurn}
+                />
+              )}
+              {view === "overview" && (
+                <PlaceholderView
+                  title="Overview & Analytics"
+                  subtitle="Detailed solar sizing, generation estimates, and net-metering ROI comparisons."
+                  onNewChat={newChat}
+                />
+              )}
+              {view === "saved" && (
+                <PlaceholderView
+                  title="Saved Records"
+                  subtitle="Access your Solar Passport, equipment quotes, and verified rooftop blueprints."
+                  onNewChat={newChat}
+                />
+              )}
+            </div>
+          </m.div>
+
+          {/* ---------------- Draggable Split Divider ---------------- */}
+          {canvasOpen && (
+            <div
+              onPointerDown={handlePointerDown}
+              onDoubleClick={() => setSplitPercent(40)}
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="Resize chat and map panes"
+              title="Drag to resize · Double-click to reset (40/60)"
+              className="group relative z-30 flex h-full w-3 shrink-0 -mx-1.5 cursor-col-resize items-center justify-center select-none"
+            >
+              {/* Hairline */}
+              <div
+                className={`h-full w-[1px] transition-colors ${
+                  isDragging ? "bg-[#ea580c]" : "bg-[#f0f0ee] group-hover:bg-[#ea580c]/60"
+                }`}
+              />
+
+              {/* Floating pill handle */}
+              <div
+                className={`absolute flex h-8 w-3.5 items-center justify-center rounded-full bg-white shadow-[0_1px_4px_rgba(0,0,0,0.08)] border transition-all ${
+                  isDragging
+                    ? "border-[#ea580c] scale-110 shadow-[0_2px_8px_rgba(234,88,12,0.2)]"
+                    : "border-[#e5e5e4] group-hover:border-[#ea580c]/60 group-hover:scale-105"
+                }`}
+              >
+                <div className="flex flex-col gap-0.5">
+                  <span className="h-0.5 w-0.5 rounded-full bg-[#787774]" />
+                  <span className="h-0.5 w-0.5 rounded-full bg-[#787774]" />
+                  <span className="h-0.5 w-0.5 rounded-full bg-[#787774]" />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ---------------- 4. Photo Map Canvas (Adjustable Width from Right) ---------------- */}
+          <AnimatePresence initial={false}>
+            {canvasOpen && (
+              <m.div
+                key="photo-map-view"
+                initial={reduced ? { opacity: 0 } : { width: "0%", opacity: 0 }}
+                animate={reduced ? { opacity: 1 } : { width: `${100 - splitPercent}%`, opacity: 1 }}
+                exit={reduced ? { opacity: 0 } : { width: "0%", opacity: 0 }}
+                transition={isDragging ? { duration: 0 } : { duration: 0.36, ease: [0.32, 0.72, 0, 1] }}
+                className="relative flex h-full shrink-0 overflow-hidden bg-[#fafaf9] border-l border-[#f0f0ee] will-change-transform"
+              >
+                <div className="relative h-full w-full min-w-0 overflow-hidden">
+                  <MapCanvas
+                    onSelectZone={handleZoneSelect}
+                    onClose={() => setCanvasOpen(false)}
+                    selectedZoneId={selectedZone?.id}
+                  />
+                </div>
+              </m.div>
             )}
           </AnimatePresence>
         </div>
-      </div>
 
-      <ConfirmDialog
-        open={deleteOpen}
-        title="Delete this chat?"
-        body={
-          <>
-            <span className="line-clamp-1 font-medium text-[var(--fg)]">{pendingDelete?.title ?? "This chat"}</span>
-            This removes the conversation from your sidebar.
-          </>
-        }
-        confirmLabel="Delete"
-        onCancel={() => setDeleteOpen(false)}
-        onConfirm={() => pendingDelete && deleteChat(pendingDelete.id)}
-      />
+        {/* Delete Confirmation Modal */}
+        <ConfirmDialog
+          open={deleteOpen}
+          title="Delete conversation?"
+          body={`"${pendingDelete?.title ?? ""}" will be removed.`}
+          confirmLabel="Delete"
+          onCancel={() => setDeleteOpen(false)}
+          onConfirm={() => pendingDelete && deleteChat(pendingDelete.id)}
+        />
+      </div>
     </LazyMotion>
   );
 }
 
 /* ------------------------------------------------------------------ */
-/* Sidebar item                                                        */
-/* ------------------------------------------------------------------ */
-
-function NavItem({
-  icon,
-  label,
-  active,
-  onClick,
-}: {
-  icon: ReactNode;
-  label: string;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-current={active ? "page" : undefined}
-      className={`${navBtn} ${active ? "bg-[var(--fill-2)] font-medium" : ""}`}
-    >
-      <span className={active ? "text-[var(--brand)]" : "text-[var(--label-2)]"}>{icon}</span>
-      <span className="flex-1">{label}</span>
-    </button>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* Claude-Style Artifact Card in Chat                                  */
+/* Map Artifact Card in Chat                                           */
 /* ------------------------------------------------------------------ */
 
 function MapArtifactCard({
   open,
   onToggle,
+  zone,
 }: {
   open: boolean;
   onToggle: () => void;
+  zone?: SolarZone;
 }) {
   return (
     <button
       type="button"
       onClick={onToggle}
       aria-expanded={open}
-      className={`card row-btn press flex w-full max-w-[380px] items-center gap-3 px-4 py-3 text-left transition-shadow ${
-        open ? "shadow-[0_0_0_1.5px_var(--brand),0_4px_12px_rgba(0,0,0,0.04)]" : ""
+      className={`row-btn press flex w-full max-w-[380px] items-center gap-3 rounded-[12px] bg-white p-3 text-left shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-[#f0f0ee] transition-all ${
+        open ? "ring-1.5 ring-[#ea580c] border-transparent" : "hover:bg-[#fafaf9]"
       }`}
     >
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-[var(--brand-soft)] text-[var(--brand)]">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[9px] bg-[#fff7ed] text-[#ea580c]">
         {Icon.map}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-[14px] font-medium">Roof Map</span>
-        <span className="block truncate text-[12px] text-[var(--label-2)]">
-          {open ? "Showing in right canvas" : "Click to open map canvas"}
+        <span className="block truncate text-[13px] font-semibold text-[#111111]">
+          {zone ? zone.name : "Roof Map Analysis"}
+        </span>
+        <span className="block truncate text-[11px] text-[#787774]">
+          {zone ? `${zone.area} · ${zone.capacity} · ${zone.savings}` : (open ? "Active on right map canvas" : "Click to view map")}
         </span>
       </span>
-      <span className="text-[var(--label-3)]">{Icon.chevronRight}</span>
+      <span className="text-[#a3a3a3]">{Icon.chevronRight}</span>
     </button>
   );
 }
@@ -777,24 +947,22 @@ const PILLS: { id: PillId; label: string; icon: ReactNode; prompt: string }[] = 
 function ChatView({
   messages,
   busy,
-  first,
-  subtitle,
+  persona,
   canvasOpen,
   onToggleCanvas,
   onAsk,
+  onStop,
 }: {
   messages: ChatMsg[];
   busy: boolean;
-  first: string;
-  subtitle: string;
+  persona: Persona;
   canvasOpen: boolean;
   onToggleCanvas: () => void;
   onAsk: (text: string, files?: string[], previews?: (string | null)[]) => void;
+  onStop: () => void;
 }) {
   const [input, setInput] = useState("");
   const [files, setFiles] = useState<File[]>([]);
-  const [lightbox, setLightbox] = useState<{ src: string; name: string } | null>(null);
-  const [lang, setLang] = useState("Auto");
 
   const fileRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -806,7 +974,19 @@ function ChatView({
   const hello = useGreeting();
   const empty = messages.length === 0;
 
-  /* Continuity: composer glides from center to bottom when conversation starts */
+  /* Keyboard shortcut: Escape cancels generation if busy */
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && busy) {
+        e.preventDefault();
+        onStop();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [busy, onStop]);
+
+  /* FLIP Continuity: composer smoothly glides from center to bottom when conversation starts */
   useLayoutEffect(() => {
     const el = composerRef.current;
     if (!el) return;
@@ -817,7 +997,7 @@ function ChatView({
     const dy = prev - top;
     if (Math.abs(dy) < 2) return;
     el.animate([{ transform: `translateY(${dy}px)` }, { transform: "translateY(0)" }], {
-      duration: 520,
+      duration: 480,
       easing: "cubic-bezier(0.32, 0.72, 0, 1)",
     });
   }, [empty, reduced]);
@@ -850,121 +1030,159 @@ function ChatView({
     );
     setInput("");
     setFiles([]);
+    if (textRef.current) textRef.current.style.height = "auto";
   };
 
-  const onPick = (e: ChangeEvent<HTMLInputElement>) => {
-    const picked = Array.from(e.target.files ?? []);
-    e.target.value = "";
-    if (!picked.length) return;
-    setFiles((fs) => [...fs, ...picked].slice(0, 6));
-    textRef.current?.focus();
-  };
-
-  const onPaste = (e: ClipboardEvent<HTMLTextAreaElement>) => {
-    const images = Array.from(e.clipboardData.items)
-      .filter((item) => item.kind === "file" && /^image\/(jpeg|png|webp)$/.test(item.type))
-      .map((item) => item.getAsFile())
-      .filter((f): f is File => !!f);
-    if (!images.length) return;
-    e.preventDefault();
-    setFiles((fs) => [...fs, ...images].slice(0, 6));
-  };
-
-  const onKeyDown = (e: ReactKeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+  const onKey = (e: ReactKeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       submit();
     }
   };
 
-  const attach = () => {
-    fileRef.current?.click();
+  const autoResize = (e: ChangeEvent<HTMLTextAreaElement>) => {
+    setInput(e.target.value);
+    const el = e.target;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 180)}px`;
   };
 
-  const last = messages.at(-1);
-  const next = !busy && last?.from === "agent" && last.phase === "done" ? (last.reply?.next ?? []) : [];
-  const nextKey = last?.id;
+  const onPickFiles = (e: ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files?.length) return;
+    setFiles((prev) => [...prev, ...Array.from(e.target.files!)]);
+  };
+
+  const onPaste = (e: ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    const imageFiles: File[] = [];
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.startsWith("image/")) {
+        const file = items[i].getAsFile();
+        if (file) imageFiles.push(file);
+      }
+    }
+    if (imageFiles.length > 0) {
+      e.preventDefault();
+      setFiles((prev) => [...prev, ...imageFiles]);
+    }
+  };
+
+  const onPill = (p: (typeof PILLS)[number]) => {
+    if (p.id === "upload") {
+      fileRef.current?.click();
+      return;
+    }
+    if (p.id === "roof") {
+      onToggleCanvas();
+    }
+    submit(undefined, p.prompt);
+  };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      {/* Conversation / hero */}
-      <div ref={scrollRef} className={`min-h-0 flex-1 overflow-y-auto ${empty ? "flex flex-col justify-end" : ""}`}>
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-white">
+      {/* Scrollable Conversation Body or Empty Hero Centering Space */}
+      <div ref={scrollRef} className="flex min-h-0 flex-1 flex-col overflow-y-auto">
         {empty ? (
-          <m.div
-            initial={reduced ? false : { opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
-            className="flex flex-col items-center px-6 pb-7 text-center"
-          >
-            <Logo size={60} />
-            <h1 className="mt-5 text-[28px] leading-tight font-medium tracking-tight max-sm:text-[24px]">
-              {hello}, {first}. How can I help?
-            </h1>
-          </m.div>
+          <>
+            {/* Top spacer to place hero & composer in the optical center */}
+            <div className="flex-1" aria-hidden="true" />
+
+            {/* Hero Greeting */}
+            <div
+              className={`mx-auto flex w-full flex-col items-center px-6 text-center select-none ${
+                canvasOpen ? "max-w-full" : "max-w-[720px]"
+              }`}
+            >
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-tr from-[#f59e0b] to-[#ea580c] text-white shadow-[0_6px_20px_rgba(245,158,11,0.25)]">
+                {Icon.sun}
+              </div>
+              <h1 className="mt-4 text-[26px] font-semibold tracking-tight text-[#111111]">
+                {hello}, {persona.first}
+              </h1>
+              <p className="mt-1 text-[13px] text-[#787774]">
+                {persona.subtitle} · {persona.location}
+              </p>
+            </div>
+
+            <div className="h-6 shrink-0" aria-hidden="true" />
+
+            {/* Starter Quick Pills directly above the composer */}
+            <div
+              className={`mx-auto grid w-full gap-2 px-6 pb-3 ${
+                canvasOpen ? "grid-cols-2 max-w-full" : "grid-cols-2 sm:grid-cols-4 max-w-[720px]"
+              }`}
+            >
+              {PILLS.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => onPill(p)}
+                  disabled={busy}
+                  className="row-btn press flex h-9 min-w-0 items-center justify-center gap-1.5 rounded-full bg-white px-3 text-[12px] font-medium text-[#111111] shadow-[0_0_0_1px_#e5e5e4,0_1px_3px_rgba(0,0,0,0.03)] hover:bg-[#fafaf9] transition-colors"
+                >
+                  <span className="shrink-0 text-[#ea580c]">{p.icon}</span>
+                  <span className="truncate">{p.label}</span>
+                </button>
+              ))}
+            </div>
+          </>
         ) : (
-          <div role="log" aria-live="polite" className="mx-auto flex w-full max-w-[760px] flex-col gap-6 px-6 pt-4 pb-6">
-            {messages.map((msg) => {
-              if (msg.from === "user") {
+          /* Active Messages Thread */
+          <div
+            className={`mx-auto flex w-full flex-col gap-4 px-6 py-6 ${
+              canvasOpen ? "max-w-full" : "max-w-[720px]"
+            }`}
+          >
+            {messages.map((m) => {
+              if (m.from === "user") {
                 return (
-                  <div key={msg.id} className="enter flex flex-col items-end gap-1.5">
-                    {msg.files && (
-                      <div className="flex flex-wrap justify-end gap-1.5">
-                        {msg.files.map((f, i) => {
-                          const src = msg.previews?.[i];
-                          return src ? (
-                            <button
-                              key={`${f}-${i}`}
-                              type="button"
-                              onClick={() => setLightbox({ src, name: f })}
-                              className="press block overflow-hidden rounded-[14px] bg-white shadow-[0_0_0_1px_var(--hairline)]"
-                            >
-                              <img src={src} alt={f} className="block max-h-[200px] max-w-[240px] object-cover" />
-                            </button>
-                          ) : (
-                            <span
-                              key={`${f}-${i}`}
-                              className="inline-flex items-center gap-1.5 rounded-[10px] bg-white px-2.5 py-1.5 text-[12px] shadow-[0_0_0_1px_var(--hairline)]"
-                            >
-                              {Icon.docLg}
-                              {f}
-                            </span>
-                          );
-                        })}
-                      </div>
-                    )}
-                    <p className="max-w-[75%] rounded-[18px] bg-[var(--fill-2)] px-4 py-2 text-[15px] leading-relaxed">
-                      {msg.text}
-                    </p>
+                  <div key={m.id} className="flex flex-col items-end gap-1.5">
+                    <div className="max-w-[85%] rounded-[14px] bg-[#111111] px-4 py-2.5 text-[13px] text-white">
+                      <p className="whitespace-pre-wrap leading-relaxed">{m.text}</p>
+                    </div>
                   </div>
                 );
               }
 
               return (
-                <div key={msg.id} className="enter-card flex gap-3">
-                  <Logo size={24} className="mt-0.5" />
-                  <div className="flex min-w-0 flex-1 flex-col gap-3">
-                    {msg.phase === "booting" ? (
-                      <div className="enter flex items-center gap-3 py-0.5">
-                        <Spinner variant="main" size={26} label="Sol is getting ready" />
-                        <span className="text-[14px] text-[var(--label-2)]">Getting ready…</span>
-                      </div>
-                    ) : (
-                      <>
-                        {msg.steps.length > 0 && <ThinkingSteps steps={msg.steps} done={msg.phase === "done"} />}
-                        {msg.phase === "done" && msg.reply && (
-                          <div className="enter-card flex flex-col gap-3">
-                            <p className="text-[15px] leading-relaxed">{msg.reply.text}</p>
-                            {msg.reply.hasMapArtifact && (
-                              <MapArtifactCard open={canvasOpen} onToggle={onToggleCanvas} />
-                            )}
-                            {msg.id === nextKey && next.length > 0 && (
-                              <NextSteps items={next} onPick={(s) => onAsk(s.text)} />
-                            )}
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </div>
+                <div key={m.id} className="flex flex-col gap-2.5 text-left">
+                  {/* Agent Thinking Steps */}
+                  {m.steps.length > 0 && <ThinkingSteps steps={m.steps} done={m.phase === "done"} />}
+
+                  {/* Agent Message Content */}
+                  {m.reply && (
+                    <div className="rounded-[14px] bg-[#fafaf9] p-4 text-[13px] text-[#111111] border border-[#f0f0ee]">
+                      <p className="leading-relaxed whitespace-pre-wrap">{m.reply.text}</p>
+
+                      {/* Roof Map Card Preview */}
+                      {m.reply.hasMapArtifact && (
+                        <div className="mt-3.5">
+                          <MapArtifactCard
+                            open={canvasOpen}
+                            onToggle={onToggleCanvas}
+                            zone={m.reply.selectedZone}
+                          />
+                        </div>
+                      )}
+
+                      {/* Follow-up Suggestion Pills */}
+                      {m.reply.next && (
+                        <div className="mt-4 flex flex-wrap gap-1.5">
+                          {m.reply.next.map((n) => (
+                            <button
+                              key={n.id}
+                              type="button"
+                              onClick={() => submit(undefined, n.text)}
+                              className="rounded-[8px] bg-white px-2.5 py-1 text-[11px] font-medium text-[#787774] shadow-sm border border-[#f0f0ee] hover:text-[#ea580c] transition-colors"
+                            >
+                              {n.label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -972,46 +1190,35 @@ function ChatView({
         )}
       </div>
 
-      {/* Starter pills (empty state only), directly above the composer */}
-      {empty && (
-        <div className="mx-auto grid w-full max-w-[760px] grid-cols-2 gap-2 px-6 pb-3 sm:grid-cols-4">
-          {PILLS.map((p) => (
-            <button
-              key={p.id}
-              type="button"
-              onClick={() => (p.id === "upload" ? attach() : onAsk(p.prompt))}
-              disabled={busy}
-              className="pill press row-btn flex h-9 min-w-0 items-center justify-center gap-1.5 rounded-full bg-white px-3 text-[13px] font-medium shadow-[0_0_0_1px_var(--hairline),0_1px_2px_rgba(0,0,0,0.03)] disabled:opacity-40 [&_svg]:size-3.5"
-            >
-              <span className="shrink-0 text-[var(--brand)]">{p.icon}</span>
-              <span className="truncate">{p.label}</span>
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Composer */}
-      <div ref={composerRef} className="mx-auto w-full max-w-[760px] shrink-0 px-6">
-        <div className="composer rounded-[18px] bg-white">
-          <div className="flex items-center gap-1.5 px-4 pt-3 text-[13px]">
-            <span className="font-medium">Sol</span>
-            <span className="text-[var(--label-3)]">· {subtitle}</span>
+      {/* Unified Persistent Composer with FLIP Glide Animation */}
+      <div
+        ref={composerRef}
+        className={`mx-auto w-full shrink-0 px-6 ${empty ? "pb-0" : "pb-3 pt-2"} ${
+          canvasOpen ? "max-w-full" : "max-w-[720px]"
+        }`}
+      >
+        <div className="rounded-[18px] bg-white p-3 border border-[#e5e5e4] shadow-[0_4px_20px_rgba(0,0,0,0.04)] focus-within:border-[#ea580c] focus-within:shadow-[0_4px_24px_rgba(234,88,12,0.08)] transition-all">
+          {/* Sol Persona Header hairline */}
+          <div className="flex items-center gap-1.5 px-1 pb-1 text-[12px]">
+            <span className="font-semibold text-[#111111]">Sol</span>
+            <span className="text-[#787774]">· {persona.subtitle}</span>
           </div>
 
+          {/* Attached Files List */}
           {files.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 px-3 pt-2.5">
+            <div className="flex flex-wrap gap-1.5 pt-1.5 pb-1">
               {files.map((f, i) => (
                 <span
                   key={`${f.name}-${i}`}
-                  className="pop inline-flex items-center gap-1.5 rounded-[10px] bg-[var(--fill)] py-1 pr-1 pl-1 text-[12px]"
+                  className="inline-flex items-center gap-1.5 rounded-[8px] bg-[#fafaf9] py-1 pr-1.5 pl-2 text-[11px] border border-[#f0f0ee]"
                 >
                   <FileThumb file={f} />
-                  <span className="max-w-[160px] truncate">{f.name}</span>
+                  <span className="max-w-[140px] truncate text-[#111111]">{f.name}</span>
                   <button
                     type="button"
                     onClick={() => setFiles((fs) => fs.filter((_, j) => j !== i))}
-                    className={`${btn.icon} row-btn h-5 w-5 rounded-full`}
-                    aria-label={`Remove ${f.name}`}
+                    className="flex h-4 w-4 items-center justify-center rounded-full text-[#787774] hover:text-[#ea580c]"
+                    title={`Remove ${f.name}`}
                   >
                     {Icon.close}
                   </button>
@@ -1020,186 +1227,78 @@ function ChatView({
             </div>
           )}
 
-          <input
-            ref={fileRef}
-            type="file"
-            multiple
-            accept="image/jpeg,image/png,image/webp,application/pdf"
-            onChange={onPick}
-            className="hidden"
-            tabIndex={-1}
-            aria-hidden="true"
-          />
-
-          <label htmlFor="composer" className="sr-only">
-            Message Sol
-          </label>
+          {/* Textarea */}
           <textarea
-            id="composer"
             ref={textRef}
+            rows={empty ? 3 : 2}
             value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={onKeyDown}
+            onChange={autoResize}
+            onKeyDown={onKey}
             onPaste={onPaste}
-            rows={2}
-            placeholder="Ask about your roof, monthly bill, or solar options…"
-            className="block w-full resize-none bg-transparent px-4 pt-2.5 text-[15px] leading-relaxed outline-none placeholder:text-[var(--label-3)]"
+            placeholder={empty ? "Ask about your roof, monthly bill, or solar options…" : "Reply to Sol…"}
+            className="w-full resize-none bg-transparent px-1 py-1.5 text-[14px] leading-relaxed text-[#111111] placeholder-[#a3a3a3] outline-none"
           />
 
-          <div className="flex items-center gap-1 px-2.5 pb-2.5">
-            <Popover
-              label="Attach"
-              placement="top-start"
-              className="w-[200px]"
-              trigger={({ open, toggle }) => (
-                <button
-                  type="button"
-                  onClick={toggle}
-                  aria-expanded={open}
-                  aria-haspopup="menu"
-                  className={`${btn.icon} row-btn`}
-                  aria-label="Attach files"
-                  title="Attach files"
-                >
-                  {Icon.plus}
-                </button>
-              )}
-            >
-              {(close) => (
-                <div role="menu" aria-label="Attach">
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => {
-                      close();
-                      attach();
-                    }}
-                    className="row-btn flex w-full items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-left text-[14px]"
-                  >
-                    <span className="text-[var(--label-2)]">{Icon.image}</span>
-                    Photos or PDF
-                  </button>
-                </div>
-              )}
-            </Popover>
+          {/* Bottom Bar Actions */}
+          <div className="flex items-center justify-between pt-1">
+            <div className="flex items-center gap-1">
+              <input
+                ref={fileRef}
+                type="file"
+                multiple
+                accept="image/*,.pdf"
+                className="hidden"
+                onChange={onPickFiles}
+              />
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                className="flex h-8 w-8 items-center justify-center rounded-[8px] text-[#787774] hover:bg-[#fafaf9] hover:text-[#ea580c] transition-colors"
+                title="Upload bill or photo"
+              >
+                {Icon.upload}
+              </button>
+            </div>
 
-            <div className="flex-1" />
-
-            <Popover
-              label="Language"
-              placement="top-end"
-              className="w-[170px]"
-              trigger={({ open, toggle }) => (
-                <button
-                  type="button"
-                  onClick={toggle}
-                  aria-expanded={open}
-                  className="row-btn press flex h-8 items-center gap-1 rounded-[8px] px-2.5 text-[13px] font-medium"
-                >
-                  {lang} {Icon.chevronDown}
-                </button>
-              )}
-            >
-              {(close) => (
-                <div role="menu" aria-label="Reply language">
-                  {["Auto", "English", "Taglish"].map((l) => (
-                    <MenuItem
-                      key={l}
-                      checked={lang === l}
-                      onSelect={() => {
-                        setLang(l);
-                        close();
-                      }}
-                    >
-                      {l === "Auto" ? "Auto-detect" : l}
-                    </MenuItem>
-                  ))}
-                </div>
-              )}
-            </Popover>
-
-            <button
-              type="button"
-              onClick={() => submit()}
-              disabled={busy || (!input.trim() && !files.length)}
-              aria-label={busy ? "Sol is working" : "Send"}
-              className="btn-primary press flex h-8 w-8 items-center justify-center rounded-[9px] disabled:bg-[var(--fill-2)] disabled:text-[var(--label-3)]"
-            >
-              {busy ? <Spinner /> : Icon.send}
-            </button>
+            {busy ? (
+              <button
+                type="button"
+                onClick={onStop}
+                className="press flex h-8 w-8 items-center justify-center rounded-[9px] bg-[#111111] text-white hover:bg-[#ea580c] transition-colors shadow-sm"
+                title="Stop generating (Esc)"
+                aria-label="Stop generating"
+              >
+                {Icon.stop}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => submit()}
+                disabled={!input.trim() && !files.length}
+                className="press flex h-8 w-8 items-center justify-center rounded-[9px] bg-[#111111] text-white hover:bg-[#262626] disabled:bg-[#f0f0ee] disabled:text-[#a3a3a3] transition-colors"
+                title="Send message"
+                aria-label="Send message"
+              >
+                {Icon.send}
+              </button>
+            )}
           </div>
         </div>
       </div>
 
-      {lightbox && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label={lightbox.name}
-          onClick={() => setLightbox(null)}
-          className="enter fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-6"
-        >
-          <button
-            type="button"
-            onClick={() => setLightbox(null)}
-            aria-label="Close preview"
-            className="press absolute top-4 right-4 flex h-9 w-9 items-center justify-center rounded-full text-white/80 hover:text-white"
-          >
-            {Icon.close}
-          </button>
-          <img
-            src={lightbox.src}
-            alt={lightbox.name}
-            onClick={(e) => e.stopPropagation()}
-            className="max-h-full max-w-full rounded-lg object-contain"
-          />
-        </div>
-      )}
-
+      {/* Bottom spacer when empty to achieve true optical vertical centering */}
       {empty && <div className="flex-1" aria-hidden="true" />}
 
-      <p className="shrink-0 px-6 py-3 text-center text-[12px] text-[var(--label-3)]">
-        Estimates are for planning only. Demo uses synthetic household data.
+      {/* Footnote */}
+      <p className="shrink-0 px-6 py-2.5 text-center text-[11px] text-[#a3a3a3]">
+        Estimates for planning only. Demo data based on Meralco residential tariff.
       </p>
     </div>
   );
 }
 
 /* ------------------------------------------------------------------ */
-/* What's next suggestions                                             */
-/* ------------------------------------------------------------------ */
-
-function NextSteps({ items, onPick }: { items: Suggestion[]; onPick: (s: Suggestion) => void }) {
-  return (
-    <div className="enter-card grid gap-2 pt-1">
-      <span className="text-[13px] font-medium text-[var(--label-2)]">What&apos;s next</span>
-      <Group className="max-w-[520px]">
-        {items.map((s, i) => (
-          <div key={s.id}>
-            {i > 0 && <Separator />}
-            <button
-              type="button"
-              onClick={() => onPick(s)}
-              className="row-btn press flex w-full items-center gap-3 px-4 py-3 text-left"
-            >
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--brand-soft)] text-[var(--brand)]">
-                {Icon.sun}
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-[14px] font-medium">{s.label}</span>
-                {s.hint && <span className="block truncate text-[13px] text-[var(--label-2)]">{s.hint}</span>}
-              </span>
-              <span className="text-[var(--label-3)]">{Icon.chevronRight}</span>
-            </button>
-          </div>
-        ))}
-      </Group>
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* Clean Minimal Placeholder View                                      */
+/* Minimal Placeholder View                                            */
 /* ------------------------------------------------------------------ */
 
 function PlaceholderView({
@@ -1212,19 +1311,19 @@ function PlaceholderView({
   onNewChat: () => void;
 }) {
   return (
-    <div className="mx-auto flex w-full max-w-[760px] flex-1 flex-col justify-center px-6 pb-12">
-      <div className="card p-8 text-center">
-        <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-[var(--brand-soft)] text-[var(--brand)]">
-          {Icon.sun}
-        </div>
-        <h1 className="mt-4 text-[20px] font-semibold tracking-tight">{title}</h1>
-        <p className="mx-auto mt-1.5 max-w-[420px] text-[14px] leading-relaxed text-[var(--label-2)]">{subtitle}</p>
-        <div className="mt-5">
-          <button type="button" onClick={onNewChat} className={`${btn.secondary} btn-sm`}>
-            Back to chat
-          </button>
-        </div>
+    <div className="flex h-full flex-1 flex-col items-center justify-center p-8 text-center select-none">
+      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#fafaf9] text-[#ea580c]">
+        {Icon.sun}
       </div>
+      <h2 className="mt-4 text-[18px] font-semibold text-[#111111]">{title}</h2>
+      <p className="mt-1 max-w-[380px] text-[13px] text-[#787774]">{subtitle}</p>
+      <button
+        type="button"
+        onClick={onNewChat}
+        className="mt-5 rounded-[8px] bg-[#111111] px-3.5 py-1.5 text-[12px] font-medium text-white hover:bg-[#333333] transition-colors"
+      >
+        Return to chat
+      </button>
     </div>
   );
 }
