@@ -191,7 +191,6 @@ export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [booting, setBooting] = useState(true);
   const [view, setView] = useState<View>("chat");
-  const [drawerOpen, setDrawerOpen] = useState(false);
 
   /* Roof Map view state: true = side-by-side view; false = centered 100% workspace */
   const [canvasOpen, setCanvasOpen] = useState(false);
@@ -239,7 +238,6 @@ export default function App() {
     setConvos([]);
     setCurrentId(null);
     setCanvasOpen(false);
-    setDrawerOpen(false);
     setView("chat");
   }, []);
 
@@ -371,10 +369,7 @@ export default function App() {
             steps: allDone(m.steps),
             reply: { text: reply.text, hasMapArtifact: reply.hasMapArtifact, next: reply.next },
           }));
-          if (reply.hasMapArtifact) {
-            setCanvasOpen(true);
-            setDrawerOpen(false);
-          }
+          if (reply.hasMapArtifact) setCanvasOpen(true);
           setRoofTick((t) => t + 1);
         })
         .catch((err: unknown) => {
@@ -424,13 +419,7 @@ export default function App() {
   );
 
   const toggleCanvas = useCallback(() => {
-    setCanvasOpen((prev) => {
-      const next = !prev;
-      if (next) {
-        setDrawerOpen(false);
-      }
-      return next;
-    });
+    setCanvasOpen((prev) => !prev);
   }, []);
 
   const newChat = () => {
@@ -438,7 +427,6 @@ export default function App() {
     setCurrentId(null);
     setView("chat");
     setCanvasOpen(false);
-    setDrawerOpen(false);
   };
 
   /* Open a chat; saved ones fetch their messages the first time. */
@@ -476,7 +464,6 @@ export default function App() {
 
   const go = (v: View) => {
     setView(v);
-    setDrawerOpen(false);
   };
 
   const current = convos.find((c) => c.id === currentId);
@@ -523,11 +510,11 @@ export default function App() {
       <div className="relative flex h-dvh w-screen overflow-hidden bg-white text-[#111111]">
         {/* ---------------- 1. Slim Icon Navigation Rail (Hover to Auto-Expand) ---------------- */}
         <aside
-          className="group/rail flex h-full w-14 hover:w-52 shrink-0 flex-col justify-between border-r border-[#f0f0ee] bg-white py-3 z-40 select-none transition-[width] duration-300 ease-[cubic-bezier(0.25,1,0.5,1)] overflow-hidden"
+          className="group/rail flex h-full w-14 hover:w-52 shrink-0 flex-col justify-between border-r border-[#f0f0ee] bg-white py-3 z-40 select-none transition-[width] duration-300 ease-[cubic-bezier(0.25,1,0.5,1)]"
           aria-label="App Navigation"
         >
-          {/* Top Icons & Labels */}
-          <div className="flex flex-col gap-1 px-2">
+          {/* Top Icons & Labels, then the recents list fills the remaining height */}
+          <div className="flex min-h-0 flex-1 flex-col gap-1 px-2">
             {/* Sol Sun Logo */}
             <button
               type="button"
@@ -559,26 +546,7 @@ export default function App() {
               </span>
             </button>
 
-            {/* 2. Recent Chats & History */}
-            <button
-              type="button"
-              onClick={() => setDrawerOpen((o) => !o)}
-              className={`flex h-10 w-full items-center rounded-[10px] text-left transition-colors ${
-                drawerOpen
-                  ? "bg-[#fafaf9] text-[#ea580c] font-medium"
-                  : "text-[#787774] hover:bg-[#fafaf9] hover:text-[#111111]"
-              }`}
-              title={drawerOpen ? "Close chat history" : "Chat history & recents"}
-            >
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center">
-                {Icon.history}
-              </span>
-              <span className="min-w-0 flex-1 truncate pl-1.5 opacity-0 group-hover/rail:opacity-100 transition-opacity duration-200 text-[13px]">
-                History & Recents
-              </span>
-            </button>
-
-            {/* 3. Roof Map Toggle Button */}
+            {/* 2. Roof Map Toggle Button */}
             <button
               type="button"
               onClick={toggleCanvas}
@@ -599,7 +567,64 @@ export default function App() {
 
             <div className="my-1 h-px w-full bg-[#f0f0ee]" />
 
-            {/* 5. Overview & Settings */}
+            {/* 3. Recents & History: always listed, scrolls when long (titles show when the rail expands) */}
+            <div className="flex h-8 shrink-0 items-center text-[#a3a3a3]" aria-hidden="true">
+              <span className="flex h-8 w-10 shrink-0 items-center justify-center">{Icon.history}</span>
+              <span className="pl-1.5 text-[11px] font-medium uppercase tracking-wide opacity-0 group-hover/rail:opacity-100 transition-opacity duration-200">
+                Recents
+              </span>
+            </div>
+
+            <nav
+              aria-label="Recent chats"
+              className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden opacity-0 pointer-events-none [scrollbar-width:none] transition-opacity duration-200 group-hover/rail:opacity-100 group-hover/rail:pointer-events-auto group-hover/rail:[scrollbar-width:thin]"
+            >
+              {convos.length === 0 ? (
+                <p className="px-3 py-1 text-[12px] text-[#a3a3a3]">No conversations yet</p>
+              ) : (
+                <ul className="flex flex-col gap-0.5">
+                  {convos.map((c) => {
+                    const active = currentId === c.id && view === "chat";
+                    return (
+                      <li key={c.id}>
+                        <div
+                          className={`flex h-8 items-center rounded-[8px] transition-colors ${
+                            active ? "bg-[#fafaf9] text-[#ea580c] font-medium" : "text-[#787774] hover:bg-[#fafaf9] hover:text-[#111111]"
+                          }`}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => openChat(c.id)}
+                            title={c.title}
+                            aria-current={active ? "page" : undefined}
+                            className="flex h-8 min-w-0 flex-1 items-center pl-3 text-left"
+                          >
+                            <span className="min-w-0 flex-1 truncate text-[12px]">{c.title}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPendingDelete({ id: c.id, title: c.title });
+                              setDeleteOpen(true);
+                            }}
+                            className="mr-1.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-[6px] text-[#a3a3a3] hover:bg-white hover:text-[#dc2626] transition-colors"
+                            title="Delete conversation"
+                            aria-label={`Delete conversation ${c.title}`}
+                          >
+                            {Icon.trash}
+                          </button>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </nav>
+          </div>
+
+          {/* Bottom: Overview, then the user profile */}
+          <div className="flex shrink-0 flex-col gap-1 px-2 pt-2">
+            {/* 4. Overview & Settings */}
             <button
               type="button"
               onClick={() => go("overview")}
@@ -617,10 +642,7 @@ export default function App() {
                 Overview
               </span>
             </button>
-          </div>
 
-          {/* Bottom User Profile Avatar */}
-          <div className="px-2">
             <Popover
               label="Household Profile"
               placement="right-end"
@@ -669,82 +691,6 @@ export default function App() {
           </div>
         </aside>
 
-        {/* ---------------- 2. Overlay Flyout Drawer for Recent Chats (NEVER Slices the Layout) ---------------- */}
-        <AnimatePresence initial={false}>
-          {drawerOpen && (
-            <>
-              {/* Invisible click-outside dismiss backdrop */}
-              <div
-                className="fixed inset-0 z-40 bg-black/5"
-                onClick={() => setDrawerOpen(false)}
-                aria-hidden="true"
-              />
-
-              {/* Floating Slide-Over Drawer */}
-              <m.aside
-                key="recents-drawer"
-                initial={reduced ? { opacity: 0 } : { x: -20, opacity: 0 }}
-                animate={reduced ? { opacity: 1 } : { x: 0, opacity: 1 }}
-                exit={reduced ? { opacity: 0 } : { x: -20, opacity: 0 }}
-                transition={{ duration: 0.22, ease: [0.25, 1, 0.5, 1] }}
-                className="absolute left-14 top-0 bottom-0 w-64 z-50 flex flex-col bg-white shadow-[4px_0_24px_rgba(0,0,0,0.06)] border-r border-[#f0f0ee]"
-              >
-                <div className="flex h-12 shrink-0 items-center justify-between px-3 border-b border-[#f0f0ee]">
-                  <span className="text-[13px] font-semibold text-[#111111]">Recents</span>
-                  <button
-                    type="button"
-                    onClick={newChat}
-                    className="flex h-6 w-6 items-center justify-center rounded-[6px] text-[#787774] hover:bg-[#fafaf9] hover:text-[#ea580c] transition-colors"
-                    title="New chat"
-                  >
-                    {Icon.plus}
-                  </button>
-                </div>
-
-                <div className="min-h-0 flex-1 overflow-y-auto p-2">
-                  {convos.length === 0 ? (
-                    <p className="px-2.5 py-2 text-[12px] text-[#a3a3a3]">No conversations yet</p>
-                  ) : (
-                    <ul className="grid gap-0.5">
-                      {convos.map((c) => {
-                        const active = currentId === c.id;
-                        return (
-                          <li key={c.id}>
-                            <div
-                              className={`flex h-8 items-center justify-between rounded-[7px] px-2 text-[12px] transition-colors ${
-                                active ? "bg-[#fafaf9] font-medium text-[#ea580c]" : "text-[#787774] hover:bg-[#fafaf9]"
-                              }`}
-                            >
-                              <button
-                                type="button"
-                                onClick={() => openChat(c.id)}
-                                className="truncate text-left flex-1"
-                              >
-                                {c.title}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setPendingDelete({ id: c.id, title: c.title });
-                                  setDeleteOpen(true);
-                                }}
-                                className="ml-1 text-[#a3a3a3] hover:text-[#111111]"
-                                title="Delete conversation"
-                              >
-                                {Icon.trash}
-                              </button>
-                            </div>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  )}
-                </div>
-              </m.aside>
-            </>
-          )}
-        </AnimatePresence>
-
         {/* ---------------- 3. Main Workspace Area (Adjustable Chat / Map Split) ---------------- */}
         <div ref={workspaceRef} className="relative flex min-w-0 flex-1 h-full overflow-hidden">
           {/* Main / Side Chat Column (Smoothly glides between 100% and splitPercent) */}
@@ -754,12 +700,7 @@ export default function App() {
             transition={isDragging ? { duration: 0 } : { duration: 0.36, ease: [0.32, 0.72, 0, 1] }}
           >
             {/* Top Workspace Header (Minimal, clean hairline) */}
-            <header className="flex h-12 shrink-0 items-center justify-between border-b border-[#f0f0ee] px-4">
-              <div className="flex items-center gap-2">
-                <span className="text-[14px] font-semibold tracking-tight text-[#111111]">Sol</span>
-                <span className="text-[12px] text-[#787774]">· {persona.name}</span>
-              </div>
-
+            <header className="flex h-12 shrink-0 items-center justify-end border-b border-[#f0f0ee] px-4">
               {/* Header Right Actions */}
               <div className="flex items-center gap-1.5">
                 <button
@@ -988,6 +929,18 @@ function ChatView({
   const autoSendPick = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLDivElement>(null);
+
+  /* React's input types have no onCancel, so listen for the browser's native "cancel"
+     (fired when the file picker is dismissed) to drop the pending auto-send. */
+  useEffect(() => {
+    const input = fileRef.current;
+    if (!input) return;
+    const onCancel = () => {
+      autoSendPick.current = false;
+    };
+    input.addEventListener("cancel", onCancel);
+    return () => input.removeEventListener("cancel", onCancel);
+  }, []);
   const textRef = useRef<HTMLTextAreaElement>(null);
   const lastTop = useRef<number | null>(null);
 
@@ -1249,21 +1202,24 @@ function ChatView({
                         </div>
                       )}
 
-                      {/* Follow-up Suggestion Pills */}
-                      {m.reply.next && (
-                        <div className="mt-4 flex flex-wrap gap-1.5">
-                          {m.reply.next.map((n) => (
-                            <button
-                              key={n.id}
-                              type="button"
-                              onClick={() => onSuggestion(n)}
-                              className="rounded-[8px] bg-white px-2.5 py-1 text-[11px] font-medium text-[#787774] shadow-sm border border-[#f0f0ee] hover:text-[#ea580c] transition-colors"
-                            >
-                              {n.label}
-                            </button>
-                          ))}
-                        </div>
-                      )}
+                    </div>
+                  )}
+
+                  {/* Follow-up suggestions: outside the answer card, clearly tappable */}
+                  {m.reply?.next && m.reply.next.length > 0 && (
+                    <div className="flex flex-wrap gap-2 pt-0.5" role="group" aria-label="Suggested replies">
+                      {m.reply.next.map((n) => (
+                        <button
+                          key={n.id}
+                          type="button"
+                          title={n.hint}
+                          disabled={busy}
+                          onClick={() => onSuggestion(n)}
+                          className="press rounded-full border border-[#ea580c]/35 bg-white px-3.5 py-1.5 text-[13px] font-medium text-[#111111] shadow-[0_1px_3px_rgba(0,0,0,0.06)] transition-colors hover:border-[#ea580c] hover:bg-[#fff7ed] hover:text-[#ea580c] disabled:opacity-50 disabled:hover:border-[#ea580c]/35 disabled:hover:bg-white disabled:hover:text-[#111111]"
+                        >
+                          {n.label}
+                        </button>
+                      ))}
                     </div>
                   )}
                 </div>
@@ -1332,9 +1288,6 @@ function ChatView({
                 accept="image/*,.pdf"
                 className="hidden"
                 onChange={onPickFiles}
-                onCancel={() => {
-                  autoSendPick.current = false;
-                }}
               />
               <button
                 type="button"
