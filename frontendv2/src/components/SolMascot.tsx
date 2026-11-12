@@ -28,7 +28,7 @@ const VERT = /* glsl */ `
 `;
 
 /* Soft, slightly translucent-looking ball: light centre, saturated rim, faint top-left sheen.
-   The camera is orthographic, so the view direction is always +Z in view space. */
+   The camera is orthographic, so the view direction is always +Z in view space.\n   Colours are kept as raw sRGB values and mixed in sRGB (no linear conversion) so they match the SVG mark. */
 const FRAG = /* glsl */ `
   uniform vec3 uInner;
   uniform vec3 uOuter;
@@ -42,7 +42,6 @@ const FRAG = /* glsl */ `
     col += vec3(1.0, 0.97, 0.82) * pow(clamp(dot(n, L), 0.0, 1.0), 5.0) * uSheen;
     col *= 0.94 + 0.06 * n.y;
     gl_FragColor = vec4(col, 1.0);
-    #include <colorspace_fragment>
   }
 `;
 
@@ -51,8 +50,8 @@ function ballMaterial(inner: string, outer: string, sheen: number) {
     vertexShader: VERT,
     fragmentShader: FRAG,
     uniforms: {
-      uInner: { value: new THREE.Color(inner) },
-      uOuter: { value: new THREE.Color(outer) },
+      uInner: { value: new THREE.Color().setStyle(inner, THREE.LinearSRGBColorSpace) },
+      uOuter: { value: new THREE.Color().setStyle(outer, THREE.LinearSRGBColorSpace) },
       uSheen: { value: sheen },
     },
   });
@@ -120,8 +119,8 @@ function createSol(container: HTMLElement, { size, followRadius, animate }: Opti
     new THREE.PlaneGeometry(VIEW * 2, VIEW * 2),
     new THREE.MeshBasicMaterial({
       map: radialTexture([
-        [0, "rgba(255,214,90,0.55)"],
-        [0.5, "rgba(255,214,90,0.22)"],
+        [0, "rgba(255,214,90,0.4)"],
+        [0.5, "rgba(255,214,90,0.16)"],
         [0.78, "rgba(255,214,90,0.06)"],
         [1, "rgba(255,214,90,0)"],
       ]),
@@ -134,7 +133,7 @@ function createSol(container: HTMLElement, { size, followRadius, animate }: Opti
 
   /* rays */
   const rayGeo = new THREE.SphereGeometry(0.13, 24, 16);
-  const rayMat = ballMaterial("#fff3a8", "#f8cf4e", 0.1);
+  const rayMat = ballMaterial("#fff3a8", "#f8cf4e", 0.05);
   const rayRing = new THREE.Group();
   const rays: THREE.Mesh[] = [];
   for (let i = 0; i < RAY_COUNT; i++) {
@@ -146,7 +145,7 @@ function createSol(container: HTMLElement, { size, followRadius, animate }: Opti
 
   /* body */
   const bodyGeo = new THREE.SphereGeometry(1, 64, 48);
-  const bodyMat = ballMaterial("#ffec8f", "#f4b92f", 0.2);
+  const bodyMat = ballMaterial("#ffec8f", "#f4b92f", 0.08);
   const body = new THREE.Mesh(bodyGeo, bodyMat);
   root.add(body);
 
@@ -256,8 +255,8 @@ function createSol(container: HTMLElement, { size, followRadius, animate }: Opti
     /* idle glances when nobody is near */
     if (t > idle.until) {
       const look = Math.random() < 0.65;
-      idle.x = look ? (Math.random() * 2 - 1) * 0.75 : 0;
-      idle.y = look ? (Math.random() * 2 - 1) * 0.5 : 0;
+      idle.x = look ? (Math.random() * 2 - 1) * 0.55 : 0;
+      idle.y = look ? (Math.random() * 2 - 1) * 0.4 : 0;
       idle.until = t + 1.6 + Math.random() * 2.6;
     }
     const tx = idle.x + (cgx - idle.x) * w;
@@ -273,8 +272,8 @@ function createSol(container: HTMLElement, { size, followRadius, animate }: Opti
     const breathe = 1 + Math.sin(t * 1.4 + 0.6) * 0.012;
     body.scale.setScalar(breathe);
 
-    face.rotation.y = gaze.x * 0.4;
-    face.rotation.x = -gaze.y * 0.3;
+    face.rotation.y = gaze.x * 0.34;
+    face.rotation.x = -gaze.y * 0.26;
     for (const e of eyes) {
       e.g.position.set(e.base.x + gaze.x * 0.025, e.base.y + gaze.y * 0.02, e.base.z);
     }

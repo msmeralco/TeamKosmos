@@ -15,7 +15,7 @@ import { AnimatePresence, domAnimation, LazyMotion, m } from "framer-motion";
 import { Icon } from "./components/icons";
 import { LoginView } from "./components/LoginView";
 import { MapCanvas } from "./components/MapCanvas";
-import { SolMark } from "./components/SolMark";
+import { SolLogo } from "./components/SolLogo";
 import { AnimatedSol } from "./components/SolMascotLazy";
 import { ApiError, deleteSession, streamChat, type StepEvent } from "./lib/api";
 import {
@@ -445,16 +445,10 @@ export default function App() {
             <button
               type="button"
               onClick={newChat}
-              className="flex h-10 w-full items-center rounded-[10px] text-left transition-colors hover:bg-[#fafaf9]"
+              className="flex h-10 w-full items-center justify-center rounded-[10px] transition-colors hover:bg-[#fafaf9]"
               title="Sol Clean Energy"
             >
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center">
-                <SolMark size={34} />
-              </span>
-              <span className="min-w-0 flex-1 truncate pl-1.5 opacity-0 group-hover/rail:opacity-100 transition-opacity duration-200">
-                <span className="block text-[13px] font-semibold text-[#111111]">Sol</span>
-                <span className="block text-[10px] text-[#ea580c] font-medium">Clean Energy</span>
-              </span>
+              <SolLogo height={20} />
             </button>
 
             <div className="my-1 h-px w-full bg-[#f0f0ee]" />
