@@ -7,7 +7,7 @@ const SolMascot = lazy(() => import("./SolMascot"));
 
 export function AnimatedSol({ size = 120, ...rest }: SolMascotProps) {
   return (
-    <Suspense fallback={<SolMark size={size} className={rest.className} />}>
+    <Suspense fallback={<SolMark size={size} className={rest.className} spinning={rest.loading} />}>
       <SolMascot size={size} {...rest} />
     </Suspense>
   );

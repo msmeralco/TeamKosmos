@@ -91,9 +91,13 @@ interface Options {
   size: number;
   followRadius: number;
   animate: boolean;
+  /** Loader mode: rays spin fast, the face looks straight ahead and ignores the cursor. */
+  loading: boolean;
+  /** prefers-reduced-motion: the loader still turns, but slowly (same pace as the other spinners). */
+  calm: boolean;
 }
 
-function createSol(container: HTMLElement, { size, followRadius, animate }: Options) {
+function createSol(container: HTMLElement, { size, followRadius, animate, loading, calm }: Options) {
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "low-power" });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.setSize(size, size);
@@ -254,7 +258,7 @@ function createSol(container: HTMLElement, { size, followRadius, animate }: Opti
 
     /* idle glances when nobody is near */
     if (t > idle.until) {
-      const look = Math.random() < 0.65;
+      const look = !loading && Math.random() < 0.65; // a loader keeps its eyes on the front
       idle.x = look ? (Math.random() * 2 - 1) * 0.55 : 0;
       idle.y = look ? (Math.random() * 2 - 1) * 0.4 : 0;
       idle.until = t + 1.6 + Math.random() * 2.6;
@@ -297,12 +301,12 @@ function createSol(container: HTMLElement, { size, followRadius, animate }: Opti
     mouth.scale.set(1 + w * 0.08, grin, 1);
 
     /* rays: slow spin, ripple, lean toward the cursor */
-    const spin = t * 0.14 + Math.sin(t * 0.5) * 0.12;
+    const spin = loading ? -t * (calm ? 2.6 : 7) : t * 0.14 + Math.sin(t * 0.5) * 0.12; // loader: clockwise, ~1 turn/s (2.4 s when calm)
     rayRing.rotation.z = spin;
     const toCursor = Math.atan2(cgy, cgx);
     for (let i = 0; i < RAY_COUNT; i++) {
       const a = (i / RAY_COUNT) * Math.PI * 2;
-      const pulse = Math.sin(t * 1.9 + i * 0.9);
+      const pulse = Math.sin(t * (loading ? 5 : 1.9) + i * 0.9);
       let r = RAY_RING + pulse * 0.04;
       let s = 1 + pulse * 0.1;
       if (w > 0.01) {
@@ -356,8 +360,10 @@ function createSol(container: HTMLElement, { size, followRadius, animate }: Opti
   let io: IntersectionObserver | null = null;
 
   if (animate) {
-    window.addEventListener("pointermove", onMove, { passive: true });
-    document.documentElement.addEventListener("pointerleave", onLeave);
+    if (!loading) {
+      window.addEventListener("pointermove", onMove, { passive: true });
+      document.documentElement.addEventListener("pointerleave", onLeave);
+    }
     document.addEventListener("visibilitychange", onVis);
     io = new IntersectionObserver(([entry]) => {
       onScreen = entry ? entry.isIntersecting : true;
@@ -400,9 +406,11 @@ export interface SolMascotProps {
   className?: string;
   /** Distance (px) from the mascot within which it looks at the cursor. */
   followRadius?: number;
+  /** Use as a loading indicator: the rays spin fast and the face looks straight ahead. */
+  loading?: boolean;
 }
 
-export default function SolMascot({ size = 120, className = "", followRadius }: SolMascotProps) {
+export default function SolMascot({ size = 120, className = "", followRadius, loading = false }: SolMascotProps) {
   const ref = useRef<HTMLDivElement>(null);
   const reduced = useReducedMotion();
   const [failed, setFailed] = useState(false);
@@ -412,13 +420,14 @@ export default function SolMascot({ size = 120, className = "", followRadius }: 
     const el = ref.current;
     if (!el) return;
     try {
-      return createSol(el, { size, followRadius: radius, animate: !reduced });
+      // A loader keeps moving even with reduced motion (just slowly); the normal mascot freezes on one frame.
+      return createSol(el, { size, followRadius: radius, animate: loading || !reduced, loading, calm: reduced });
     } catch {
       setFailed(true);
     }
-  }, [size, radius, reduced]);
+  }, [size, radius, reduced, loading]);
 
-  if (failed) return <SolMark size={size} className={className} />;
+  if (failed) return <SolMark size={size} className={className} spinning={loading} />;
 
   return (
     <div

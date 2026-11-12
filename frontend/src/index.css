@@ -464,6 +464,13 @@ body {
   }
 }
 
+/* Sol mark used as a loader: only the rays turn (fast), the face stays put */
+.sol-rays-spin {
+  transform-box: view-box;
+  transform-origin: 50% 50%;
+  animation: sol-spin 0.9s linear infinite;
+}
+
 .spinner-main {
   --w: 4px;
   position: relative;
@@ -593,7 +600,8 @@ body {
     transition: none;
   }
   .spinner-main,
-  .spinner-inline {
+  .spinner-inline,
+  .sol-rays-spin {
     animation-duration: 2.4s;
   }
   .shimmer {

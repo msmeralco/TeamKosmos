@@ -8,6 +8,7 @@ import {
   type RefObject,
 } from "react";
 import { Icon } from "./icons";
+import { AnimatedSol } from "./SolMascotLazy";
 
 /* ------------------------------------------------------------------ */
 /* Types                                                               */
@@ -155,11 +156,14 @@ export function ThinkingSteps({ steps, done }: { steps: AgentStep[]; done: boole
         aria-expanded={open}
         className="row-btn press -ml-1.5 flex min-h-9 items-center gap-3 rounded-[10px] px-1.5 text-left disabled:cursor-default"
       >
-        <span className="flex h-6 w-6 shrink-0 items-center justify-center text-[var(--brand)]">
+        {/* 36px slot, centred over the step circles below. While working it holds the Sol mascot spinning its rays;
+            once done it is the check mark. The mascot only exists while working, so finished messages in the
+            history don't each keep a WebGL context open. */}
+        <span className="ml-[7px] flex h-9 w-9 shrink-0 items-center justify-center text-[var(--brand)]">
           <Swap
             active={done ? 1 : 0}
             items={[
-              <Spinner key="s" variant="main" size={24} />,
+              done ? <span key="s" /> : <AnimatedSol key="s" loading size={36} />,
               <span key="c" className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--brand-soft)] [&_svg]:size-3.5">
                 {Icon.check}
               </span>,
