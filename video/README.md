@@ -1,12 +1,12 @@
 # Sol motion reels
 
-Intro (16 s) and outro (10 s), 1920×1080 at 30 fps and 120 BPM, made with [HyperFrames](https://github.com/heygen-com/hyperframes).
+Intro (6 s) and outro (10 s), 1920×1080 at 30 fps, made with [HyperFrames](https://github.com/heygen-com/hyperframes).
 Every frame is code: HTML and CSS for the layout, GSAP and a few seeded canvas functions for the motion, so any frame can be rendered on its own.
 
 ```
-sol-reel/index.html               intro  (squash and stretch, kinetic type, yield map, photons, windows, title card)
+sol-reel/index.html               intro  (the sun bounces in, hops up, and the title card appears)
 sol-reel/compositions/outro.html  outro  (roof to rewards, passport and vouchers, the PDF plan, end card)
-sol-reel/assets/reel.js           shared deterministic drawing code (physics, grid, particles)
+sol-reel/assets/reel.js           shared deterministic drawing code (bounce physics and helpers)
 make_audio.py                     synthesises the music and sound design (seeded, so it is reproducible)
 ```
 

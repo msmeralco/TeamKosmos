@@ -119,59 +119,29 @@ def arp(m, t0, t1, step=0.125, vol=0.16, seed=3):
 
 
 def intro():
-    m = Mix(16.0)
-    g, tf = 5200.0, math.sqrt(2 * 500 / 5200)
-    # squash and stretch: ticks on the ball's impacts (same physics as the picture)
-    t, v, f = 0.12 + tf, g * tf * 0.62, 760.0
-    m.add(0.12 + tf, blip(f, 0.14), 0.5); f *= 0.82
+    """6 s: the sun bounces in (a tick and a soft thump per landing), crouches, hops up (whoosh), and the title lands (chime and chord)."""
+    m = Mix(6.0)
+    g, H, e = 5200.0, 500.0, 0.62
+    tf = math.sqrt(2 * H / g)
+    t, v, f = 0.12 + tf, g * tf * e, 760.0
+    m.add(t, blip(f, 0.14), 0.5); m.add(t, kick(0.3, 100, 48, 0.09), 0.55)
+    n = 0
     while True:
+        f *= 0.86
         air = 2 * v / g
         if air < 0.06: break
-        t += air; v *= 0.62; m.add(t, blip(f, 0.12), 0.42); f *= 0.86
-    # the pulse: kicks on every beat from the first bar, hats and claps join as the reel builds
-    for k in range(0, 24):
-        t0 = k * BEAT
-        if t0 >= 12.3: break
-        m.add(t0, kick(), 0.82 if t0 >= 2.0 else 0.55)
-    for k in range(int(2.0 / 0.25), int(12.25 / 0.25)):
-        t0 = k * 0.25
-        if k % 2 == 1: m.add(t0, hat(m), 0.30, pan=0.35)
-        elif t0 >= 4.0: m.add(t0, hat(m, open_=False), 0.12, pan=-0.3)
-    t0 = 4.5
-    while t0 < 12.0:
-        m.add(t0, clap(m), 0.5); t0 += 1.0
-    # bass line under the grid and the photons
-    for k, t0 in enumerate(np.arange(4.0, 12.0, 0.5)):
-        m.add(float(t0), bass([55.0, 55.0, 65.41, 49.0][k % 4], 0.45), 0.55)
-    # hits on the cuts
-    for t0, gain in ((2.0, 0.7), (4.0, 0.8), (7.0, 0.8), (10.0, 0.8)):
-        m.add(t0, boom(), gain); m.add(t0, whoosh(m, 0.35, up=False), 0.35)
-    # kinetic type: slam on ROOF, then the glitch and the blue screen
-    m.add(2.5, boom(0.5, 70), 0.6); m.add(2.5, whoosh(m, 0.3), 0.3)
-    m.add(3.0, riser(m, 0.55), 0.7)
-    for k in range(8):
-        m.add(3.4 + k * 0.045, blip(300 + 170 * (k % 3), 0.04, 1.0), 0.28, pan=(-1) ** k * 0.7)
-    m.add(3.55, boom(0.7, 62), 0.85); m.add(3.55, hat(m, open_=True), 0.5)
-    # grid: arpeggio that opens up as the pillars rise
-    arp(m, 4.25, 7.0, 0.125, 0.14)
-    m.add(5.35, riser(m, 0.95, 400, 4200), 0.55)
-    m.add(6.3, boom(0.6, 60), 0.55)
-    # photons: the sun bursts, then the loop re-forms
-    m.add(7.0, chime(880, 1.0), 0.5); m.add(7.55, whoosh(m, 0.55), 0.8); m.add(7.55, boom(0.9, 46), 0.9)
-    arp(m, 7.75, 9.0, 0.25, 0.1, seed=9)
-    m.add(9.0, riser(m, 1.0, 250, 5200), 0.7)
-    # windows pop in
-    for i in range(6):
-        m.add(10.0 + i * 0.125, blip(660 + i * 110, 0.09, 1.0), 0.3, pan=-0.7 + i * 0.28)
-    m.add(11.2, boom(0.4, 90), 0.5)  # the seal stamps
-    m.add(12.05, whoosh(m, 0.5), 0.7)
-    # dawn: the wipe, then a warm chord under the title card
-    m.add(12.3, boom(1.2, 48), 0.95); m.add(12.3, whoosh(m, 0.4, up=False), 0.5)
-    m.add(12.55, chord([261.63, 329.63, 392.0, 493.88, 659.25], 3.4, 0.35), 1.0)
-    m.add(12.62, chime(1318.5, 1.6), 0.5); m.add(13.0, chime(987.77, 1.4), 0.3)
-    for k, f in enumerate((523.25, 659.25, 783.99, 987.77)):
-        m.add(13.5 + k * 0.125, blip(f, 0.2, 1.0), 0.16, pan=0.4 - 0.25 * k)
-    m.save(OUT / "intro.wav", fade_out=0.9)
+        t += air; v *= e; n += 1
+        m.add(t, blip(f, 0.12), 0.42)
+        if n < 3: m.add(t, kick(0.25, 90, 48, 0.07), 0.4 - 0.1 * n)
+    m.add(0.12, whoosh(m, 0.35, up=False), 0.12)        # the drop
+    m.add(2.05, riser(m, 0.3, 300, 1800), 0.3)         # the crouch
+    m.add(2.2, whoosh(m, 0.7), 0.55)                    # the hop
+    m.add(2.9, boom(0.9, 55), 0.6)                      # arrival
+    m.add(2.9, chime(1318.5, 1.7), 0.5); m.add(3.05, chime(987.77, 1.5), 0.3)
+    m.add(2.9, chord([261.63, 329.63, 392.0, 493.88, 659.25], 3.0, 0.3), 0.9)
+    for k, fr in enumerate((523.25, 659.25, 783.99, 987.77)):
+        m.add(3.5 + k * 0.125, blip(fr, 0.2, 1.0), 0.14, pan=0.4 - 0.25 * k)
+    m.save(OUT / "intro.wav", fade_out=1.0)
 
 
 def outro():

@@ -56,57 +56,58 @@
     for (let n = 0; n < 8; n++) { const air = (2 * v) / g; if (air < 0.06) break; arcs.push({ a: t, b: t + air, v, base: 0 }); t += air; v *= e; }
     return arcs;
   }
-  /** Draws the roof surface, dotted trajectories and readouts; returns the ball's screen state for the DOM mascot. */
+  function bounceEnd(H) { const arcs = bounceArcs(H); return arcs[arcs.length - 1].b; }
+  /** Draws the ground line, dotted trajectories and impact rings; returns the ball's screen state for the DOM mascot.
+   *  Options: light (dark ink on a light ground), labels (readout text, default on), alpha, x0 / vx (horizontal start and speed). */
   function bounceScene(ctx, w, h, s, o = {}) {
-    const size = o.size || h * 0.15, H = o.drop || h * 0.55, ground = h * (o.ground || 0.8), x0 = w * 0.16, vx = w * 0.17;
+    const size = o.size || h * 0.15, H = o.drop || h * 0.55, ground = h * (o.ground || 0.8), x0 = o.x0 ?? w * 0.16, vx = o.vx ?? w * 0.17;
+    const light = !!o.light, labels = o.labels !== false, line = light ? "17,17,17" : "250,250,249";
     ctx.clearRect(0, 0, w, h);
-    const u = h / 1080;
+    const u = h / 1080, arcs = bounceArcs(H), tEnd = arcs[arcs.length - 1].b, sm = Math.min(s, tEnd);
+    ctx.globalAlpha = o.alpha ?? 1;
     // ground: a roof line with panel ticks
-    ctx.strokeStyle = "rgba(250,250,249,0.85)"; ctx.lineWidth = 2 * u; ctx.beginPath(); ctx.moveTo(w * 0.06, ground); ctx.lineTo(w * 0.94, ground); ctx.stroke();
-    ctx.strokeStyle = "rgba(250,250,249,0.22)"; ctx.lineWidth = 1 * u;
-    for (let x = w * 0.06; x <= w * 0.94; x += 24 * u) { ctx.beginPath(); ctx.moveTo(x, ground); ctx.lineTo(x - 14 * u, ground + 14 * u); ctx.stroke(); }
-    ctx.fillStyle = "rgba(250,250,249,0.55)"; ctx.font = `${Math.max(9, 17 * u)}px Menlo, monospace`; ctx.fillText("ROOF  y = 0", w * 0.06, ground + 38 * u);
+    const gx0 = w * (o.span ? 0.5 - o.span / 2 : 0.06), gx1 = w * (o.span ? 0.5 + o.span / 2 : 0.94);
+    ctx.strokeStyle = `rgba(${line},0.85)`; ctx.lineWidth = 2 * u; ctx.beginPath(); ctx.moveTo(gx0, ground); ctx.lineTo(gx1, ground); ctx.stroke();
+    ctx.strokeStyle = `rgba(${line},0.2)`; ctx.lineWidth = 1 * u;
+    for (let x = gx0; x <= gx1; x += 24 * u) { ctx.beginPath(); ctx.moveTo(x, ground); ctx.lineTo(x - 14 * u, ground + 14 * u); ctx.stroke(); }
+    if (labels) { ctx.fillStyle = `rgba(${line},0.55)`; ctx.font = `${Math.max(9, 17 * u)}px Menlo, monospace`; ctx.fillText("ROOF  y = 0", gx0, ground + 38 * u); }
     // trajectories (dotted), drawn up to the current time
-    const arcs = bounceArcs(H);
     for (const a of arcs) {
       if (s < a.a) continue;
       const end = Math.min(s, a.b);
       for (let t = a.a; t <= end; t += 0.022) {
         const lt = t - a.a; const y = a.first ? H - 0.5 * BOUNCE.g * lt * lt : a.v * lt - 0.5 * BOUNCE.g * lt * lt;
         const x = x0 + vx * (t - BOUNCE.t0);
-        ctx.fillStyle = a.first ? "rgba(251,213,84,0.7)" : "rgba(234,88,12,0.75)";
-        ctx.beginPath(); ctx.arc(x, ground - y - size * 0.5, 2.6 * u, 0, TAU); ctx.fill();
+        ctx.fillStyle = a.first ? "rgba(244,185,47,0.95)" : "rgba(234,88,12,0.8)";
+        ctx.beginPath(); ctx.arc(x, ground - y - size * 0.5, 2.8 * u, 0, TAU); ctx.fill();
       }
     }
-    // impact rings and markers
+    // impact rings
     for (const a of arcs) {
-      const hit = a.first ? a.b : a.a; if (s < hit || a.first && false) continue;
+      const hit = a.first ? a.b : a.a; if (s < hit) continue;
       const age = s - hit; if (age > 0.5) continue;
       const x = x0 + vx * (hit - BOUNCE.t0);
-      ctx.strokeStyle = `rgba(234,88,12,${1 - age / 0.5})`; ctx.lineWidth = 2 * u;
+      ctx.strokeStyle = `rgba(234,88,12,${1 - age / 0.5})`; ctx.lineWidth = 2.4 * u;
       ctx.beginPath(); ctx.ellipse(x, ground, (30 + age * 260) * u, (6 + age * 40) * u, 0, 0, TAU); ctx.stroke();
     }
     const st = bounceState(s, H);
-    const x = x0 + vx * Math.max(0, s - BOUNCE.t0) * (s < BOUNCE.t0 ? 0 : 1);
+    const x = x0 + vx * Math.max(0, sm - BOUNCE.t0);
     // shadow
     const sh = 1 - clamp(st.y / H) * 0.65;
-    ctx.fillStyle = `rgba(0,0,0,${0.45 * sh})`; ctx.beginPath(); ctx.ellipse(x, ground + 4 * u, size * 0.5 * sh, size * 0.09 * sh, 0, 0, TAU); ctx.fill();
-    // readouts
+    ctx.fillStyle = light ? `rgba(17,17,17,${0.2 * sh})` : `rgba(0,0,0,${0.45 * sh})`; ctx.beginPath(); ctx.ellipse(x, ground + 4 * u, size * 0.5 * sh, size * 0.09 * sh, 0, 0, TAU); ctx.fill();
     const by = ground - st.y - size * 0.5;
-    ctx.strokeStyle = "rgba(250,250,249,0.35)"; ctx.setLineDash([4 * u, 5 * u]); ctx.beginPath(); ctx.moveTo(x, by); ctx.lineTo(x, ground); ctx.stroke(); ctx.setLineDash([]);
-    ctx.fillStyle = COL.orange; ctx.font = `bold ${Math.max(9, 20 * u)}px Menlo, monospace`;
-    ctx.fillText(`#${st.n} / Y:${(st.y + size * 0.5 + (o.offsetY || 0)).toFixed(2)}`, x + size * 0.62, by - 8 * u);
-    ctx.fillStyle = "rgba(250,250,249,0.6)"; ctx.font = `${Math.max(8, 15 * u)}px Menlo, monospace`;
-    ctx.fillText(`VY ${(-st.vy).toFixed(1)}  ·  G 5200`, x + size * 0.62, by + 14 * u);
-    if (st.vy) { // velocity vector
-      ctx.strokeStyle = COL.sun; ctx.lineWidth = 2 * u; ctx.beginPath(); ctx.moveTo(x, by); ctx.lineTo(x, by - st.vy * 0.045 * u); ctx.stroke();
+    if (labels) {
+      ctx.strokeStyle = `rgba(${line},0.35)`; ctx.setLineDash([4 * u, 5 * u]); ctx.beginPath(); ctx.moveTo(x, by); ctx.lineTo(x, ground); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = COL.orange; ctx.font = `bold ${Math.max(9, 20 * u)}px Menlo, monospace`;
+      ctx.fillText(`#${st.n} / Y:${(st.y + size * 0.5 + (o.offsetY || 0)).toFixed(2)}`, x + size * 0.62, by - 8 * u);
     }
+    ctx.globalAlpha = 1;
     // squash and stretch for the DOM mascot
     let sx = 1, sy = 1;
     if (st.since >= 0 && st.since < 0.1) { const k = Math.sin((Math.PI * st.since) / 0.1) * 0.46; sy = 1 - k; sx = 1 + k * 0.85; }
     else { const k = clamp(Math.abs(st.vy) / 9500, 0, 0.2); sy = 1 + k; sx = 1 / Math.sqrt(sy); }
-    const tilt = clamp(st.vy / 9000, -0.25, 0.25) * 0.9 + (s - BOUNCE.t0) * 0.06;
-    return { x, bottom: ground - st.y, size, sx, sy, tilt, state: st };
+    const tilt = (clamp(st.vy / 9000, -0.25, 0.25) * 0.9 + (sm - BOUNCE.t0) * 0.06) * (s < tEnd ? 1 : 0);
+    return { x, bottom: ground - st.y, size, sx, sy, tilt, state: st, tEnd };
   }
 
   /* ---- 2. Crosses and dots that morph into an isometric grid of pillars with a rolling sun orb ------------------------ */
@@ -215,5 +216,5 @@
     ctx.globalCompositeOperation = "source-over";
   }
 
-  window.Reel = { TAU, COL, rng, clamp, lerp, prog, E, mix, timecode, group, bounceScene, gridScene, makeParticles, particleScene, BOUNCE };
+  window.Reel = { TAU, COL, rng, clamp, lerp, prog, E, mix, timecode, group, bounceScene, bounceEnd, gridScene, makeParticles, particleScene, BOUNCE };
 })();

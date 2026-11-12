@@ -6,348 +6,81 @@
     <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
     <script src="assets/reel.js"></script>
     <style>
-      :root {
-        --night: #12100e; --cream: #fafaf9; --paper: #f4f4f2; --ink: #111111; --grey: #787774;
-        --orange: #ea580c; --sun: #fbd554; --blue: #1d4ed8; --teal: #2f7f78; --teal-d: #235f5a;
-        --sans: "Helvetica Neue", Helvetica, Arial, sans-serif; --mono: Menlo, "SF Mono", monospace;
-      }
+      :root { --cream: #fafaf9; --ink: #111111; --grey: #5f5e5b; --sans: "Helvetica Neue", Helvetica, Arial, sans-serif; }
       * { margin: 0; padding: 0; box-sizing: border-box; }
-      html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--night); }
-      #root { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: var(--night); font-family: var(--sans); }
-      .abs { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; }
-      canvas { position: absolute; left: 0; top: 0; }
-      .mono { font-family: var(--mono); letter-spacing: 0.06em; }
-
-      /* ground layers */
-      #cream { background: var(--cream); opacity: 0; z-index: 3; }
-      #blue { background: var(--blue); opacity: 0; z-index: 30; }
-      #vignette { z-index: 2; background: radial-gradient(ellipse at 50% 45%, rgba(0,0,0,0) 45%, rgba(0,0,0,0.55) 100%); }
-      #scan { z-index: 60; opacity: 0.16; background: repeating-linear-gradient(0deg, rgba(255,255,255,0.7) 0 1px, transparent 1px 4px); mix-blend-mode: overlay; pointer-events: none; }
-      #flash { z-index: 70; background: var(--orange); opacity: 0; }
-
-      /* background code */
-      .codecol { position: absolute; top: 0; width: 520px; font: 15px/22px var(--mono); color: rgba(250,250,249,0.07); white-space: pre; z-index: 1; }
-
-      /* HUD */
-      .hud { z-index: 50; font: 600 17px var(--mono); letter-spacing: 0.14em; text-transform: uppercase; }
-      .hud span { position: absolute; white-space: nowrap; }
-      .hud .tl { left: 64px; top: 52px; } .hud .tr { right: 64px; top: 52px; } .hud .bl { left: 64px; bottom: 50px; } .hud .br { right: 64px; bottom: 50px; } .hud .bc { left: 0; width: 1920px; text-align: center; bottom: 50px; }
-      .hud.dark { color: rgba(250,250,249,0.62); } .hud.light { color: rgba(17,17,17,0.75); opacity: 0; }
-      .hud .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--orange); margin-right: 12px; }
-      .frame-line { position: absolute; left: 32px; top: 32px; right: 32px; bottom: 32px; border: 1px solid rgba(250,250,249,0.16); z-index: 49; }
-      .frame-line.light { border-color: rgba(17,17,17,0.14); opacity: 0; }
-      .corner { position: absolute; width: 22px; height: 22px; z-index: 49; border-color: rgba(250,250,249,0.7); border-style: solid; border-width: 0; }
-      .corner.l { border-color: rgba(17,17,17,0.5); opacity: 0; }
-      .c1 { left: 24px; top: 24px; border-left-width: 2px; border-top-width: 2px; } .c2 { right: 24px; top: 24px; border-right-width: 2px; border-top-width: 2px; }
-      .c3 { left: 24px; bottom: 24px; border-left-width: 2px; border-bottom-width: 2px; } .c4 { right: 24px; bottom: 24px; border-right-width: 2px; border-bottom-width: 2px; }
-
-      .tag { position: absolute; left: 0; width: 1920px; text-align: center; bottom: 50px; z-index: 50; font: 600 17px var(--mono); letter-spacing: 0.18em; color: rgba(250,250,249,0.75); text-transform: uppercase; }
-      .tag b { color: var(--orange); font-weight: 700; margin-right: 14px; }
-      .scene-title { position: absolute; left: 96px; top: 118px; z-index: 20; font: 700 22px var(--mono); letter-spacing: 0.16em; color: rgba(250,250,249,0.9); text-transform: uppercase; }
-      .scene-title small { display: block; margin-top: 8px; font: 500 15px var(--mono); letter-spacing: 0.1em; color: rgba(250,250,249,0.5); text-transform: none; }
-      .bignum { position: absolute; right: 96px; top: 96px; z-index: 5; font: 900 220px/1 var(--sans); letter-spacing: -0.06em; color: rgba(250,250,249,0.05); }
-
-      /* scene 1 */
-      #mascot1 { position: absolute; left: 0; top: 0; z-index: 12; transform-origin: 50% 100%; will-change: transform; }
-      /* scene 2 */
-      #bbox { position: absolute; left: 520px; top: 371px; width: 880px; height: 337px; border: 2px solid var(--orange); z-index: 12; }
-      #bbox .h { position: absolute; width: 18px; height: 18px; background: var(--cream); border: 2px solid var(--orange); }
-      #bbox .h.a { left: -10px; top: -10px; } #bbox .h.b { right: -10px; top: -10px; } #bbox .h.c { left: -10px; bottom: -10px; } #bbox .h.d { right: -10px; bottom: -10px; }
-      #bbox .h.e { left: calc(50% - 9px); top: -10px; } #bbox .h.f { left: calc(50% - 9px); bottom: -10px; }
-      #dims { position: absolute; left: 520px; top: 322px; z-index: 12; font: 700 21px var(--mono); letter-spacing: 0.08em; color: var(--orange); }
-      #dims-r { position: absolute; right: 520px; top: 322px; z-index: 12; font: 500 17px var(--mono); letter-spacing: 0.1em; color: rgba(250,250,249,0.55); }
-      #word { position: absolute; left: 520px; top: 371px; width: 880px; height: 337px; z-index: 11; overflow: hidden; }
-      .wordline { position: absolute; left: 0; top: 0; width: 880px; height: 337px; display: flex; align-items: center; justify-content: center; font: 900 300px/1 var(--sans); letter-spacing: -0.045em; color: var(--orange); white-space: nowrap; }
-      .wordline.r { color: #ff3b30; mix-blend-mode: screen; } .wordline.c { color: #22d3ee; mix-blend-mode: screen; }
-      #sub2 { position: absolute; left: 520px; top: 752px; z-index: 12; font: 600 21px var(--mono); letter-spacing: 0.14em; color: rgba(250,250,249,0.7); }
-      #sub2 i { color: var(--orange); font-style: normal; }
-      .bluetext { position: absolute; left: 0; width: 1920px; text-align: center; top: 300px; z-index: 31; font: 900 440px/1 var(--mono); letter-spacing: -0.04em; color: var(--cream); }
-      .bluesub { position: absolute; left: 0; width: 1920px; text-align: center; top: 770px; z-index: 31; font: 600 26px var(--mono); letter-spacing: 0.2em; color: rgba(250,250,249,0.85); }
-      /* scene 4 */
-      #mascot4 { position: absolute; left: 790px; top: 370px; width: 340px; height: 340px; z-index: 12; }
-      #photons { position: absolute; left: 96px; bottom: 120px; z-index: 20; font: 800 64px/1 var(--mono); color: var(--cream); letter-spacing: -0.02em; }
-      #photons small { display: block; margin-bottom: 14px; font: 600 18px var(--mono); letter-spacing: 0.2em; color: var(--orange); }
-      /* scene 5 windows */
-      .win { position: absolute; width: 541px; height: 376px; z-index: 12; border-radius: 12px; overflow: hidden; background: #1b1815; border: 1px solid rgba(250,250,249,0.18); box-shadow: 0 30px 60px rgba(0,0,0,0.5); }
-      .win .bar { height: 38px; display: flex; align-items: center; gap: 8px; padding: 0 14px; background: #24201c; border-bottom: 1px solid rgba(250,250,249,0.1); }
-      .win .bar i { width: 11px; height: 11px; border-radius: 50%; background: #3d3731; } .win .bar i:first-child { background: var(--orange); }
-      .win .bar b { margin-left: 10px; font: 600 14px var(--mono); letter-spacing: 0.08em; color: rgba(250,250,249,0.7); }
-      .win .body { position: absolute; left: 0; top: 38px; width: 541px; height: 338px; overflow: hidden; }
-      .win canvas { position: absolute; left: 0; top: 0; }
-      .mini-box { position: absolute; left: 70px; top: 100px; width: 400px; height: 140px; border: 2px solid var(--orange); }
-      .mini-box .h { position: absolute; width: 10px; height: 10px; background: var(--cream); border: 1.5px solid var(--orange); }
-      .mini-word { position: absolute; left: 70px; top: 100px; width: 400px; height: 140px; display: flex; align-items: center; justify-content: center; font: 900 118px/1 var(--sans); letter-spacing: -0.045em; color: var(--orange); }
-      .stat { position: absolute; width: 238px; height: 128px; padding: 12px 14px; border-radius: 10px; background: #fafaf9; color: var(--ink); }
-      .stat small { display: block; font: 600 14px var(--mono); letter-spacing: 0.14em; color: #5f5e5b; text-transform: uppercase; }
-      .stat b { display: block; margin-top: 6px; font: 800 29px/1.15 var(--sans); letter-spacing: -0.02em; white-space: nowrap; }
-      .stat span { display: block; margin-top: 6px; font: 500 14px var(--mono); color: #5f5e5b; }
-      .stat.top { border-top: 3px solid var(--orange); }
-      .book { position: absolute; left: 150px; top: 24px; width: 240px; height: 290px; border-radius: 8px; background: var(--teal); padding: 12px; box-shadow: 6px 6px 0 -1px var(--teal-d); }
-      .book .hd { height: 36px; border-radius: 3px 3px 0 0; }
-      .book .pill { display: inline-block; height: 20px; border-radius: 3px; background: #b9cbc6; margin-right: 6px; } 
-      .book .pg { position: absolute; left: 12px; right: 12px; top: 78px; bottom: 12px; border-radius: 4px; background: #e8e1d2; }
-      .book .ln { position: absolute; left: 18px; height: 9px; border-radius: 2px; background: #c9bfa8; }
-      .seal { position: absolute; right: -16px; bottom: -14px; width: 92px; height: 92px; border-radius: 50%; background: var(--teal); box-shadow: 0 0 0 5px var(--teal-d); display: flex; align-items: center; justify-content: center; }
-      .seal i { width: 64px; height: 64px; border-radius: 50%; background: var(--teal-d); display: flex; align-items: center; justify-content: center; }
-      .seal svg { width: 38px; height: 38px; filter: drop-shadow(0 0 5px rgba(255,255,255,0.9)); }
-      .qr { position: absolute; left: 18px; bottom: 18px; width: 54px; height: 54px; background: #111; border-radius: 2px; }
-      .ticket { position: absolute; width: 150px; height: 40px; border: 1.5px dashed var(--grey); border-radius: 5px; background: #1b1815; font: 700 12px/40px var(--mono); letter-spacing: 0.12em; color: rgba(250,250,249,0.8); text-align: center; }
-      /* scene 6 title card */
-      #rays { position: absolute; left: 700px; top: 70px; width: 520px; height: 520px; z-index: 5; }
-      #mascot6 { position: absolute; left: 835px; top: 205px; width: 250px; height: 250px; z-index: 12; }
-      #wordmark { position: absolute; left: 730px; top: 592px; width: 460px; z-index: 12; overflow: hidden; }
-      #wordmark img { display: block; width: 460px; }
-      #tagline { position: absolute; left: 0; width: 1920px; text-align: center; top: 852px; z-index: 12; font: 500 40px var(--sans); letter-spacing: -0.01em; color: var(--ink); }
-      #tagline em { font-style: normal; color: var(--orange); font-weight: 700; }
-      #chain { position: absolute; left: 0; width: 1920px; text-align: center; top: 916px; z-index: 12; font: 600 19px var(--mono); letter-spacing: 0.16em; color: #5f5e5b; text-transform: uppercase; }
-      #chain b { color: var(--ink); font-weight: 700; } #chain i { color: #c2410c; font-style: normal; margin: 0 12px; }
-      #code-line { position: absolute; left: 0; width: 1920px; text-align: center; top: 962px; z-index: 12; font: 600 21px var(--mono); letter-spacing: 0.08em; color: var(--ink); }
-      #code-line u { display: inline-block; width: 12px; height: 24px; margin-left: 6px; background: var(--orange); vertical-align: -4px; text-decoration: none; }
-      #team { position: absolute; left: 0; width: 1920px; text-align: center; top: 1008px; z-index: 12; font: 500 17px var(--mono); letter-spacing: 0.2em; color: #5f5e5b; text-transform: uppercase; }
+      html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--cream); }
+      #root { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: var(--cream); font-family: var(--sans); color: var(--ink); }
+      canvas { position: absolute; left: 0; top: 0; z-index: 4; }
+      #mascot { position: absolute; left: 0; top: 0; z-index: 12; transform-origin: 50% 100%; will-change: transform; }
+      #rays { position: absolute; left: 700px; top: 100px; width: 520px; height: 520px; z-index: 5; }
+      #sol { position: absolute; left: 0; top: 610px; width: 1920px; height: 230px; overflow: hidden; z-index: 12; text-align: center; }
+      #sol span { display: block; font: 800 214px/230px var(--sans); letter-spacing: 0.05em; padding-left: 0.05em; color: var(--ink); }
+      #tagline { position: absolute; left: 0; top: 862px; width: 1920px; text-align: center; z-index: 12; font: 500 46px var(--sans); letter-spacing: -0.005em; color: var(--grey); }
     </style>
   </head>
   <body>
-    <div id="root" data-composition-id="intro" data-start="0" data-duration="16" data-width="1920" data-height="1080" data-fps="30">
-      <audio id="music" src="assets/intro.wav" data-start="0" data-duration="16" data-track-index="9" data-volume="0.9"></audio>
-
-      <div id="vignette" class="abs"></div>
-      <div id="cream" class="abs"></div>
-      <div class="codecol" id="code1" data-layout-ignore style="left: 40px"></div>
-      <div class="codecol" id="code2" data-layout-ignore style="left: 700px"></div>
-      <div class="codecol" id="code3" data-layout-ignore style="left: 1360px"></div>
-
-      <!-- HUD: dark version over the night scenes, light version over the title card -->
-      <div class="frame-line"></div><div class="frame-line light" id="frameL"></div>
-      <div class="corner c1"></div><div class="corner c2"></div><div class="corner c3"></div><div class="corner c4"></div>
-      <div class="corner l c1" id="cl1"></div><div class="corner l c2" id="cl2"></div><div class="corner l c3" id="cl3"></div><div class="corner l c4" id="cl4"></div>
-      <div class="abs hud dark" id="hudD" data-layout-ignore>
-        <span class="tl"><i class="dot"></i>SOL MOTION REEL 2026</span>
-        <span class="tr">120 BPM &nbsp;·&nbsp; 1920×1080 &nbsp;·&nbsp; 30 FPS</span>
-        <span class="bl" id="tcD">00:00:00:00</span>
-        <span class="br" id="frD">F 0000 / 0480</span>
-      </div>
-      <div class="abs hud light" id="hudL" data-layout-ignore>
-        <span class="tl"><i class="dot"></i>SOL MOTION REEL 2026</span>
-        <span class="tr">120 BPM &nbsp;·&nbsp; 1920×1080 &nbsp;·&nbsp; 30 FPS</span>
-        <span class="bl" id="tcL">00:00:00:00</span>
-        <span class="br" id="frL">F 0000 / 0480</span>
-      </div>
-
-      <!-- scene 1: squash and stretch -->
-      <div id="s1" class="abs clip" data-start="0" data-duration="2.1" data-track-index="1">
-        <div class="bignum" data-layout-ignore>01</div>
-        <div class="scene-title">Squash &amp; stretch<small>sol.bounce( roof, g = 5200, e = 0.62 )</small></div>
-        <canvas id="cBounce" width="1920" height="1080"></canvas>
-        <img id="mascot1" src="assets/mascot.svg" width="150" height="150" alt="" />
-      </div>
-      <!-- scene 2: kinetic type, then a glitch to a blue screen -->
-      <div id="s2" class="abs clip" data-start="2.0" data-duration="2.1" data-track-index="2">
-        <div class="bignum" data-layout-ignore>02</div>
-        <div class="scene-title">Kinetic type<small>sol.type( "ROOF" )</small></div>
-        <div id="dims">0 × 0</div><div id="dims-r">SITE · AREA · AZIMUTH</div>
-        <div id="bbox"><i class="h a"></i><i class="h b"></i><i class="h c"></i><i class="h d"></i><i class="h e"></i><i class="h f"></i></div>
-        <div id="word"><div class="wordline" id="wMain">ROOF</div></div>
-        <div id="sub2"><i>▸</i> pack_panels( usable_area ) → <i>14</i> panels fit</div>
-      </div>
-      <div id="blue" class="abs"></div>
-      <div id="blueText" data-layout-ignore class="clip" data-start="3.55" data-duration="0.55" data-track-index="3"><div class="bluetext" id="bt">SUN</div><div class="bluesub" id="bs">120 kWh / kWp · month &nbsp;·&nbsp; PVGIS-ERA5</div></div>
-      <!-- scene 3: crosses, dots, pillars and a rolling orb -->
-      <div id="s3" class="abs clip" data-start="4.0" data-duration="3.05" data-track-index="2">
-        <div class="bignum" data-layout-ignore>03</div>
-        <div class="scene-title">Generative grid<small id="gridsub">yield.map( 24 × 14 )</small></div>
-        <canvas id="cGrid" width="1920" height="1080"></canvas>
-      </div>
-      <!-- scene 4: photons -->
-      <div id="s4" class="abs clip" data-start="7.0" data-duration="3.05" data-track-index="2">
-        <div class="bignum" data-layout-ignore>04</div>
-        <div class="scene-title">Photon field<small>burst · drift · loop</small></div>
-        <canvas id="cPart" width="1920" height="1080"></canvas>
-        <img id="mascot4" src="assets/mascot.svg" alt="" />
-        <div id="photons"><small>PHOTONS</small><span id="pcount">× 0</span></div>
-      </div>
-      <!-- scene 5: multi-window montage -->
-      <div id="s5" class="abs clip" data-start="10.0" data-duration="2.6" data-track-index="2"><div class="bignum" data-layout-ignore>05</div></div>
-      <!-- scene 6: title card -->
-      <div id="s6" class="abs clip" data-start="12.45" data-duration="3.55" data-track-index="2">
-        <svg id="rays" viewBox="-400 -400 800 800"></svg>
-        <img id="mascot6" src="assets/mascot.svg" alt="" />
-        <div id="wordmark"><img id="wmImg" src="assets/sol-logo.png" alt="Sol" /></div>
-        <div id="tagline">Your clean energy partner. <em>Go solar. Get rewarded.</em></div>
-        <div id="chain"><b>Roof</b><i>→</i><b>Numbers</b><i>→</i><b>Packages</b><i>→</i><b>Passport</b></div>
-        <div id="code-line">every frame of this reel is code.<u id="cursor"></u></div>
-        <div id="team">Team Kosmos &nbsp;·&nbsp; IDOL Hackathon 2026</div>
-      </div>
-
-      <div id="tag1" class="tag clip" data-start="0" data-duration="2.0" data-track-index="5"><b>01</b>Squash &amp; stretch</div>
-      <div id="tag2" class="tag clip" data-start="2.0" data-duration="2.0" data-track-index="5"><b>02</b>Kinetic type</div>
-      <div id="tag3" class="tag clip" data-start="4.0" data-duration="3.0" data-track-index="5"><b>03</b>Generative grid</div>
-      <div id="tag4" class="tag clip" data-start="7.0" data-duration="3.0" data-track-index="5"><b>04</b>Particle simulation</div>
-      <div id="tag5" class="tag clip" data-start="10.0" data-duration="2.5" data-track-index="5"><b>05</b>Everything, in one window</div>
-
-      <div id="scan" class="abs"></div>
-      <div id="flash" class="abs"></div>
+    <div id="root" data-composition-id="intro" data-start="0" data-duration="6" data-width="1920" data-height="1080" data-fps="30">
+      <audio id="music" src="assets/intro.wav" data-start="0" data-duration="6" data-track-index="9" data-volume="0.9"></audio>
+      <canvas id="cBounce" class="clip" data-start="0" data-duration="6" data-track-index="1" width="1920" height="1080"></canvas>
+      <svg id="rays" viewBox="-400 -400 800 800"></svg>
+      <img id="mascot" src="assets/mascot.svg" width="150" height="150" alt="" />
+      <div id="sol"><span id="solText" data-layout-allow-overflow>SOL</span></div>
+      <div id="tagline">Your clean energy partner</div>
     </div>
 
     <script>
-      const R = window.Reel, C = R.COL, DUR = 16, FPS = 30;
-      const $ = (id) => document.getElementById(id);
+      const R = window.Reel, DUR = 6, $ = (id) => document.getElementById(id);
+      const ctx = $("cBounce").getContext("2d");
+      const SIZE = 150, DROP = 500, GROUND = 0.8, GY = 1080 * GROUND, CX = 960;
+      const T_END = R.bounceEnd(DROP);                 // the last little bounce lands here
+      const X0 = 560, VX = (CX - X0) / (T_END - R.BOUNCE.t0); // so the sun finishes its bounces in the middle of the frame
+      const T_CROUCH = 2.05, T_JUMP = 2.2, T_ARRIVE = 2.9;     // crouch, hop, arrive on the title card
+      const TITLE_BOTTOM = 360 + 125, TITLE_SCALE = 250 / SIZE;  // the sun ends 250 px tall, its centre at y = 360
 
-      /* ---- static content built once ------------------------------------------------------------------------------ */
-      const CODE = [
-        "def optimize(roof, load, *, budget_max_php, goal):", "    caps = {p.id: panel_capacity(roof, *p.dims) for p in panels}", "    for panel in panels:", "        for bat, bn in battery_opts:",
-        "            q = quick_eval(pkg, series, load)", "            if pkg.capex_php > budget_max_php: continue", "    ranked = sorted(evaluated, key=lambda it: it.obj)", "    return finalists[:3]", "",
-        "hash = SHA256(canonical(body) + prev_hash)", "signature = Ed25519(hash)", "ledger.append(record)   # append-only", "", "def pack_panels(roof, panel):", "    rot = rotate(usable, 90 - angle)",
-        "    best = max(grid_boxes(rot, a, b), key=count)", "    return panels_lonlat", "", "pay = payback_years(cumulative)", "net_10y = cumulative[10]", "irr = brentq(npv, -0.9, 2.0)", "",
-        "tariff_php_per_kwh: 15.0615   # Meralco, Oct 2026", "export_credit: 6.5            # unverified", "pvgis: ERA5 hourly, 2010-2023", "number_guard(reply, tool_results)", "", "SELECT * FROM ledger ORDER BY seq;",
-      ];
-      const colsHTML = (off) => { let s = ""; for (let i = 0; i < 80; i++) s += CODE[(i + off) % CODE.length] + "\n"; return s; };
-      $("code1").textContent = colsHTML(0); $("code2").textContent = colsHTML(9); $("code3").textContent = colsHTML(17);
-      // seeded crosses/dots are drawn on canvas; the sun's rays for the title card are built here
+      // sun rays for the title card
       (function () {
-        const g = document.getElementById("rays"); let s = "";
+        let s = "";
         for (let i = 0; i < 48; i++) {
           const a = (i / 48) * R.TAU, long = i % 2 === 0, r1 = 230, r2 = long ? 372 : 300;
           s += `<line x1="${(Math.cos(a) * r1).toFixed(1)}" y1="${(Math.sin(a) * r1).toFixed(1)}" x2="${(Math.cos(a) * r2).toFixed(1)}" y2="${(Math.sin(a) * r2).toFixed(1)}" stroke="${long ? "#ea580c" : "#f4b92f"}" stroke-width="${long ? 5 : 3}" stroke-linecap="round" opacity="${long ? 0.9 : 0.7}"/>`;
         }
-        g.innerHTML = `<g id="raysG">${s}</g>`;
+        $("rays").innerHTML = `<g id="raysG">${s}</g>`;
       })();
 
-      // scene 5 windows
-      const WIN = [
-        { id: "w1", title: "bounce.js", x: 120, y: 150 }, { id: "w2", title: "roof.html", x: 689, y: 150 }, { id: "w3", title: "yield.map", x: 1258, y: 150 },
-        { id: "w4", title: "photons.x10000", x: 120, y: 554 }, { id: "w5", title: "plan.pdf", x: 689, y: 554 }, { id: "w6", title: "passport.sig", x: 1258, y: 554 },
-      ];
-      const s5 = $("s5");
-      WIN.forEach((w) => {
-        const d = document.createElement("div"); d.className = "win"; d.id = w.id; d.style.left = w.x + "px"; d.style.top = w.y + "px";
-        d.innerHTML = `<div class="bar"><i></i><i></i><i></i><b>${w.title}</b></div><div class="body" data-layout-ignore id="${w.id}b"></div>`; s5.appendChild(d);
-      });
-      const mkCanvas = (parent, w, h) => { const c = document.createElement("canvas"); c.width = w; c.height = h; $(parent).appendChild(c); return c.getContext("2d"); };
-      const ctxW1 = mkCanvas("w1b", 541, 338), ctxW3 = mkCanvas("w3b", 541, 338), ctxW4 = mkCanvas("w4b", 541, 338);
-      $("w2b").innerHTML = `<div class="mini-box"><i class="h" style="left:-6px;top:-6px"></i><i class="h" style="right:-6px;top:-6px"></i><i class="h" style="left:-6px;bottom:-6px"></i><i class="h" style="right:-6px;bottom:-6px"></i></div>
-        <div class="mini-word" id="miniWord">ROOF</div><div class="mono" style="position:absolute;left:70px;top:70px;font-size:14px;font-weight:700;color:#ea580c" id="miniDims">880 × 337</div>
-        <div class="mono" style="position:absolute;left:70px;top:262px;font-size:13px;color:rgba(250,250,249,0.6)">area 88.01 m² · usable 63.01 m² · 180°</div>`;
-      $("w5b").innerHTML = `<div class="stat top" style="left:20px;top:10px"><small>Installed cost</small><b id="m1">PHP 0</b><span>14 panels · 7.7 kWp</span></div>
-        <div class="stat top" style="left:283px;top:10px"><small>Payback</small><b id="m2">0.0 years</b><span>best 3.6 · bad year 3.8</span></div>
-        <div class="stat top" style="left:20px;top:146px"><small>10-year net profit</small><b id="m3">PHP 0</b><span>range 484,356 to 694,526</span></div>
-        <div class="stat top" style="left:283px;top:146px"><small>Bill cut, year 1</small><b id="m4">0%</b><span>demo household</span></div>
-        <div class="mono" style="position:absolute;left:20px;top:292px;font-size:14px;color:rgba(250,250,249,0.7)">Reyes Family · demo data · estimates only</div>`;
-      $("w6b").innerHTML = `<div class="book" id="book"><div class="hd" style="background:#e8e1d2"></div><div class="pg"></div>
-        <div style="position:absolute;left:18px;top:20px"><span class="pill" style="width:92px;background:#e8e1d2"></span></div>
-        <div class="ln" style="top:100px;width:150px"></div><div class="ln" style="top:122px;width:118px"></div><div class="ln" style="top:144px;width:160px"></div><div class="ln" style="top:166px;width:100px"></div>
-        <div class="qr"></div><div class="seal" id="seal"><i><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></i></div></div>
-        <div class="ticket" id="tk1" style="left:18px;top:44px">REDEEMED</div><div class="ticket" id="tk2" style="left:18px;top:98px">FREE SURVEY</div><div class="ticket" id="tk3" style="left:18px;top:152px">5% OFF</div>`;
-
-      /* ---- seeded drawing data + the assets the canvas draws ----------------------------------------------------------------- */
-      const P_BIG = R.makeParticles(10000, 11), P_MINI = R.makeParticles(3400, 12);
-      const ctxB = $("cBounce").getContext("2d"), ctxG = $("cGrid").getContext("2d"), ctxP = $("cPart").getContext("2d");
-      const mascotImg = new Image(); mascotImg.src = "assets/mascot.svg";
-
-      function drawMascot(ctx, b) { // the mascot as a canvas sprite for the small window
-        const s = b.size; ctx.save(); ctx.translate(b.x, b.bottom); ctx.rotate(b.tilt); ctx.scale(b.sx, b.sy); ctx.drawImage(mascotImg, -s / 2, -s, s, s); ctx.restore();
-      }
-      const fmt = (n) => "PHP " + R.group(n);
-
-      /* ---- the one function that decides what every frame looks like -------------------------------------------------------- */
+      /* One function decides every frame: the bounce, then the crouch and hop up to the title card. */
       function update(t) {
         t = Math.min(DUR, Math.max(0, t));
-        const tc = R.timecode(t, FPS), fr = "F " + String(Math.min(479, Math.floor(t * FPS + 1e-6))).padStart(4, "0") + " / 0480";
-        $("tcD").textContent = tc; $("tcL").textContent = tc; $("frD").textContent = fr; $("frL").textContent = fr;
-
-        if (t < 2.1) { // scene 1
-          const b = R.bounceScene(ctxB, 1920, 1080, t, { size: 150, drop: 500, ground: 0.8 });
-          const el = $("mascot1");
-          el.style.transform = `translate(${b.x - 75}px, ${b.bottom - 150}px) rotate(${b.tilt}rad) scale(${b.sx}, ${b.sy})`;
+        const fade = 1 - R.E.inOutSine(R.prog(t, T_CROUCH, T_CROUCH + 0.55)); // the ground and dotted paths fade as the sun leaves
+        const b = R.bounceScene(ctx, 1920, 1080, Math.min(t, T_CROUCH), { size: SIZE, drop: DROP, ground: GROUND, x0: X0, vx: VX, light: true, labels: false, alpha: fade, span: 0.88 });
+        if (fade <= 0) ctx.clearRect(0, 0, 1920, 1080);
+        let x = b.x, bottom = b.bottom, sx = b.sx, sy = b.sy, tilt = b.tilt, k = 1;
+        if (t >= T_CROUCH) {
+          x = CX; bottom = GY; sx = 1; sy = 1; tilt = 0;
+          const c = R.prog(t, T_CROUCH, T_JUMP);                    // crouch: squash down before the jump
+          if (t < T_JUMP) { const q = Math.sin((Math.PI / 2) * c) * 0.3; sy = 1 - q; sx = 1 + q * 0.8; }
+          else {
+            const u = R.prog(t, T_JUMP, T_ARRIVE), e = R.E.outCubic(u);
+            bottom = R.lerp(GY, TITLE_BOTTOM, e) - Math.sin(Math.PI * Math.min(1, u * 1.15)) * 70;
+            k = R.lerp(1, TITLE_SCALE, R.E.outBack(R.prog(t, T_JUMP, T_ARRIVE + 0.1)));
+            tilt = R.E.outCubic(u) * R.TAU;                         // one full spin on the way up
+            const st = Math.sin(Math.PI * Math.min(1, u * 1.2)) * 0.16; sy = 1 + st; sx = 1 / Math.sqrt(sy);
+            if (t > T_ARRIVE) { const q = Math.sin(Math.PI * R.prog(t, T_ARRIVE, T_ARRIVE + 0.18)) * 0.12; sy = 1 - q; sx = 1 + q * 0.9; } // lands softly
+          }
+          if (t > T_ARRIVE + 0.2) bottom -= Math.sin((t - T_ARRIVE - 0.2) * 2.2) * 7;                 // a gentle float
         }
-        { const k = R.E.outCubic(R.prog(t, 2.05, 2.55)); $("dims").textContent = `${Math.round(880 * k)} × ${Math.round(337 * k)}`; }
-        { $("pcount").textContent = "× " + R.group(Math.round(10000 * R.E.outCubic(R.prog(t - 7.0, 0.35, 1.5))), "\u2009"); }
-        { const c = R.E.outCubic(R.prog(t - 10.0, 0.25, 1.2));
-          $("m1").textContent = fmt(298600 * c); $("m2").textContent = (3.7 * c).toFixed(1) + " years"; $("m3").textContent = fmt(603921 * c); $("m4").textContent = Math.round(100 * c) + "%"; }
-        if (t >= 4.0 && t < 7.05) R.gridScene(ctxG, 1920, 1080, t - 4.0, {});
-        if (t >= 7.0 && t < 10.05) {
-          const s = t - 7.0; R.particleScene(ctxP, 1920, 1080, s, P_BIG, { loop: 0.27 });
-        }
-        if (t >= 10.0 && t < 12.65) {
-          const s = t - 10.0;
-          const bs = s % 2.0; const b = R.bounceScene(ctxW1, 541, 338, bs, { size: 54, drop: 190, ground: 0.84 }); ctxW1.fillStyle = "rgba(0,0,0,0)"; drawMascot(ctxW1, b);
-          R.gridScene(ctxW3, 541, 338, s % 2.6, { morphA: -3, morphB: -2, orbA: 0.0, orbB: 2.6 });
-          R.particleScene(ctxW4, 541, 338, 3.7 + s, P_MINI, { loop: 0.3 });
-        }
+        $("mascot").style.transform = `translate(${x - SIZE / 2}px, ${bottom - SIZE}px) rotate(${tilt}rad) scale(${sx * k}, ${sy * k})`;
       }
 
-      /* ---- master timeline ----------------------------------------------------------------------------------------------- */
-      const tl = gsap.timeline({ paused: true });
-      const clock = { t: 0 };
+      const tl = gsap.timeline({ paused: true }), clock = { t: 0 };
       tl.fromTo(clock, { t: 0 }, { t: DUR, duration: DUR, ease: "none", immediateRender: false, onUpdate: () => update(clock.t) }, 0);
-
-      // background code drifts up all film long
-      ["code1", "code2", "code3"].forEach((id, i) => tl.fromTo("#" + id, { y: 0 }, { y: -320 - i * 60, duration: DUR, ease: "none" }, 0));
-      // cuts flash on the beat
-      [2.0, 4.0, 7.0, 10.0].forEach((t) => tl.fromTo("#flash", { opacity: 0.42 }, { opacity: 0, duration: 0.16, ease: "power2.out", immediateRender: false }, t));
-
-      // scene 1: the title and the ball appear, the drop starts at once
-      tl.fromTo("#s1 .scene-title", { opacity: 0, x: -30 }, { opacity: 1, x: 0, duration: 0.4, ease: "power3.out" }, 0.05);
-      tl.fromTo("#s1 .bignum", { opacity: 0 }, { opacity: 1, duration: 0.3 }, 0);
-
-      // scene 2: the box snaps on, ROOF slams in on the beat
-      tl.fromTo("#bbox", { opacity: 0, scale: 0.86 }, { opacity: 1, scale: 1, duration: 0.3, ease: "power3.out" }, 2.05);
-      tl.fromTo("#dims, #dims-r", { opacity: 0 }, { opacity: 1, duration: 0.2 }, 2.1);
-      tl.fromTo("#wMain", { yPercent: 105, rotation: 5, scale: 0.8 }, { yPercent: 0, rotation: 0, scale: 1, duration: 0.45, ease: "back.out(1.6)" }, 2.5);
-      tl.fromTo("#sub2", { opacity: 0, x: -20 }, { opacity: 1, x: 0, duration: 0.3, ease: "power2.out" }, 3.0);
-      tl.to("#wMain", { scale: 1.035, duration: 0.5, ease: "sine.inOut" }, 3.0);
-      // glitch: slices of the word jump sideways in colour-split copies, then the blue screen takes over
-      const gl = R.rng(5), wordBox = $("word");
-      const mk = (cls) => { const d = document.createElement("div"); d.className = "wordline " + cls; d.textContent = "ROOF"; d.style.opacity = 0; wordBox.appendChild(d); return d; };
-      const gR = mk("r"), gC = mk("c");
-      for (let k = 0; k < 8; k++) {
-        const t = 3.4 + k * 0.045, dx = (gl() - 0.5) * 120, sl = Math.round(gl() * 70), sl2 = sl + 8 + Math.round(gl() * 20);
-        tl.set([gR, gC], { opacity: 0.9 }, t);
-        tl.set(gR, { x: dx, clipPath: `inset(${sl}% 0 ${100 - sl2}% 0)` }, t);
-        tl.set(gC, { x: -dx, clipPath: `inset(${(sl + 30) % 80}% 0 ${100 - ((sl + 30) % 80) - 14}% 0)` }, t);
-        tl.set("#wMain", { x: dx * 0.3 }, t);
-      }
-      tl.set([gR, gC], { opacity: 0 }, 3.77); tl.set("#wMain", { x: 0 }, 3.77);
-      tl.set("#blue", { opacity: 1 }, 3.55); tl.set("#blue", { opacity: 0 }, 4.0);
-      for (let k = 0; k < 6; k++) tl.set("#bt", { x: (gl() - 0.5) * 60, opacity: k % 2 ? 0.8 : 1 }, 3.55 + k * 0.07);
-      tl.set("#bt", { x: 0, opacity: 1 }, 3.97);
-      tl.fromTo("#bs", { opacity: 0 }, { opacity: 1, duration: 0.2 }, 3.7);
-
-      // scene 3 labels
-      tl.fromTo("#s3 .scene-title", { opacity: 0, x: -30 }, { opacity: 1, x: 0, duration: 0.35, ease: "power3.out" }, 4.05);
-      // scene 4: the mascot is the sun the photons burst from
-      tl.fromTo("#mascot4", { scale: 0.2, opacity: 0, rotation: -40 }, { scale: 1, opacity: 1, rotation: 0, duration: 0.45, ease: "back.out(1.7)" }, 7.0);
-      tl.to("#mascot4", { scale: 1.9, opacity: 0, duration: 0.3, ease: "power2.out" }, 7.55);
-      tl.fromTo("#photons", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.4, ease: "power3.out" }, 7.3);
-      tl.fromTo("#s4 .scene-title", { opacity: 0, x: -30 }, { opacity: 1, x: 0, duration: 0.35, ease: "power3.out" }, 7.05);
-      // scene 5: six windows pop in on successive half-beats, then fly to the centre
-      WIN.forEach((w, i) => {
-        tl.fromTo("#" + w.id, { opacity: 0, scale: 0.86, y: 30 }, { opacity: 1, scale: 1, y: 0, duration: 0.32, ease: "back.out(1.4)" }, 10.0 + i * 0.125);
-        const cx = 960 - (w.x + 270), cy = 540 - (w.y + 188);
-        tl.to("#" + w.id, { x: cx, y: cy, scale: 0.28, opacity: 0, duration: 0.34, ease: "power3.in" }, 12.05 + i * 0.05);
-      });
-      tl.fromTo("#miniWord", { scale: 0.7, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.4, ease: "back.out(1.7)" }, 10.35);
-      tl.fromTo("#seal", { scale: 2.2, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.18, ease: "power4.in" }, 11.2);
-      ["tk1", "tk2", "tk3"].forEach((id, i) => tl.fromTo("#" + id, { x: -170, opacity: 0 }, { x: 0, opacity: 1, duration: 0.3, ease: "power3.out" }, 10.9 + i * 0.18));
-      // the title card: dawn wipes in from the middle
-      tl.fromTo("#cream", { opacity: 0 }, { opacity: 1, duration: 0.18, ease: "power2.out" }, 12.3);
-      tl.to(["#hudD", "#tcD", ".frame-line:not(.light)", ".corner:not(.l)", "#vignette", ".codecol"], { opacity: 0, duration: 0.2 }, 12.3);
-      tl.to(["#hudL", "#frameL", "#cl1", "#cl2", "#cl3", "#cl4"], { opacity: 1, duration: 0.2 }, 12.35);
-      tl.set("#scan", { opacity: 0.05 }, 12.3);
-      // scene 6
-      tl.fromTo("#rays", { scale: 0.5, opacity: 0, rotation: -30 }, { scale: 1, opacity: 1, rotation: 0, duration: 0.9, ease: "power3.out" }, 12.55);
-      tl.to("#raysG", { rotation: 40, svgOrigin: "0 0", duration: 3.5, ease: "none" }, 12.55);
-      tl.fromTo("#mascot6", { scale: 0.1, opacity: 0, y: 120 }, { scale: 1, opacity: 1, y: 0, duration: 0.6, ease: "back.out(1.9)" }, 12.55);
-      tl.fromTo("#mascot6", { rotation: 0 }, { rotation: 360, duration: 0.7, ease: "power2.out" }, 12.55);
-      tl.fromTo("#wmImg", { yPercent: 108 }, { yPercent: 0, duration: 0.6, ease: "power4.out" }, 13.0);
-      tl.fromTo("#tagline", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.5, ease: "power3.out" }, 13.5);
-      tl.fromTo("#chain", { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.4, ease: "power3.out" }, 13.9);
-      tl.fromTo("#code-line", { opacity: 0 }, { opacity: 1, duration: 0.3 }, 14.3);
-      tl.fromTo("#team", { opacity: 0 }, { opacity: 1, duration: 0.4 }, 14.6);
-      for (let t = 14.3, on = true; t < 16; t += 0.5, on = !on) tl.set("#cursor", { opacity: on ? 1 : 0 }, t);
-      tl.to("#mascot6", { y: -10, duration: 0.5, ease: "sine.inOut", yoyo: true, repeat: 3 }, 13.3);
+      tl.fromTo("#rays", { scale: 0.45, opacity: 0, rotation: -30 }, { scale: 1, opacity: 1, rotation: 0, duration: 0.9, ease: "power3.out" }, T_ARRIVE - 0.25);
+      tl.to("#raysG", { rotation: 40, svgOrigin: "0 0", duration: 3.2, ease: "none" }, T_ARRIVE - 0.25);
+      tl.fromTo("#solText", { yPercent: 105 }, { yPercent: 0, duration: 0.6, ease: "power4.out" }, T_ARRIVE + 0.05);
+      tl.fromTo("#tagline", { opacity: 0, y: 22 }, { opacity: 1, y: 0, duration: 0.55, ease: "power3.out" }, T_ARRIVE + 0.5);
 
       window.__timelines = window.__timelines || {};
-      Promise.all([mascotImg.decode ? mascotImg.decode().catch(() => {}) : Promise.resolve(), document.fonts ? document.fonts.ready : Promise.resolve()]).then(() => {
+      const img = $("mascot");
+      Promise.all([img.decode ? img.decode().catch(() => {}) : Promise.resolve(), document.fonts ? document.fonts.ready : Promise.resolve()]).then(() => {
         update(0); window.__timelines["intro"] = tl; tl.seek(0);
       });
     </script>
