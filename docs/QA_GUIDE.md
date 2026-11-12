@@ -55,7 +55,7 @@ Ten years is the headline so the comparison is easy to read. The 25-year cash fl
 Not within 10 years in our example. The battery adds ₱89k to ₱155k and saves roughly ₱50k to ₱110k of bills, so solar alone is cheaper. The battery buys backup power. The 80% self-use share with a battery is our assumption, and it decides this result.
 
 **Where do the deck's comparison numbers come from?**
-A small illustrative model for one 450 kWh household, using the published ₱45 to ₱75 per watt, the Meralco October rate and PVGIS weather years. It assumes a flat tariff and no upkeep. The app runs the real hourly simulation.
+A small illustrative model for one 450 kWh household (our example family, bigger than Meralco's typical 200 kWh household), using the published ₱45 to ₱75 per watt, the Meralco October rate and PVGIS weather years. It assumes a flat tariff and no upkeep. The app runs the real hourly simulation.
 
 **How do you handle net-metering credit?**
 Exports earn a credit based on Meralco's blended generation cost, not the retail rate. We use the published charge, let you edit it, and show a lower-credit case.

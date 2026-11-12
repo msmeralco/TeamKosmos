@@ -260,7 +260,7 @@ body { --color-paper: oklch(98.2% 0.008 82); }
 
 /* ---------- Sol picks: a parts catalog, then installer quotes (slide 7) ---------- */
 .pick {
-  position: absolute; right: 72px; top: 72px; width: 800px; display: flex; flex-direction: column; gap: 14px; padding: 104px 28px 26px; border-radius: var(--radius-card);
+  position: absolute; right: 72px; top: 72px; width: 800px; display: flex; flex-direction: column; gap: 14px; padding: 26px 28px; border-radius: var(--radius-card);
   background: color-mix(in oklab, var(--color-paper) 90%, transparent); box-shadow: var(--edge-light), 0 30px 70px -30px oklch(10% 0.02 260 / 0.55);
   -webkit-backdrop-filter: blur(14px) saturate(1.1); backdrop-filter: blur(14px) saturate(1.1);
 }
@@ -295,4 +295,5 @@ body { --color-paper: oklch(98.2% 0.008 82); }
 .tile { display: flex; align-items: center; gap: 10px; }
 .tile > div { min-width: 0; }
 .q .thumb { margin-right: -2px; }
+.thumb.pkg { width: 116px; height: 79px; border-radius: 12px; object-fit: cover; background: oklch(90% 0.03 80 / 0.7); }
 .q > div { flex: 1; min-width: 0; }
