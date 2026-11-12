@@ -7,7 +7,7 @@ import time
 from typing import Protocol
 
 from .. import geo, installers, market_packages, rag
-from . import intake, nlu
+from . import intake, nlu, reply_format
 from .summary import render_tool_result
 from .tools import TurnContext
 
@@ -28,7 +28,7 @@ def tool_sentences(ctx: TurnContext) -> list[str]:
     """Plain sentences for everything the tools did this turn (also the number-guard fallback)."""
     out: list[str] = []
     for call in ctx.tool_calls:
-        text = render_tool_result(call["name"], call["result"])
+        text = render_tool_result(call["name"], call["result"], reply_format.detect_intent(ctx.user_text))
         if text and text not in out:  # a tool called twice must not repeat its sentence
             out.append(text)
     return out

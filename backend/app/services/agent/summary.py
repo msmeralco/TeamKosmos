@@ -273,8 +273,8 @@ def recommend_text(r: dict) -> str:
             f"So **{r['budget_label']}** looks like the right budget range. This is a rough size, and running the numbers will fine-tune it.")
 
 
-def docs_text(r: dict) -> str:
-    """Scripted-mode answer: the best passage as a short lead plus bullets, with its source as a note."""
+def docs_text(r: dict, intent: str | None = None) -> str:
+    """Scripted-mode answer: the best passage shaped by the question (steps, direct answer, comparison, explanation)."""
     if not r.get("passages"):
         return "I don't have a source for that, so I'd rather not guess. Meralco or your installer can confirm it."
     top = r["passages"][0]
@@ -282,15 +282,11 @@ def docs_text(r: dict) -> str:
     us = " (a US example, not Philippine rules)" if top.get("region") == "US" else ""
     body = reply_format.clean_passage(re.sub(r"^\s*(?:#{1,6}\s+|[-*•]\s+)", "", top["text"], flags=re.M))
     sents = [x for x in re.split(r"(?<=[.!?])\s+(?=[A-Z\"'(])", body) if x.strip()]
-    points = [reply_format.shorten(x) for x in sents[:3]]
+    points = [reply_format.shorten(x) for x in sents[:5 if intent == "steps" else 3]]
     if not points:
         return "I found a page on that, but its text is not readable enough to quote. Open the source below to read it."  \
             + (f"\n\n> Source: [{who}]({top['source_url']})" if top["source_url"] else "")
-    out = [f"**From {who}**{us}:", ""]
-    out += [f"- {p}" for p in points]
-    if top["source_url"]:
-        out += ["", f"> Source: [{who}]({top['source_url']})"]
-    return "\n".join(out)
+    return reply_format.passage_answer(points, who, us, top["source_url"], intent or "explain")
 
 
 def installers_text(r: dict) -> str:
@@ -312,7 +308,7 @@ def packages_text(r: dict) -> str:
     return f"I've opened ready-made packages near that size in the side panel. Real ones show the prices installers publish on their own sites, not quotes.{sample}{area}"
 
 
-def render_tool_result(name: str, result: dict) -> str:
+def render_tool_result(name: str, result: dict, intent: str | None = None) -> str:
     """Plain sentence for a tool result (used by the scripted agent and the number-guard fallback)."""
     if not isinstance(result, dict) or result.get("error"):
         msg = str((result or {}).get("message") or (result or {}).get("error") or "that didn't work").rstrip(". ")
@@ -328,7 +324,7 @@ def render_tool_result(name: str, result: dict) -> str:
     if name == "recommend_budget":
         return recommend_text(result)
     if name == "search_docs":
-        return docs_text(result)
+        return docs_text(result, intent)
     if name == "find_installers":
         return installers_text(result)
     if name == "package_details":
